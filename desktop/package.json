@@ -1,0 +1,16 @@
+{
+  "name": "ai-codebase-engine",
+  "version": "1.0.0",
+  "description": "AI Codebase Understanding Engine",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "dependencies": {
+    "electron-is-dev": "^2.0.0"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0"
+  }
+}

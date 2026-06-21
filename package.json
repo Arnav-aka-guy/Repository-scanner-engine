@@ -1,0 +1,18 @@
+{
+  "name": "antigravity-engine",
+  "version": "2.0.0",
+  "private": true,
+  "description": "AI-Powered Codebase Intelligence Platform",
+  "scripts": {
+    "dev": "concurrently -k -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:desktop": "concurrently -k -n backend,frontend,desktop -c blue,green,magenta \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:desktop-only\"",
+    "dev:backend": "python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:desktop-only": "cd desktop && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "concurrently -k -n backend -c blue \"npm run dev:backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
