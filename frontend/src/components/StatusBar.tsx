@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Terminal, Cpu, AlertCircle } from 'lucide-react';
 
@@ -15,10 +15,31 @@ interface StatusBarProps {
 
 export const StatusBar: React.FC<StatusBarProps> = ({
   repoPath,
-  connected = true,
   totalFiles = 0,
   totalLines = 0,
 }) => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [activeModel, setActiveModel] = useState('—');
+
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const healthRes = await fetch('/health');
+        if (healthRes.ok) {
+          const data = await healthRes.json();
+          setIsConnected(true);
+          setActiveModel(data.embedding_model || '—');
+        } else {
+          setIsConnected(false);
+        }
+      } catch {
+        setIsConnected(false);
+      }
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000);
+    return () => clearInterval(interval);
+  }, []);
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -51,7 +72,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         <div className="flex items-center gap-4">
           {/* Connection status */}
           <div className="flex items-center gap-1.5">
-            {connected ? (
+            {isConnected ? (
               <>
                 {/* Animated green pulse dot */}
                 <span className="relative flex items-center justify-center" style={{ width: 10, height: 10 }}>
@@ -128,7 +149,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           >
             <Cpu size={9} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
             <span style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>
-              all-MiniLM-L6-v2 (CPU)
+              {activeModel}
             </span>
           </div>
         </div>

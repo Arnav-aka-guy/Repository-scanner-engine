@@ -16,10 +16,18 @@ logger = logging.getLogger(__name__)
 class OpenAICompatProvider(LLMProvider):
     """Integrates with OpenAI-compatible API endpoints (OpenAI, Anthropic adapters, OpenRouter, LM Studio, etc.)."""
 
+    _client: httpx.AsyncClient | None = None
+
     def __init__(self, base_url: str = "https://api.openai.com/v1", api_key: str = "", model: str = "gpt-4o-mini") -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Return a shared httpx client for connection pooling."""
+        if OpenAICompatProvider._client is None or OpenAICompatProvider._client.is_closed:
+            OpenAICompatProvider._client = httpx.AsyncClient(timeout=60.0)
+        return OpenAICompatProvider._client
 
     def _headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}
@@ -48,13 +56,14 @@ class OpenAICompatProvider(LLMProvider):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, json=payload, headers=self._headers())
-                if response.status_code != 200:
-                    raise RuntimeError(f"OpenAI API returned status code {response.status_code}: {response.text}")
-                
-                data = response.json()
-                return data["choices"][0]["message"]["content"]
+            client = self._get_client()
+            response = await client.post(url, json=payload, headers=self._headers())
+            if response.status_code != 200:
+                raise RuntimeError(f"OpenAI API returned status code {response.status_code}: {response.text}")
+            
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+
         except httpx.RequestError as e:
             logger.error("Failed to connect to OpenAI-compatible API at %s: %s", url, e)
             raise ConnectionError(
@@ -83,30 +92,31 @@ class OpenAICompatProvider(LLMProvider):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream("POST", url, json=payload, headers=self._headers()) as response:
-                    if response.status_code != 200:
-                        raise RuntimeError(f"OpenAI API returned status code {response.status_code}")
+            client = self._get_client()
+            async with client.stream("POST", url, json=payload, headers=self._headers()) as response:
+                if response.status_code != 200:
+                    raise RuntimeError(f"OpenAI API returned status code {response.status_code}")
+                
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
                     
-                    async for line in response.aiter_lines():
-                        if not line:
-                            continue
+                    if line.startswith("data: "):
+                        data_str = line[6:].strip()
+                        if data_str == "[DONE]":
+                            break
                         
-                        if line.startswith("data: "):
-                            data_str = line[6:].strip()
-                            if data_str == "[DONE]":
-                                break
-                            
-                            try:
-                                chunk = json.loads(data_str)
-                                choices = chunk.get("choices", [])
-                                if choices:
-                                    delta = choices[0].get("delta", {})
-                                    token = delta.get("content", "")
-                                    if token:
-                                        yield token
-                            except json.JSONDecodeError:
-                                continue
+                        try:
+                            chunk = json.loads(data_str)
+                            choices = chunk.get("choices", [])
+                            if choices:
+                                delta = choices[0].get("delta", {})
+                                token = delta.get("content", "")
+                                if token:
+                                    yield token
+                        except json.JSONDecodeError:
+                            continue
+
         except httpx.RequestError as e:
             logger.error("Failed to connect to OpenAI-compatible stream at %s: %s", url, e)
             raise ConnectionError(

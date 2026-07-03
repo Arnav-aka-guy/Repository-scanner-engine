@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.api.dependencies import get_embeddings
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.embeddings.service import EmbeddingsService
+
 router = APIRouter(prefix="/api/search", tags=["search"])
-
-
-# ── Lazy service singleton ──────────────────────────────────────────────
-
-def get_embeddings_service():
-    """Return the global EmbeddingsService singleton from the DI container."""
-    from backend.core.container import get_container
-    return get_container().embeddings_service
 
 
 # ── Request / Response schemas ──────────────────────────────────────────
@@ -49,14 +48,15 @@ class SearchResponse(BaseModel):
 
 
 @router.post("/", response_model=SearchResponse)
-async def search(body: SearchRequest) -> SearchResponse:
+async def search(
+    body: SearchRequest,
+    embeddings: EmbeddingsService = Depends(get_embeddings),
+) -> SearchResponse:
     """Run a semantic search against the indexed codebase.
 
     The embeddings index must have been populated via the ``/api/repository/scan``
     endpoint before calling this.
     """
-    embeddings = get_embeddings_service()
-
     try:
         raw_results: list[dict] = await embeddings.search(body.query, top_k=body.top_k)
     except Exception as exc:
@@ -82,4 +82,3 @@ async def search(body: SearchRequest) -> SearchResponse:
         results=items,
         total=len(items),
     )
-

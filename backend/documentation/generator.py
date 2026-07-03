@@ -47,7 +47,7 @@ class DocumentationGenerator:
         )
 
         try:
-            overview = await self.llm_service.provider.generate(
+            overview = await self.llm_service.manager.generate(
                 prompt,
                 system_prompt="You are a senior developer writing professional onboarding documentation."
             )

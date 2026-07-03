@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { generateDocumentation } from '../services/documentation';
 import {
@@ -230,12 +232,9 @@ export const DocumentationGenerator: React.FC = () => {
                   className="max-w-3xl w-full mx-auto p-8 rounded-xl border leading-relaxed"
                   style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
                 >
-                  <pre
-                    className="whitespace-pre-wrap font-sans text-xs text-[var(--text-secondary)] leading-relaxed select-text"
-                    style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
-                  >
-                    {getActiveContent()}
-                  </pre>
+                  <div className="prose-chat" style={{ padding: '1.5rem', lineHeight: 1.8, fontSize: '0.9rem', maxHeight: '100%', overflowY: 'auto' }}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{getActiveContent()}</ReactMarkdown>
+                  </div>
                 </motion.div>
               </div>
             </div>

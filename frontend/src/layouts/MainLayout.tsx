@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -11,6 +12,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/search': 'Semantic Search',
   '/chat': 'AI Chat',
   '/docs': 'Documentation',
+  '/health': 'Code Health',
   '/settings': 'Settings',
 };
 
@@ -76,7 +78,9 @@ export const MainLayout: React.FC = () => {
           </div>
 
           {/* Page Outlet — no context needed, pages use Zustand directly */}
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </div>
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from backend.core.models import RepositoryInfo
 from backend.parser.models import ParsedFile
 from backend.parser.python_parser import PythonParser
@@ -29,7 +31,7 @@ class ParserService:
         if repo_path in self._repo_cache:
             return self._repo_cache[repo_path]
 
-        info = self._scanner.scan(repo_path)
+        info = await asyncio.to_thread(self._scanner.scan, repo_path)
         self._repo_cache[repo_path] = info
         return info
 
@@ -49,7 +51,7 @@ class ParserService:
             return self._parsed_cache[repo_path]
 
         # Collect all files (no language filter) then parse supported ones
-        all_files = self._scanner.get_files(repo_path)
+        all_files = await asyncio.to_thread(self._scanner.get_files, repo_path)
         parsed: dict[str, ParsedFile] = {}
 
         for fi in all_files:
@@ -57,10 +59,10 @@ class ParserService:
                 continue
 
             if fi.language == "Python":
-                parsed_file = self._python_parser.parse_file(fi.path)
+                parsed_file = await asyncio.to_thread(self._python_parser.parse_file, fi.path)
             else:
                 # TypeScript or JavaScript
-                parsed_file = self._ts_parser.parse_file(fi.path)
+                parsed_file = await asyncio.to_thread(self._ts_parser.parse_file, fi.path)
 
             parsed[fi.path] = parsed_file
 
@@ -71,8 +73,8 @@ class ParserService:
         """Parse a single file and return its ``ParsedFile``."""
         lang = self._scanner.detect_language(file_path)
         if lang in ("TypeScript", "JavaScript"):
-            return self._ts_parser.parse_file(file_path)
-        return self._python_parser.parse_file(file_path)
+            return await asyncio.to_thread(self._ts_parser.parse_file, file_path)
+        return await asyncio.to_thread(self._python_parser.parse_file, file_path)
 
     # ── Cache management ────────────────────────────────────────────────
 

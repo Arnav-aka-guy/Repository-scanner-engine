@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+from functools import partial
 
 from pydantic import BaseModel, Field
 
@@ -44,4 +45,4 @@ class RepositoryInfo(BaseModel):
         default_factory=dict,
         description="Mapping of language name to file count",
     )
-    scanned_at: datetime = Field(default_factory=datetime.utcnow)
+    scanned_at: datetime = Field(default_factory=partial(datetime.now, tz=timezone.utc))

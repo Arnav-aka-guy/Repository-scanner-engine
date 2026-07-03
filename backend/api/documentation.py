@@ -4,18 +4,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from backend.api.dependencies import get_docs
 from backend.core.config import get_settings
+from backend.security.path_validator import validate_repository_path
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.documentation.service import DocumentationService
 
 router = APIRouter(prefix="/api/docs", tags=["documentation"])
-
-
-def get_docs_service():
-    """Return the global DocumentationService singleton."""
-    from backend.core.container import get_container
-    return get_container().documentation_service
 
 
 # ── Request / Response schemas ──────────────────────────────────────────
@@ -47,7 +48,10 @@ class GenerateResponse(BaseModel):
 
 
 @router.post("/generate", response_model=GenerateResponse)
-async def generate_docs(body: GenerateRequest) -> GenerateResponse:
+async def generate_docs(
+    body: GenerateRequest,
+    docs_svc: DocumentationService = Depends(get_docs),
+) -> GenerateResponse:
     """Generate documentation for the entire repository.
 
     Produces either Markdown or HTML output depending on the requested format
@@ -59,32 +63,25 @@ async def generate_docs(body: GenerateRequest) -> GenerateResponse:
             detail=f"Invalid format '{body.format}'. Accepted: {sorted(_VALID_FORMATS)}",
         )
 
-    repo_path = Path(body.repo_path)
-    if not repo_path.is_dir():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path does not exist or is not a directory: {body.repo_path}",
-        )
-
-    docs_svc = get_docs_service()
+    path = validate_repository_path(body.repo_path)
     settings = get_settings()
 
     try:
-        docs: dict = await docs_svc.generate_full_docs(str(repo_path))
+        docs: dict = await docs_svc.generate_full_docs(str(path))
     except Exception as exc:
         raise HTTPException(
             status_code=500,
             detail=f"Documentation generation failed: {exc}",
         ) from exc
 
-    output_dir = Path(settings.docs_dir) / repo_path.name
+    output_dir = Path(settings.docs_dir) / path.name
     output_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         if body.format == "markdown":
-            await docs_svc.export_markdown(docs, repo_path.name)
+            await docs_svc.export_markdown(docs, path.name)
         else:
-            await docs_svc.export_html(docs, repo_path.name)
+            await docs_svc.export_html(docs, path.name)
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -107,6 +104,7 @@ async def export_docs(
         default="markdown",
         description="Output format: 'markdown' or 'html'",
     ),
+    docs_svc: DocumentationService = Depends(get_docs),
 ) -> GenerateResponse:
     """Generate and export documentation, returning the doc tree.
 
@@ -119,18 +117,11 @@ async def export_docs(
             detail=f"Invalid format '{format}'. Accepted: {sorted(_VALID_FORMATS)}",
         )
 
-    path = Path(repo_path)
-    if not path.is_dir():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path does not exist or is not a directory: {repo_path}",
-        )
-
-    docs_svc = get_docs_service()
+    path = validate_repository_path(repo_path)
     settings = get_settings()
 
     try:
-        docs: dict = await docs_svc.generate_full_docs(repo_path)
+        docs: dict = await docs_svc.generate_full_docs(str(path))
     except Exception as exc:
         raise HTTPException(
             status_code=500,

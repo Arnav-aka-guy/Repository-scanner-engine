@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import json
 import logging
-import pickle
 from pathlib import Path
 from typing import Any
 
@@ -101,20 +101,20 @@ class VectorStore:
 
         Args:
             path: Base path to save to (excluding extensions).
-                  Will save to {path}.faiss and {path}.pkl.
+                  Will save to {path}.faiss and {path}.json.
         """
         base_path = Path(path)
         base_path.parent.mkdir(parents=True, exist_ok=True)
 
         faiss_file = base_path.with_suffix(".faiss")
-        pkl_file = base_path.with_suffix(".pkl")
+        json_file = base_path.with_suffix(".json")
 
         logger.info("Saving FAISS index to %s ...", faiss_file)
         faiss.write_index(self.index, str(faiss_file))
 
-        logger.info("Saving metadata to %s ...", pkl_file)
-        with open(pkl_file, "wb") as f:
-            pickle.dump(self.metadata, f)
+        logger.info("Saving metadata to %s ...", json_file)
+        with open(json_file, "w", encoding="utf-8") as f:
+            json.dump(self.metadata, f, ensure_ascii=False, indent=2)
 
         logger.info("Vector store successfully saved.")
 
@@ -126,20 +126,25 @@ class VectorStore:
         """
         base_path = Path(path)
         faiss_file = base_path.with_suffix(".faiss")
-        pkl_file = base_path.with_suffix(".pkl")
+        json_file = base_path.with_suffix(".json")
 
-        if not faiss_file.exists() or not pkl_file.exists():
+        # Support legacy .pkl files for backward compatibility
+        pkl_file = base_path.with_suffix(".pkl")
+        metadata_file = json_file if json_file.exists() else pkl_file
+
+        if not faiss_file.exists() or not metadata_file.exists():
             raise FileNotFoundError(
-                f"Could not load vector store from {base_path}: .faiss or .pkl file missing."
+                f"Could not load vector store from {base_path}: "
+                f".faiss or metadata file missing."
             )
 
         logger.info("Loading FAISS index from %s ...", faiss_file)
         self.index = faiss.read_index(str(faiss_file))
         self.dimension = self.index.d
 
-        logger.info("Loading metadata from %s ...", pkl_file)
-        with open(pkl_file, "rb") as f:
-            self.metadata = pickle.load(f)
+        logger.info("Loading metadata from %s ...", metadata_file)
+        with open(metadata_file, "r", encoding="utf-8") as f:
+            self.metadata = json.load(f)
 
         logger.info("Vector store loaded. Total size: %d vectors.", len(self))
 

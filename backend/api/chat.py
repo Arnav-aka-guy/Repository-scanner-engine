@@ -5,23 +5,21 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from backend.api.dependencies import get_llm, get_parser, get_retrieval
+from backend.security.path_validator import validate_repository_path
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.llm.service import LLMService
+    from backend.parser.service import ParserService
+    from backend.retrieval.service import RetrievalService
+
 router = APIRouter(prefix="/api/chat", tags=["chat"])
-
-
-def get_retrieval_service():
-    """Return the global RetrievalService singleton."""
-    from backend.core.container import get_container
-    return get_container().retrieval_service
-
-
-def get_llm_service():
-    """Return the global LLMService singleton."""
-    from backend.core.container import get_container
-    return get_container().llm_service
 
 
 # ── In-memory conversation history ──────────────────────────────────────
@@ -51,19 +49,21 @@ class ChatHistoryEntry(BaseModel):
 
 
 @router.post("/")
-async def chat(body: ChatRequest) -> StreamingResponse:
+async def chat(
+    body: ChatRequest,
+    retrieval: RetrievalService = Depends(get_retrieval),
+    llm: LLMService = Depends(get_llm),
+    parser: ParserService = Depends(get_parser),
+) -> StreamingResponse:
     """Answer a question about the codebase using RAG.
 
     Retrieves relevant context via the retrieval service, then streams the
     LLM response back as Server-Sent Events (``text/event-stream``).
     """
-    retrieval = get_retrieval_service()
-    llm = get_llm_service()
-    from backend.core.container import get_container
-    container = get_container()
+    path = validate_repository_path(body.repo_path)
 
     try:
-        parsed_files = await container.parser_service.parse_repository(body.repo_path)
+        parsed_files = await parser.parse_repository(str(path))
         retrieval_res = await retrieval.retrieve(body.question, parsed_files, top_k=5)
         context = retrieval_res.get("merged_context", "")
     except Exception as exc:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.core.models import FileInfo, RepositoryInfo
@@ -182,7 +182,7 @@ class RepositoryScanner:
             total_files=len(files),
             total_lines=total_lines,
             languages=languages,
-            scanned_at=datetime.utcnow(),
+            scanned_at=datetime.now(tz=timezone.utc),
         )
 
     def get_files(

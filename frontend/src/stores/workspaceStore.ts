@@ -394,7 +394,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       partialize: (state) => ({
         activeRepository: state.activeRepository,
         recentRepositories: state.recentRepositories,
-        chatMessages: state.chatMessages,
+        chatMessages: state.chatMessages.slice(-100),  // Cap at 100 messages
         graphType: state.graphType,
       }),
     }

@@ -34,22 +34,4 @@ export interface FileTreeNode {
   extension?: string;
 }
 
-export interface RepositoryContextType {
-  repoPath: string;
-  loading: boolean;
-  error: string | null;
-  repoInfo: RepositoryInfo | null;
-  files: FileInfo[];
-  fileTree: FileTreeNode[];
-  selectedFilePath: string | null;
-  setSelectedFilePath: (path: string | null) => void;
-  selectedFileDetail: {
-    content: string;
-    language: string;
-    entities: any[];
-  } | null;
-  fileLoading: boolean;
-  handleScan: (path: string) => Promise<void>;
-  selectLocalDirectory: () => Promise<void>;
-}
 

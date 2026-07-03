@@ -130,15 +130,17 @@ function convertToFlowElements(data: any): { nodes: Node[]; edges: Edge[] } {
     });
   }
 
-  // Layout: simple grid with some jitter
-  const cols = Math.max(Math.ceil(Math.sqrt(rawNodes.length)), 1);
+  // Layout: deterministic grid layout
+  const COLS = Math.max(Math.ceil(Math.sqrt(rawNodes.length)), 1);
+  const COL_SPACING = 280;
+  const ROW_SPACING = 120;
 
   const nodes: Node[] = rawNodes.map((n, idx) => ({
     id: n.id,
     type: 'codeNode',
     position: {
-      x: (idx % cols) * 240 + Math.random() * 30,
-      y: Math.floor(idx / cols) * 120 + Math.random() * 20,
+      x: (idx % COLS) * COL_SPACING,
+      y: Math.floor(idx / COLS) * ROW_SPACING,
     },
     data: {
       label: n.label || n.id,

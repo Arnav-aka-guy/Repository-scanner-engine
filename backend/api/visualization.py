@@ -5,41 +5,21 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from backend.api.dependencies import get_graph, get_parser
 from backend.graph.models import GraphData, GraphEdge, GraphNode
 from backend.parser.models import ParsedFile
+from backend.security.path_validator import validate_repository_path
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.graph.service import GraphService
+    from backend.parser.service import ParserService
 
 router = APIRouter(prefix="/api/viz", tags=["visualization"])
-
-
-# ── Lazy service singletons ─────────────────────────────────────────────
-
-_parser_service = None
-
-
-def get_parser_service():
-    """Return a lazily-initialised ParserService singleton."""
-    global _parser_service  # noqa: PLW0603
-    if _parser_service is None:
-        from backend.parser.service import ParserService
-
-        _parser_service = ParserService()
-    return _parser_service
-
-
-_graph_service = None
-
-
-def get_graph_service():
-    """Return a lazily-initialised GraphService singleton."""
-    global _graph_service  # noqa: PLW0603
-    if _graph_service is None:
-        from backend.graph.service import GraphService
-
-        _graph_service = GraphService()
-    return _graph_service
 
 
 # ── Constants ────────────────────────────────────────────────────────────
@@ -83,25 +63,6 @@ class ArchitectureResponse(BaseModel):
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
-
-
-async def _parse_repository(repo_path: str) -> dict[str, ParsedFile]:
-    """Validate the path and return parsed files."""
-    if not Path(repo_path).is_dir():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path does not exist or is not a directory: {repo_path}",
-        )
-
-    parser = get_parser_service()
-
-    try:
-        return await parser.parse_repository(repo_path)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to parse repository: {exc}",
-        ) from exc
 
 
 def _safe_id(raw: str) -> str:
@@ -196,6 +157,8 @@ async def mermaid_diagram(
         default="dependency",
         description="Type of graph to render: 'dependency' or 'call'",
     ),
+    parser: ParserService = Depends(get_parser),
+    graph_svc: GraphService = Depends(get_graph),
 ) -> MermaidResponse:
     """Return a Mermaid diagram string for the requested graph type."""
     if graph_type not in _VALID_GRAPH_TYPES:
@@ -204,8 +167,15 @@ async def mermaid_diagram(
             detail=f"Invalid graph_type '{graph_type}'. Accepted: {sorted(_VALID_GRAPH_TYPES)}",
         )
 
-    parsed_files = await _parse_repository(repo_path)
-    graph_svc = get_graph_service()
+    path = validate_repository_path(repo_path)
+
+    try:
+        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse repository: {exc}",
+        ) from exc
 
     try:
         if graph_type == "dependency":
@@ -226,10 +196,19 @@ async def mermaid_diagram(
 @router.get("/architecture", response_model=ArchitectureResponse)
 async def architecture_diagram(
     repo_path: str = Query(..., description="Absolute path to the repository root"),
+    parser: ParserService = Depends(get_parser),
+    graph_svc: GraphService = Depends(get_graph),
 ) -> ArchitectureResponse:
     """Return a high-level architecture overview with a Mermaid diagram."""
-    parsed_files = await _parse_repository(repo_path)
-    graph_svc = get_graph_service()
+    path = validate_repository_path(repo_path)
+
+    try:
+        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse repository: {exc}",
+        ) from exc
 
     try:
         graph_data: GraphData = await graph_svc.get_dependency_graph(parsed_files)
@@ -243,4 +222,3 @@ async def architecture_diagram(
     diagram = _layers_to_mermaid(layers)
 
     return ArchitectureResponse(layers=layers, diagram=diagram)
-

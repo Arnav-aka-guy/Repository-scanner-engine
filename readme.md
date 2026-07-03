@@ -1,8 +1,11 @@
-# AI Codebase Understanding Engine
+# Antigravity Engine v2.0
 
-An intelligent, cross-platform desktop application designed to index, analyze, and visualize software repositories. Combining static code analysis (AST parsing), interactive graph intelligence, semantic vector search, and a Graph-RAG-powered conversational assistant, it serves as a powerful navigation and onboarding companion for complex codebases.
+An AI-powered codebase intelligence platform that indexes, analyses, and visualises software repositories. Combines AST parsing, interactive graph intelligence, semantic vector search, Graph-RAG conversation, and portfolio-grade code quality analysis.
+
+> **v2.0 Highlights:** JWT auth · Rate limiting · Path validation · PostgreSQL persistence · Health scoring · Tech debt analysis · Dependency risk audit · Docker · CI/CD · 80%+ test coverage target
 
 ---
+
 
 ## 🌟 Core Features
 
@@ -39,10 +42,13 @@ An intelligent, cross-platform desktop application designed to index, analyze, a
 | **Frontend** | React (v19), TypeScript, Vite, TailwindCSS (v4) |
 | **Backend** | Python 3.12+, FastAPI, Uvicorn, Pydantic |
 | **Desktop Shell** | Electron (v32) |
+| **Security** | JWT (python-jose), slowapi rate limiting, path validation |
+| **Database** | PostgreSQL, SQLAlchemy 2.0 (async), Alembic migrations |
 | **Code Analysis** | Python AST Parser |
 | **Graph Processing** | NetworkX |
-| **Embeddings & Vector Database** | Sentence Transformers (`all-MiniLM-L6-v2`), FAISS (CPU) |
-| **AI / LLM Integration** | Ollama (Local), OpenAI & Anthropic-compatible API Clients |
+| **Embeddings & Vector DB** | Sentence Transformers (`all-MiniLM-L6-v2`), FAISS (CPU) |
+| **AI / LLM Integration** | Groq (default), Ollama (local), OpenAI & OpenRouter |
+| **Infrastructure** | Docker, GitHub Actions CI/CD |
 
 ---
 
@@ -57,25 +63,34 @@ An intelligent, cross-platform desktop application designed to index, analyze, a
                                  v
        ┌────────────────────────────────────────────────────────┐
        │                Vite React Frontend                     │
-       │        (Cytoscape.js, Tailwind, Routing)               │
+       │   (Cytoscape.js, Tailwind, Health Dashboard, Chat)     │
        └─────────────────────────┬──────────────────────────────┘
-                                 │ HTTP Requests
+                                 │ HTTP / REST
+                                 v
+       ┌────────────────────────────────────────────────────────┐
+       │              Security Middleware Layer                  │
+       │   (JWT Auth, Rate Limiting, Path Validation, CORS)     │
+       └─────────────────────────┬──────────────────────────────┘
+                                 │
                                  v
        ┌────────────────────────────────────────────────────────┐
        │                   FastAPI Backend                      │
-       └──────┬──────────────────┬───────────────────────┬──────┘
-              │                  │                       │
-              v                  v                       v
-      ┌───────────────┐  ┌───────────────┐       ┌───────────────┐
-      │  Code Parser  │  │ Graph Engine  │       │ Semantic Index│
-      │  (Python AST) │  │  (NetworkX)   │       │ (FAISS Vector)│
-      └───────────────┘  └───────────────┘       └───────────────┘
-                                 │                       │
-                                 v                       v
-                         ┌───────────────┐       ┌───────────────┐
-                         │ LLM Provider  │       │  Embeddings   │
-                         │(Ollama/OpenAI)│       │ (MiniLM-L6-v2)│
-                         └───────────────┘       └───────────────┘
+       │          (DI Container, Structured Logging)             │
+       └──┬──────────┬───────────┬──────────┬──────────────┬────┘
+          │          │           │          │              │
+          v          v           v          v              v
+   ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐
+   │  Parser  │ │  Graph   │ │Semantic │ │ Portfolio│ │    LLM   │
+   │(AST/TS)  │ │(NetworkX)│ │ (FAISS) │ │ Services │ │ Manager  │
+   └──────────┘ └──────────┘ └─────────┘ └──────────┘ └──────────┘
+          │                        │          │              │
+          └────────────┬───────────┘          │              │
+                       v                      v              v
+               ┌───────────────┐     ┌──────────────┐  ┌──────────┐
+               │  PostgreSQL   │     │ Health Score  │  │Groq/OAI/ │
+               │  (SQLAlchemy) │     │ Tech Debt     │  │Ollama    │
+               └───────────────┘     │ Dep Risk      │  │OpenRouter│
+                                     └──────────────┘  └──────────┘
 ```
 
 ---
@@ -201,28 +216,75 @@ cd desktop && npm run dev
 ## 📂 Project Structure
 
 ```text
-ai-codebase-engine/
+antigravity-engine/
 ├── backend/
-│   ├── api/             # FastAPI REST endpoints
-│   ├── core/            # Config settings, dependencies container, models
-│   ├── documentation/   # Documentation compiler (Markdown/HTML formats)
-│   ├── embeddings/      # SentenceTransformers and FAISS vector indexer
-│   ├── graph/           # Dependency building, central hubs, networkx structures
-│   ├── llm/             # LLM provider clients (Ollama, OpenAI, custom models)
-│   ├── parser/          # AST-based static codebase analyzers
-│   ├── retrieval/       # Graph-RAG pipelines combining vector search with graph context
-│   ├── main.py          # FastAPI application entry point
-│   └── requirements.txt # Python dependency file
+│   ├── api/              # FastAPI REST endpoints (thin handlers + Depends())
+│   ├── core/             # Config, constants, DI container, logging, models
+│   ├── db/               # PostgreSQL (async SQLAlchemy, Alembic)
+│   ├── middleware/        # Request logging, request-ID injection
+│   ├── security/         # JWT auth, rate limiting, path validation, sanitiser
+│   ├── services/         # Health score, tech debt, dep risk, comparison
+│   ├── documentation/    # Markdown/HTML documentation compiler
+│   ├── embeddings/       # SentenceTransformers + FAISS vector indexer
+│   ├── graph/            # Dependency graph building (NetworkX)
+│   ├── llm/              # Multi-provider manager (Groq/OAI/Ollama/OpenRouter)
+│   ├── parser/           # AST-based static code analysers
+│   ├── retrieval/        # Graph-RAG pipeline (vector + graph context)
+│   ├── main.py           # Application entry point
+│   └── requirements.txt  # Python dependencies
 ├── frontend/
 │   ├── src/
-│   │   ├── components/  # Shared layouts, visualizer assets, interactive graphs
-│   │   ├── pages/       # AI Chat, Graph, Explorer, Search, Docs tabs
-│   │   ├── services/    # REST API connectors to the backend
-│   │   └── App.tsx      # Main application router
-│   ├── package.json     # Node dev libraries and run scripts
-│   └── vite.config.ts   # Vite frontend bundler config
-└── desktop/
-    ├── main.js          # Electron main lifecycle script
-    ├── preload.js       # Desktop context isolation bridge
-    └── package.json     # Desktop wrapper shell setup
+│   │   ├── components/   # Sidebar, StatusBar, ErrorBoundary, etc.
+│   │   ├── pages/        # Explorer, Graph, Search, Chat, Docs, Health Dashboard
+│   │   ├── services/     # REST API client layer
+│   │   ├── stores/       # Zustand state management
+│   │   └── App.tsx       # Application router + animated transitions
+│   ├── package.json
+│   └── vite.config.ts
+├── desktop/
+│   ├── main.js           # Electron main process
+│   ├── preload.js        # Context isolation bridge
+│   └── package.json
+├── tests/                # 102 pytest tests (security, services, API, parser, graph)
+├── alembic/              # Database migrations
+├── .github/workflows/    # CI/CD pipeline (lint, test, build)
+├── Dockerfile            # Multi-stage production build
+├── docker-compose.yml    # App + PostgreSQL orchestration
+├── pyproject.toml        # Ruff + pytest + mypy config
+├── .env.example          # Environment variable template
+└── package.json          # Root orchestrator (concurrently)
 ```
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests (102 tests)
+python -m pytest tests/ -v
+
+# Run specific test suites
+python -m pytest tests/test_security.py -v    # Security & auth tests
+python -m pytest tests/test_services.py -v    # Health score & tech debt
+python -m pytest tests/test_portfolio.py -v   # Comparison & dependency risk
+python -m pytest tests/test_api.py -v         # API integration tests
+```
+
+---
+
+## 🐳 Docker
+
+```bash
+# Start the full stack (app + PostgreSQL)
+docker compose up --build
+
+# Or run just the backend
+docker compose up backend
+```
+
+---
+
+## 📜 License
+
+MIT
+

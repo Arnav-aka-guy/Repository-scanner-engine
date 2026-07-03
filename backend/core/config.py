@@ -62,6 +62,15 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
 
+    # ── Database ──────────────────────────────────────────────────────
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/antigravity"
+
+    # ── Authentication ────────────────────────────────────────────────
+    auth_enabled: bool = False
+    jwt_secret_key: str = "change-me-to-a-random-secret"
+    jwt_algorithm: str = "HS256"
+    jwt_expiry_hours: int = 24
+
     # ── Directory list for bulk creation ────────────────────────────────
     _SUBDIRS: ClassVar[tuple[str, ...]] = ("graphs", "embeddings", "docs", "cache")
 

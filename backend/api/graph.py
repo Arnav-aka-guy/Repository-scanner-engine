@@ -2,64 +2,20 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from fastapi import APIRouter, HTTPException, Query
-
+from backend.api.dependencies import get_graph, get_parser
 from backend.graph.models import AnalysisResult, GraphData
 from backend.parser.models import ParsedFile
+from backend.security.path_validator import validate_repository_path
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.graph.service import GraphService
+    from backend.parser.service import ParserService
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
-
-
-# ── Lazy service singletons ─────────────────────────────────────────────
-
-_parser_service = None
-
-
-def get_parser_service():
-    """Return a lazily-initialised ParserService singleton."""
-    global _parser_service  # noqa: PLW0603
-    if _parser_service is None:
-        from backend.parser.service import ParserService
-
-        _parser_service = ParserService()
-    return _parser_service
-
-
-_graph_service = None
-
-
-def get_graph_service():
-    """Return a lazily-initialised GraphService singleton."""
-    global _graph_service  # noqa: PLW0603
-    if _graph_service is None:
-        from backend.graph.service import GraphService
-
-        _graph_service = GraphService()
-    return _graph_service
-
-
-# ── Helpers ──────────────────────────────────────────────────────────────
-
-
-async def _parse_repository(repo_path: str) -> dict[str, ParsedFile]:
-    """Validate *repo_path* and return the full parse result."""
-    if not Path(repo_path).is_dir():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path does not exist or is not a directory: {repo_path}",
-        )
-
-    parser = get_parser_service()
-
-    try:
-        return await parser.parse_repository(repo_path)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to parse repository: {exc}",
-        ) from exc
 
 
 # ── Route handlers ──────────────────────────────────────────────────────
@@ -68,10 +24,19 @@ async def _parse_repository(repo_path: str) -> dict[str, ParsedFile]:
 @router.get("/dependency")
 async def dependency_graph(
     repo_path: str = Query(..., description="Absolute path to the repository root"),
+    parser: ParserService = Depends(get_parser),
+    graph_svc: GraphService = Depends(get_graph),
 ) -> dict:
     """Build and return the dependency (import) graph in Cytoscape JSON format."""
-    parsed_files = await _parse_repository(repo_path)
-    graph_svc = get_graph_service()
+    path = validate_repository_path(repo_path)
+
+    try:
+        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse repository: {exc}",
+        ) from exc
 
     try:
         return await graph_svc.get_cytoscape_data(parsed_files, "dependency")
@@ -85,10 +50,19 @@ async def dependency_graph(
 @router.get("/call")
 async def call_graph(
     repo_path: str = Query(..., description="Absolute path to the repository root"),
+    parser: ParserService = Depends(get_parser),
+    graph_svc: GraphService = Depends(get_graph),
 ) -> dict:
     """Build and return the call graph in Cytoscape JSON format."""
-    parsed_files = await _parse_repository(repo_path)
-    graph_svc = get_graph_service()
+    path = validate_repository_path(repo_path)
+
+    try:
+        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse repository: {exc}",
+        ) from exc
 
     try:
         return await graph_svc.get_cytoscape_data(parsed_files, "call")
@@ -102,10 +76,19 @@ async def call_graph(
 @router.get("/analysis", response_model=AnalysisResult)
 async def analysis(
     repo_path: str = Query(..., description="Absolute path to the repository root"),
+    parser: ParserService = Depends(get_parser),
+    graph_svc: GraphService = Depends(get_graph),
 ) -> AnalysisResult:
     """Run full graph analysis and return dead-code, cycles and complexity metrics."""
-    parsed_files = await _parse_repository(repo_path)
-    graph_svc = get_graph_service()
+    path = validate_repository_path(repo_path)
+
+    try:
+        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to parse repository: {exc}",
+        ) from exc
 
     try:
         return await graph_svc.analyze(parsed_files)
@@ -114,4 +97,3 @@ async def analysis(
             status_code=500,
             detail=f"Analysis failed: {exc}",
         ) from exc
-

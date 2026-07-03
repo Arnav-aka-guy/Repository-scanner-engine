@@ -8,6 +8,7 @@ import { ArchitectureViewer } from './pages/ArchitectureViewer';
 import { SemanticSearch } from './pages/SemanticSearch';
 import { AIChat } from './pages/AIChat';
 import { DocumentationGenerator } from './pages/DocumentationGenerator';
+import { HealthDashboard } from './pages/HealthDashboard';
 import { Settings } from './pages/Settings';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/ToastContainer';
@@ -70,6 +71,14 @@ function AnimatedRoutes() {
             element={
               <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
                 <DocumentationGenerator />
+              </motion.div>
+            }
+          />
+          <Route
+            path="/health"
+            element={
+              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+                <HealthDashboard />
               </motion.div>
             }
           />

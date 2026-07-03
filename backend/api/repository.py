@@ -4,35 +4,21 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from backend.api.dependencies import get_embeddings, get_parser
 from backend.core.models import CodeEntity, FileInfo, RepositoryInfo
 from backend.parser.models import ParsedFile
+from backend.security.path_validator import validate_file_path, validate_repository_path
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.embeddings.service import EmbeddingsService
+    from backend.parser.service import ParserService
 
 router = APIRouter(prefix="/api/repository", tags=["repository"])
-
-
-# ── Lazy service singletons ─────────────────────────────────────────────
-
-_parser_service = None
-
-
-def get_parser_service():
-    """Return a lazily-initialised ParserService singleton."""
-    global _parser_service  # noqa: PLW0603
-    if _parser_service is None:
-        from backend.parser.service import ParserService
-
-        _parser_service = ParserService()
-    return _parser_service
-
-
-
-def get_embeddings_service():
-    """Return the global EmbeddingsService singleton from the DI container."""
-    from backend.core.container import get_container
-    return get_container().embeddings_service
 
 
 # ── Request / Response schemas ──────────────────────────────────────────
@@ -57,23 +43,19 @@ class FileDetail(BaseModel):
 
 
 @router.post("/scan", response_model=RepositoryInfo)
-async def scan_repository(body: ScanRequest) -> RepositoryInfo:
+async def scan_repository(
+    body: ScanRequest,
+    parser: ParserService = Depends(get_parser),
+    embeddings: EmbeddingsService = Depends(get_embeddings),
+) -> RepositoryInfo:
     """Scan a repository: discover files, parse them and index embeddings.
 
     Returns aggregate repository metadata once complete.
     """
-    repo_path = Path(body.path)
-    if not repo_path.is_dir():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path does not exist or is not a directory: {body.path}",
-        )
-
-    parser = get_parser_service()
-    embeddings = get_embeddings_service()
+    path = validate_repository_path(body.path)
 
     try:
-        repo_info: RepositoryInfo = await parser.scan_repository(str(repo_path))
+        repo_info: RepositoryInfo = await parser.scan_repository(str(path))
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -81,7 +63,7 @@ async def scan_repository(body: ScanRequest) -> RepositoryInfo:
         ) from exc
 
     try:
-        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(repo_path))
+        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
         await _index_embeddings(embeddings, parsed_files)
     except Exception as exc:
         raise HTTPException(
@@ -95,20 +77,14 @@ async def scan_repository(body: ScanRequest) -> RepositoryInfo:
 @router.get("/files", response_model=list[FileInfo])
 async def list_files(
     repo_path: str = Query(..., description="Absolute path to the repository root"),
+    parser: ParserService = Depends(get_parser),
 ) -> list[FileInfo]:
     """Return a flat list of all source files discovered in the repository."""
-    path = Path(repo_path)
-    if not path.is_dir():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path does not exist or is not a directory: {repo_path}",
-        )
-
-    parser = get_parser_service()
+    path = validate_repository_path(repo_path)
 
     try:
         # Use the scanner which correctly filters .gitignore, __pycache__, node_modules, etc.
-        files = parser._scanner.get_files(repo_path)
+        files = parser._scanner.get_files(str(path))
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -118,13 +94,13 @@ async def list_files(
     return files
 
 
-
 @router.get("/file/{file_path:path}", response_model=FileDetail)
-async def get_file(file_path: str) -> FileDetail:
+async def get_file(
+    file_path: str,
+    parser: ParserService = Depends(get_parser),
+) -> FileDetail:
     """Return the raw content of a single file together with its parsed entities."""
-    target = Path(file_path)
-    if not target.is_file():
-        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+    target = validate_file_path(file_path)
 
     try:
         content = target.read_text(encoding="utf-8", errors="replace")
@@ -133,15 +109,14 @@ async def get_file(file_path: str) -> FileDetail:
             status_code=500, detail=f"Cannot read file: {exc}"
         ) from exc
 
-    parser = get_parser_service()
-
     try:
-        parsed: ParsedFile = await parser.parse_file(file_path)
+        parsed: ParsedFile = await parser.parse_file(str(target))
     except Exception as exc:
         raise HTTPException(
             status_code=500, detail=f"Parse error: {exc}"
         ) from exc
 
+    # Entity extraction (will be moved to a service later)
     entities: list[CodeEntity] = []
     for func in parsed.functions:
         entities.append(
@@ -189,43 +164,6 @@ async def get_file(file_path: str) -> FileDetail:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
-
-_EXTENSION_LANGUAGE_MAP: dict[str, str] = {
-    ".py": "Python",
-    ".js": "JavaScript",
-    ".ts": "TypeScript",
-    ".jsx": "JavaScript",
-    ".tsx": "TypeScript",
-    ".java": "Java",
-    ".go": "Go",
-    ".rs": "Rust",
-    ".rb": "Ruby",
-    ".cpp": "C++",
-    ".c": "C",
-    ".h": "C",
-    ".hpp": "C++",
-    ".cs": "C#",
-    ".swift": "Swift",
-    ".kt": "Kotlin",
-    ".scala": "Scala",
-    ".php": "PHP",
-    ".r": "R",
-    ".sql": "SQL",
-    ".sh": "Shell",
-    ".md": "Markdown",
-    ".json": "JSON",
-    ".yaml": "YAML",
-    ".yml": "YAML",
-    ".toml": "TOML",
-    ".xml": "XML",
-    ".html": "HTML",
-    ".css": "CSS",
-}
-
-
-def _detect_language(extension: str) -> str:
-    """Map a file extension to a human-readable language name."""
-    return _EXTENSION_LANGUAGE_MAP.get(extension.lower(), "Unknown")
 
 
 async def _index_embeddings(

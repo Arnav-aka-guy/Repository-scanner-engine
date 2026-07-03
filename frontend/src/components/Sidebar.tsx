@@ -8,6 +8,7 @@ import {
   Search,
   MessageSquare,
   FileText,
+  Activity,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ const menuItems: MenuItem[] = [
   { name: 'Search', icon: Search, path: '/search' },
   { name: 'AI Chat', icon: MessageSquare, path: '/chat' },
   { name: 'Docs', icon: FileText, path: '/docs' },
+  { name: 'Health', icon: Activity, path: '/health' },
 ];
 
 /* ─── Framer Variants ───────────────────────────────────────── */
