@@ -35,12 +35,7 @@ class OllamaProvider(LLMProvider):
         temperature: float = 0.7,
     ) -> str:
         url = f"{self.base_url}/api/generate"
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {"temperature": temperature}
-        }
+        payload = {"model": self.model, "prompt": prompt, "stream": False, "options": {"temperature": temperature}}
         if system_prompt:
             payload["system"] = system_prompt
 
@@ -49,9 +44,10 @@ class OllamaProvider(LLMProvider):
             response = await client.post(url, json=payload)
             if response.status_code != 200:
                 raise RuntimeError(f"Ollama returned HTTP status code {response.status_code}: {response.text}")
-            
+
             data = response.json()
-            return data.get("response", "")
+            return str(data.get("response", ""))
+
         except httpx.RequestError as e:
             logger.error("Failed to connect to Ollama at %s: %s", url, e)
             raise ConnectionError(
@@ -67,12 +63,7 @@ class OllamaProvider(LLMProvider):
         temperature: float = 0.7,
     ) -> AsyncGenerator[str, None]:
         url = f"{self.base_url}/api/generate"
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": True,
-            "options": {"temperature": temperature}
-        }
+        payload = {"model": self.model, "prompt": prompt, "stream": True, "options": {"temperature": temperature}}
         if system_prompt:
             payload["system"] = system_prompt
 
@@ -81,7 +72,7 @@ class OllamaProvider(LLMProvider):
             async with client.stream("POST", url, json=payload) as response:
                 if response.status_code != 200:
                     raise RuntimeError(f"Ollama returned HTTP status code {response.status_code}")
-                
+
                 async for line in response.aiter_lines():
                     if not line:
                         continue
@@ -94,6 +85,4 @@ class OllamaProvider(LLMProvider):
                         continue
         except httpx.RequestError as e:
             logger.error("Failed to connect to Ollama stream at %s: %s", url, e)
-            raise ConnectionError(
-                f"Failed to connect to local Ollama server at {self.base_url}."
-            ) from e
+            raise ConnectionError(f"Failed to connect to local Ollama server at {self.base_url}.") from e

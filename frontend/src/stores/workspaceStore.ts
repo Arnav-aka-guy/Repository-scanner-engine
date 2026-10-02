@@ -214,7 +214,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       loadFileDetail: async (path: string) => {
         set({ fileLoading: true });
         try {
-          const detail = await getFile(path);
+          const repoPath = get().activeRepository || '';
+          const detail = await getFile(path, repoPath);
           set({
             selectedFileDetail: {
               content: detail.content,
@@ -258,8 +259,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (!query) return;
         set({ searchLoading: true, searchError: null, lastSearchQuery: query });
         try {
-          const response: SearchResponse = await semanticSearch(query, topK);
+          const repoPath = get().activeRepository || undefined;
+          const response: SearchResponse = await semanticSearch(query, topK, repoPath);
           set({
+
             searchResults: response.results,
             searchTotal: response.total,
             searchLoading: false,

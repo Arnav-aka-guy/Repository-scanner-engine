@@ -11,7 +11,7 @@ import re
 from collections import defaultdict
 from typing import Any
 
-from backend.graph.models import GraphNode, GraphEdge
+from backend.graph.models import GraphEdge, GraphNode
 from backend.parser.models import ParsedFile
 
 logger = logging.getLogger(__name__)
@@ -91,9 +91,7 @@ class ArchitectureAnalyzer:
         report.layers = self._detect_layers(file_paths)
 
         # 2. Circular dependencies
-        report.circular_dependencies = self._find_circular_dependencies(
-            graph_nodes, graph_edges
-        )
+        report.circular_dependencies = self._find_circular_dependencies(graph_nodes, graph_edges)
 
         # 3. Dead code
         report.dead_code = self._find_dead_code(graph_nodes, graph_edges)
@@ -171,14 +169,13 @@ class ArchitectureAnalyzer:
         node_ids = {n.id for n in nodes}
 
         for edge in edges:
-            if edge.edge_type in ("imports", "depends"):
-                if edge.source in node_ids and edge.target in node_ids:
-                    adj[edge.source].add(edge.target)
+            if edge.edge_type in ("imports", "depends") and edge.source in node_ids and edge.target in node_ids:
+                adj[edge.source].add(edge.target)
 
         # DFS-based cycle detection
         WHITE, GRAY, BLACK = 0, 1, 2
         color = {nid: WHITE for nid in node_ids}
-        parent: dict[str, str | None] = {nid: None for nid in node_ids}
+        {nid: None for nid in node_ids}
         cycles: list[list[str]] = []
 
         def dfs(u: str, path: list[str]) -> None:
@@ -231,19 +228,20 @@ class ArchitectureAnalyzer:
 
         dead: list[dict[str, Any]] = []
         for node in nodes:
-            if node.node_type in ("function", "class", "method"):
-                if incoming.get(node.id, 0) == 0:
-                    # Skip __init__, __main__, test functions, etc.
-                    if node.label.startswith("__") and node.label.endswith("__"):
-                        continue
-                    if node.label.startswith("test_") or node.label.startswith("Test"):
-                        continue
-                    dead.append({
+            if node.node_type in ("function", "class", "method") and incoming.get(node.id, 0) == 0:
+                # Skip __init__, __main__, test functions, etc.
+                if node.label.startswith("__") and node.label.endswith("__"):
+                    continue
+                if node.label.startswith("test_") or node.label.startswith("Test"):
+                    continue
+                dead.append(
+                    {
                         "id": node.id,
                         "label": node.label,
                         "node_type": node.node_type,
                         "file_path": node.file_path,
-                    })
+                    }
+                )
 
         return dead[:50]  # Cap
 
@@ -290,17 +288,19 @@ class ArchitectureAnalyzer:
 
             # Violation: lower layer importing from higher layer
             if src_order > tgt_order:
-                violations.append({
-                    "source_file": edge.source,
-                    "target_file": edge.target,
-                    "source_layer": src_layer,
-                    "target_layer": tgt_layer,
-                    "violation_type": "reverse_dependency",
-                    "description": (
-                        f"{src_layer} imports from {tgt_layer}. "
-                        f"Expected dependency direction is {tgt_layer} → {src_layer}."
-                    ),
-                })
+                violations.append(
+                    {
+                        "source_file": edge.source,
+                        "target_file": edge.target,
+                        "source_layer": src_layer,
+                        "target_layer": tgt_layer,
+                        "violation_type": "reverse_dependency",
+                        "description": (
+                            f"{src_layer} imports from {tgt_layer}. "
+                            f"Expected dependency direction is {tgt_layer} → {src_layer}."
+                        ),
+                    }
+                )
 
         return violations[:30]  # Cap
 
@@ -343,13 +343,9 @@ class ArchitectureAnalyzer:
 
         # Layers
         if len(report.layers) >= 3:
-            strengths.append(
-                f"Clear layer separation detected ({len(report.layers)} distinct layers)"
-            )
+            strengths.append(f"Clear layer separation detected ({len(report.layers)} distinct layers)")
         elif len(report.layers) <= 1:
-            problems.append(
-                "No clear layer separation. Consider organizing code into layers."
-            )
+            problems.append("No clear layer separation. Consider organizing code into layers.")
 
         # Circular dependencies
         if not report.circular_dependencies:
@@ -357,8 +353,7 @@ class ArchitectureAnalyzer:
         else:
             count = len(report.circular_dependencies)
             problems.append(
-                f"{count} circular dependency cycle(s) found. "
-                "These make the codebase harder to refactor and test."
+                f"{count} circular dependency cycle(s) found. " "These make the codebase harder to refactor and test."
             )
 
         # Dead code
@@ -383,9 +378,7 @@ class ArchitectureAnalyzer:
         unclassified = len(report.layers.get("Unclassified", []))
         total = sum(len(f) for f in report.layers.values())
         if total > 0 and unclassified / total < 0.2:
-            strengths.append(
-                f"{100 - int(unclassified / total * 100)}% of files are in recognized layers"
-            )
+            strengths.append(f"{100 - int(unclassified / total * 100)}% of files are in recognized layers")
 
         return strengths, problems
 

@@ -27,6 +27,7 @@ class HybridRetriever:
         parsed_files: dict[str, ParsedFile],
         top_k: int = 6,
         graph_depth: int = 1,
+        repo_path: str | None = None,
     ) -> dict[str, Any]:
         """Perform hybrid retrieval: Vector Search + Graph Neighbor Context.
 
@@ -35,12 +36,13 @@ class HybridRetriever:
             parsed_files: Dict of file paths to ParsedFile.
             top_k: Number of vector matches.
             graph_depth: Breadth depth in graph traversal.
+            repo_path: Optional repository root path for isolated repo search.
 
         Returns:
             Dict containing vector results, graph results, and merged text context.
         """
         # 1. Perform vector semantic search
-        vector_results = await self.vector_retriever.retrieve(query, top_k=top_k)
+        vector_results = await self.vector_retriever.retrieve(query, top_k=top_k, repo_path=repo_path)
 
         # 2. Extract entity names from top vector matches to seed graph traversal
         entity_names = []
@@ -52,11 +54,7 @@ class HybridRetriever:
         # 3. Perform graph expansion to find related nodes
         graph_results = []
         if entity_names:
-            graph_results = await self.graph_retriever.retrieve(
-                entity_names,
-                parsed_files,
-                depth=graph_depth
-            )
+            graph_results = await self.graph_retriever.retrieve(entity_names, parsed_files, depth=graph_depth)
 
         # 4. Merge and deduplicate
         seen_entities = set()
@@ -79,11 +77,7 @@ class HybridRetriever:
         # 5. Build final context text string
         context_str = self._build_context(merged_entities)
 
-        return {
-            "vector_results": vector_results,
-            "graph_results": graph_results,
-            "merged_context": context_str
-        }
+        return {"vector_results": vector_results, "graph_results": graph_results, "merged_context": context_str}
 
     def _build_context(self, entities: list[dict[str, Any]]) -> str:
         """Format retrieved code entities into a formatted prompt context block."""
@@ -95,7 +89,7 @@ class HybridRetriever:
             source = ent.get("source_code") or ""
             doc = ent.get("docstring") or "No documentation available."
             rel = f" ({ent['relation_to_query']})" if "relation_to_query" in ent else ""
-            
+
             block = (
                 f"--- [Context Item #{idx + 1}] ---\n"
                 f"Entity Name: {ent['entity_name']}\n"
@@ -108,7 +102,7 @@ class HybridRetriever:
                 block += f"Source Code:\n```python\n{source}\n```"
             else:
                 block += "[Source code not available for this entity type]"
-            
+
             blocks.append(block)
 
         return "\n\n".join(blocks)

@@ -35,6 +35,7 @@ class RetrievalService:
         parsed_files: dict[str, ParsedFile],
         top_k: int = 6,
         graph_depth: int = 1,
+        repo_path: str | None = None,
     ) -> dict[str, Any]:
         """Perform semantic + structural query search.
 
@@ -43,11 +44,13 @@ class RetrievalService:
             parsed_files: Active dictionary of parsed files.
             top_k: Number of semantic vector results to retrieve.
             graph_depth: Depth of graph traversal.
+            repo_path: Optional repository root path for isolated repo search.
         """
         logger.info("Executing retrieval query for hybrid context extraction.")
         return await self.hybrid_retriever.retrieve(
             query=query,
             parsed_files=parsed_files,
             top_k=top_k,
-            graph_depth=graph_depth
+            graph_depth=graph_depth,
+            repo_path=repo_path,
         )

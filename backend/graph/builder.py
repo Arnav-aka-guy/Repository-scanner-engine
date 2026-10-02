@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import networkx as nx
@@ -169,11 +168,7 @@ class GraphBuilder:
                 label=data.get("label", nid),
                 node_type=data.get("node_type", "unknown"),
                 file_path=data.get("file_path", ""),
-                metadata={
-                    k: v
-                    for k, v in data.items()
-                    if k not in {"label", "node_type", "file_path"}
-                },
+                metadata={k: v for k, v in data.items() if k not in {"label", "node_type", "file_path"}},
             )
             for nid, data in graph.nodes(data=True)
         ]
@@ -199,11 +194,7 @@ class GraphBuilder:
                         "id": nid,
                         "label": data.get("label", nid),
                         "node_type": data.get("node_type", "unknown"),
-                        **{
-                            k: v
-                            for k, v in data.items()
-                            if k not in {"label", "node_type"}
-                        },
+                        **{k: v for k, v in data.items() if k not in {"label", "node_type"}},
                     },
                     "group": "nodes",
                 }

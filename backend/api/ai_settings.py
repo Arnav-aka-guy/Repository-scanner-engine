@@ -11,11 +11,13 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 def get_llm_service():
     """Return the global LLMService singleton."""
     from backend.core.container import get_container
+
     return get_container().llm_service
 
 
 class ProviderStatus(BaseModel):
     """Status of a single LLM provider."""
+
     name: str
     model: str
     active: bool
@@ -23,12 +25,14 @@ class ProviderStatus(BaseModel):
 
 class ProvidersResponse(BaseModel):
     """Response listing all configured providers."""
+
     providers: list[ProviderStatus] = Field(default_factory=list)
     active_provider: str = ""
 
 
 class HealthResponse(BaseModel):
     """Result of an AI provider health check."""
+
     status: str  # "ok" or "error"
     provider: str
     message: str

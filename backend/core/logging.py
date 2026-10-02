@@ -35,9 +35,7 @@ def setup_logging(level: str = "INFO") -> None:
     Args:
         level: Logging level string (DEBUG, INFO, WARNING, ERROR).
     """
-    log_format = (
-        "%(asctime)s | %(levelname)-8s | %(request_id)s | %(name)-30s | %(message)s"
-    )
+    log_format = "%(asctime)s | %(levelname)-8s | %(request_id)s | %(name)-30s | %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
 
     # Create formatter

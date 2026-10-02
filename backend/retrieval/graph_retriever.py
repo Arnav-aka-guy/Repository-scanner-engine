@@ -9,6 +9,7 @@ from backend.graph.service import GraphService
 
 if TYPE_CHECKING:
     import networkx as nx
+
     from backend.parser.models import ParsedFile
 
 logger = logging.getLogger(__name__)
@@ -77,20 +78,22 @@ class GraphRetriever:
         results = []
         for node in related_nodes:
             node_attrs = full_graph.nodes[node]
-            
+
             # Map node attributes to search result format
             meta = node_attrs.get("metadata", {})
-            results.append({
-                "score": 0.5,  # Arbitrary baseline score for graph relevance
-                "file_path": node_attrs.get("file_path") or meta.get("file_path", ""),
-                "entity_name": node_attrs.get("label") or node,
-                "entity_type": node_attrs.get("node_type") or meta.get("entity_type", "function"),
-                "source_code": meta.get("source_code") or "",
-                "docstring": meta.get("docstring") or "",
-                "start_line": meta.get("start_line", 1),
-                "end_line": meta.get("end_line", 1),
-                "relation_to_query": "Graph connection"
-            })
+            results.append(
+                {
+                    "score": 0.5,  # Arbitrary baseline score for graph relevance
+                    "file_path": node_attrs.get("file_path") or meta.get("file_path", ""),
+                    "entity_name": node_attrs.get("label") or node,
+                    "entity_type": node_attrs.get("node_type") or meta.get("entity_type", "function"),
+                    "source_code": meta.get("source_code") or "",
+                    "docstring": meta.get("docstring") or "",
+                    "start_line": meta.get("start_line", 1),
+                    "end_line": meta.get("end_line", 1),
+                    "relation_to_query": "Graph connection",
+                }
+            )
 
         return results
 

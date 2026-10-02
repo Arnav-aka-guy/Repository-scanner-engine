@@ -19,6 +19,8 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    env:
+      MOCK_EMBEDDINGS: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,9 +44,9 @@ jobs:
       - run: pip install -r backend/requirements.txt
       - run: pip install mypy types-aiofiles
       - run: mypy backend/ --ignore-missing-imports --no-strict-optional
-    continue-on-error: true
 
   build-frontend:
+
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,4 +56,5 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - run: cd frontend && npm ci
+      - run: cd frontend && npm test
       - run: cd frontend && npm run build

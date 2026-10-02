@@ -47,14 +47,20 @@ class LLMService:
             "and dependencies extracted from the codebase. Use this context to answer the "
             "user's question with precise details. Reference specific file names, "
             "class/function names, and line numbers. Code blocks should be properly styled. "
-            "If the context doesn't contain the necessary details to answer, politely state that."
+            "If the context doesn't contain the necessary details to answer, politely state that.\n\n"
+            "CRITICAL CITATION REQUIREMENT:\n"
+            "At the end of your answer, provide a 'Sources:' section listing the exact files "
+            "and line ranges you referenced from the provided context in the format:\n"
+            "Sources:\n"
+            "- <file_path>:<start_line>-<end_line> (`<entity_name>`)\n"
+            "Only cite documents actually provided in the context."
         )
 
         user = (
             f"Here is the retrieved codebase context:\n\n"
             f"{context}\n\n"
             f"Question: {question}\n\n"
-            f"Provide a clear, detailed, and professional answer."
+            f"Provide a clear, detailed, professional answer followed by the Sources citation list."
         )
 
         return system, user

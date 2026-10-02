@@ -10,6 +10,8 @@
     "dev:frontend": "cd frontend && npm run dev",
     "dev:desktop-only": "cd desktop && npm run dev",
     "build": "cd frontend && npm run build",
+    "test:frontend": "cd frontend && npm test",
+    "test": "pytest && npm run test:frontend",
     "start": "concurrently -k -n backend -c blue \"npm run dev:backend\""
   },
   "devDependencies": {

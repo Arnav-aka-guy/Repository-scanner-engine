@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -108,9 +109,7 @@ def _score_documentation(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
         dim.deductions.append(f"Docstring coverage is {coverage:.0%} (target: 60%+)")
 
     # Check for module docstrings
-    undocumented_modules = sum(
-        1 for pf in parsed_files.values() if not pf.module_docstring
-    )
+    undocumented_modules = sum(1 for pf in parsed_files.values() if not pf.module_docstring)
     module_ratio = undocumented_modules / len(parsed_files) if parsed_files else 0
     if module_ratio > 0.5:
         dim.score -= 3
@@ -130,7 +129,7 @@ def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
     very_long_functions = 0
     large_files = 0
 
-    for path, pf in parsed_files.items():
+    for _path, pf in parsed_files.items():
         # Count lines per file
         total_lines = max(
             (func.end_line for func in pf.functions),
@@ -209,17 +208,12 @@ def _score_maintainability(parsed_files: dict[str, ParsedFile]) -> DimensionScor
         return dim
 
     # Avg functions per file
-    total_funcs = sum(
-        len(pf.functions) + sum(len(c.methods) for c in pf.classes)
-        for pf in parsed_files.values()
-    )
+    total_funcs = sum(len(pf.functions) + sum(len(c.methods) for c in pf.classes) for pf in parsed_files.values())
     avg_per_file = total_funcs / len(parsed_files) if parsed_files else 0
 
     if avg_per_file > 15:
         dim.score -= 5
-        dim.deductions.append(
-            f"Average {avg_per_file:.0f} functions per file (consider splitting)"
-        )
+        dim.deductions.append(f"Average {avg_per_file:.0f} functions per file (consider splitting)")
 
     # Check for very large classes
     large_classes = 0
@@ -237,29 +231,31 @@ def _score_maintainability(parsed_files: dict[str, ParsedFile]) -> DimensionScor
 
 
 def _score_security(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
-    """Score security practices (0–20)."""
+    """Score security practices (0–20).
+
+    Scans the entire module source (not just parsed function bodies) for
+    potential hardcoded secrets so that module-level assignments such as
+    ``API_KEY = 'sk-...'`` are caught.  Secret *values* are never included
+    in the returned deductions to avoid leaking them to the UI or LLM.
+    """
     dim = DimensionScore(name="Security", score=20.0)
 
     secrets_found = 0
-    for path, pf in parsed_files.items():
-        for func in pf.functions:
-            if func.source_code:
-                for pattern in _SECRET_PATTERNS:
-                    if pattern.search(func.source_code):
-                        secrets_found += 1
-                        dim.deductions.append(
-                            f"Potential hardcoded secret in {path}:{func.name}"
-                        )
-        for cls in pf.classes:
-            for method in cls.methods:
-                if method.source_code:
-                    for pattern in _SECRET_PATTERNS:
-                        if pattern.search(method.source_code):
-                            secrets_found += 1
+    for path, _pf in parsed_files.items():
+        # Scan the full source file to catch module-level secrets
+        try:
+            source = Path(path).read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            source = ""
+
+        for pattern in _SECRET_PATTERNS:
+            if pattern.search(source):
+                secrets_found += 1
+                dim.deductions.append(f"Potential hardcoded secret detected in {path}")
+                break  # One deduction per file is enough
 
     if secrets_found > 0:
         dim.score -= min(15, secrets_found * 5)
-        dim.deductions.append(f"{secrets_found} potential hardcoded secrets detected")
 
     dim.score = max(0, dim.score)
     return dim

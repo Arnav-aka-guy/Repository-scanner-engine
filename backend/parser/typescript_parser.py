@@ -51,9 +51,9 @@ class TypeScriptParser:
         es_pattern = re.compile(
             r"""import\s+"""
             r"""(?:"""
-            r"""(?:(\w+)\s*,?\s*)?"""           # default import name
-            r"""(?:\{([^}]*)\}\s*,?\s*)?"""       # named imports { A, B }
-            r"""(?:\*\s+as\s+(\w+)\s*)?"""        # namespace import * as X
+            r"""(?:(\w+)\s*,?\s*)?"""  # default import name
+            r"""(?:\{([^}]*)\}\s*,?\s*)?"""  # named imports { A, B }
+            r"""(?:\*\s+as\s+(\w+)\s*)?"""  # namespace import * as X
             r""")"""
             r"""\s*from\s*['"]([\w@/.\\-]+)['"]""",  # module path
             re.MULTILINE,
@@ -90,9 +90,7 @@ class TypeScriptParser:
             module = m.group(1)
             # Skip if already captured by ES pattern
             if not any(imp.module == module for imp in imports):
-                imports.append(
-                    ImportInfo(module=module, names=[], is_from_import=False)
-                )
+                imports.append(ImportInfo(module=module, names=[], is_from_import=False))
 
         # CommonJS require: const X = require('Y')
         cjs_pattern = re.compile(
@@ -125,8 +123,8 @@ class TypeScriptParser:
             r"""^(?:export\s+(?:default\s+)?)?"""
             r"""(async\s+)?function\s*\*?\s+"""
             r"""(\w+)\s*"""
-            r"""(?:<[^>]*>)?\s*"""           # optional generics <T>
-            r"""\(([^)]*)\)"""               # parameters
+            r"""(?:<[^>]*>)?\s*"""  # optional generics <T>
+            r"""\(([^)]*)\)"""  # parameters
             r"""(?:\s*:\s*([^\s{]+))?\s*\{""",  # optional return type
             re.MULTILINE,
         )
@@ -227,9 +225,9 @@ class TypeScriptParser:
             r"""^(?:export\s+(?:default\s+)?)?"""
             r"""(?:abstract\s+)?"""
             r"""class\s+(\w+)"""
-            r"""(?:\s*<[^>]*>)?"""                     # generic params
-            r"""(?:\s+extends\s+([\w.]+))?"""           # extends clause
-            r"""(?:\s+implements\s+([\w.,\s]+))?"""     # implements clause
+            r"""(?:\s*<[^>]*>)?"""  # generic params
+            r"""(?:\s+extends\s+([\w.]+))?"""  # extends clause
+            r"""(?:\s+implements\s+([\w.,\s]+))?"""  # implements clause
             r"""\s*\{""",
             re.MULTILINE,
         )
@@ -302,9 +300,8 @@ class TypeScriptParser:
             return_type = m.group(3)
 
             # Skip if it looks like a conditional or loop
-            if name in ("if", "for", "while", "switch", "catch", "constructor"):
-                if name != "constructor":
-                    continue
+            if name in ("if", "for", "while", "switch", "catch", "constructor") and name != "constructor":
+                continue
 
             rel_line = class_body[: m.start()].count("\n")
             start_line = class_start + rel_line
@@ -420,10 +417,31 @@ class TypeScriptParser:
         call_pattern = re.compile(r"""(?<!\w)(\w+)\s*\(""")
         calls: set[str] = set()
         keywords = {
-            "if", "for", "while", "switch", "catch", "return", "throw",
-            "new", "typeof", "instanceof", "void", "delete", "await",
-            "import", "export", "from", "const", "let", "var", "class",
-            "function", "async", "else", "try", "finally",
+            "if",
+            "for",
+            "while",
+            "switch",
+            "catch",
+            "return",
+            "throw",
+            "new",
+            "typeof",
+            "instanceof",
+            "void",
+            "delete",
+            "await",
+            "import",
+            "export",
+            "from",
+            "const",
+            "let",
+            "var",
+            "class",
+            "function",
+            "async",
+            "else",
+            "try",
+            "finally",
         }
         for m in call_pattern.finditer(body):
             name = m.group(1)

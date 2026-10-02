@@ -21,8 +21,10 @@ export const SemanticSearch: React.FC = () => {
     setError(null);
     setExpandedIndex(null);
     try {
-      const response = await semanticSearch(query);
+      const response = await semanticSearch(query, 10, repoPath);
       setSearchResponse(response);
+
+
     } catch (err: any) {
       setError(err.message || 'Semantic search request failed.');
     } finally {

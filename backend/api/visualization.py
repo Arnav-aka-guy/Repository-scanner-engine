@@ -2,22 +2,24 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from backend.api.dependencies import get_graph, get_parser
-from backend.graph.models import GraphData, GraphEdge, GraphNode
+from backend.graph.models import GraphData
 from backend.parser.models import ParsedFile
 from backend.security.path_validator import validate_repository_path
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.graph.service import GraphService
     from backend.parser.service import ParserService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/viz", tags=["visualization"])
 
@@ -172,9 +174,10 @@ async def mermaid_diagram(
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
+        logger.error("Failed to parse repository %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to parse repository: {exc}",
+            detail="Failed to parse repository.",
         ) from exc
 
     try:
@@ -183,9 +186,10 @@ async def mermaid_diagram(
         else:
             graph_data = await graph_svc.get_call_graph(parsed_files)
     except Exception as exc:
+        logger.error("Failed to build %s graph for %s: %s", graph_type, path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to build {graph_type} graph: {exc}",
+            detail=f"Failed to build {graph_type} graph.",
         ) from exc
 
     diagram = _graph_to_mermaid(graph_data)
@@ -205,17 +209,19 @@ async def architecture_diagram(
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
+        logger.error("Failed to parse repository %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to parse repository: {exc}",
+            detail="Failed to parse repository.",
         ) from exc
 
     try:
         graph_data: GraphData = await graph_svc.get_dependency_graph(parsed_files)
     except Exception as exc:
+        logger.error("Failed to build dependency graph for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to build dependency graph: {exc}",
+            detail="Failed to build dependency graph.",
         ) from exc
 
     layers = _build_architecture_layers(parsed_files, graph_data)

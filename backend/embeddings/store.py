@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class VectorStore:
     """A vector database store wrapper around FAISS IndexFlatIP (Inner Product).
-    
+
     Uses inner product for cosine similarity, assuming all added vectors are
     already normalized (which `EmbeddingEncoder` does by default).
     """
@@ -36,9 +36,7 @@ class VectorStore:
             return
 
         if len(embeddings) != len(metadata):
-            raise ValueError(
-                f"Mismatch: got {len(embeddings)} embeddings and {len(metadata)} metadata items."
-            )
+            raise ValueError(f"Mismatch: got {len(embeddings)} embeddings and {len(metadata)} metadata items.")
 
         # Ensure correct type and shape
         arr = np.array(embeddings, dtype=np.float32)
@@ -46,9 +44,7 @@ class VectorStore:
             arr = np.expand_dims(arr, axis=0)
 
         if arr.shape[1] != self.dimension:
-            raise ValueError(
-                f"Dimension mismatch: expected {self.dimension}, got {arr.shape[1]}"
-            )
+            raise ValueError(f"Dimension mismatch: expected {self.dimension}, got {arr.shape[1]}")
 
         # FAISS IndexFlatIP expects L2 normalized vectors for exact Cosine similarity.
         # Since sentence_transformers.encode already normalized them, we add directly.
@@ -85,14 +81,11 @@ class VectorStore:
         distances, indices = self.index.search(arr, top_k)
 
         results = []
-        for dist, idx in zip(distances[0], indices[0]):
+        for dist, idx in zip(distances[0], indices[0], strict=False):
             # If the index is out of bounds or negative (indicates not found in FAISS)
             if idx < 0 or idx >= len(self.metadata):
                 continue
-            results.append({
-                "score": float(dist),
-                "metadata": self.metadata[idx]
-            })
+            results.append({"score": float(dist), "metadata": self.metadata[idx]})
 
         return results
 
@@ -134,8 +127,7 @@ class VectorStore:
 
         if not faiss_file.exists() or not metadata_file.exists():
             raise FileNotFoundError(
-                f"Could not load vector store from {base_path}: "
-                f".faiss or metadata file missing."
+                f"Could not load vector store from {base_path}: " f".faiss or metadata file missing."
             )
 
         logger.info("Loading FAISS index from %s ...", faiss_file)
@@ -143,7 +135,7 @@ class VectorStore:
         self.dimension = self.index.d
 
         logger.info("Loading metadata from %s ...", metadata_file)
-        with open(metadata_file, "r", encoding="utf-8") as f:
+        with open(metadata_file, encoding="utf-8") as f:
             self.metadata = json.load(f)
 
         logger.info("Vector store loaded. Total size: %d vectors.", len(self))

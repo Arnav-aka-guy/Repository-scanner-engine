@@ -18,10 +18,12 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.parser.models import ParsedFile
+
 
 logger = logging.getLogger(__name__)
 
@@ -276,20 +278,26 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                         )
                     )
 
-        # ── TODO/FIXME comments ─────────────────────────────────────
-        for func in pf.functions:
-            if func.source_code and _TODO_PATTERN.search(func.source_code):
-                file_smells.append(
-                    CodeSmell(
-                        category="todo_comment",
-                        severity="low",
-                        file_path=path,
-                        entity_name=func.name,
-                        line=func.start_line,
-                        message=f"TODO/FIXME found in {func.name}()",
-                        suggestion="Resolve or create a tracking issue",
+        # ── TODO/FIXME comments across full file ───────────────────
+        try:
+            file_text = Path(path).read_text(encoding="utf-8", errors="ignore")
+            for line_no, line_content in enumerate(file_text.splitlines(), start=1):
+                m = _TODO_PATTERN.search(line_content)
+                if m:
+                    tag = m.group(1).upper()
+                    file_smells.append(
+                        CodeSmell(
+                            category="todo_comment",
+                            severity="low",
+                            file_path=path,
+                            entity_name=None,
+                            line=line_no,
+                            message=f"{tag} found on line {line_no}: {line_content.strip()[:60]}",
+                            suggestion="Resolve or create a tracking issue",
+                        )
                     )
-                )
+        except OSError:
+            pass
 
         # Aggregate for file
         if file_smells:
@@ -327,21 +335,14 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
         )
     if smells_by_cat.get("god_class", 0) > 0:
         suggestions.append(
-            f"Split {smells_by_cat['god_class']} God class(es) — "
-            "apply Single Responsibility Principle"
+            f"Split {smells_by_cat['god_class']} God class(es) — " "apply Single Responsibility Principle"
         )
     if smells_by_cat.get("large_file", 0) > 2:
-        suggestions.append(
-            f"Break up {smells_by_cat['large_file']} oversized files into focused modules"
-        )
+        suggestions.append(f"Break up {smells_by_cat['large_file']} oversized files into focused modules")
     if smells_by_cat.get("missing_docstring", 0) > 5:
-        suggestions.append(
-            f"Add docstrings to {smells_by_cat['missing_docstring']} undocumented entities"
-        )
+        suggestions.append(f"Add docstrings to {smells_by_cat['missing_docstring']} undocumented entities")
     if smells_by_cat.get("high_coupling", 0) > 0:
-        suggestions.append(
-            "Reduce import coupling — consider dependency injection or facade patterns"
-        )
+        suggestions.append("Reduce import coupling — consider dependency injection or facade patterns")
 
     report = TechDebtReport(
         total_debt_score=total_debt,

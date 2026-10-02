@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-import textwrap
+import contextlib
 from pathlib import Path
 
 from backend.parser.models import (
@@ -56,17 +56,13 @@ class PythonParser:
                 module = node.module or ""
                 names = [a.name for a in (node.names or [])]
                 # Use the first alias if there is exactly one imported name
-                alias = (
-                    node.names[0].asname
-                    if node.names and len(node.names) == 1
-                    else None
-                )
+                import_alias = node.names[0].asname if node.names and len(node.names) == 1 else None
                 imports.append(
                     ImportInfo(
                         module=module,
                         names=names,
                         is_from_import=True,
-                        alias=alias,
+                        alias=import_alias,
                     )
                 )
         return imports
@@ -80,7 +76,7 @@ class PythonParser:
     ) -> list[FunctionInfo]:
         functions: list[FunctionInfo] = []
         for node in ast.iter_child_nodes(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 functions.append(self._build_function_info(node, source))
         return functions
 
@@ -89,11 +85,7 @@ class PythonParser:
         node: ast.FunctionDef | ast.AsyncFunctionDef,
         source: str,
     ) -> FunctionInfo:
-        args = [
-            arg.arg
-            for arg in node.args.args
-            if arg.arg != "self" and arg.arg != "cls"
-        ]
+        args = [arg.arg for arg in node.args.args if arg.arg != "self" and arg.arg != "cls"]
 
         return_type: str | None = None
         if node.returns:
@@ -137,16 +129,14 @@ class PythonParser:
     ) -> ClassInfo:
         bases: list[str] = []
         for base in node.bases:
-            try:
+            with contextlib.suppress(Exception):
                 bases.append(ast.unparse(base))
-            except Exception:
-                pass
 
         decorators = self._extract_decorator_names(node.decorator_list)
 
         methods: list[FunctionInfo] = []
         for item in node.body:
-            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
                 methods.append(self._build_function_info(item, source))
 
         attributes = self._extract_class_attributes(node)
@@ -173,31 +163,24 @@ class PythonParser:
                 for target in item.targets:
                     if isinstance(target, ast.Name):
                         attrs.add(target.id)
-            elif isinstance(item, ast.AnnAssign) and isinstance(
-                item.target, ast.Name
-            ):
+            elif isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
                 attrs.add(item.target.id)
 
             # __init__ body: ``self.x = ...``
-            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if item.name == "__init__":
-                    for stmt in ast.walk(item):
-                        if isinstance(stmt, ast.Assign):
-                            for target in stmt.targets:
-                                if (
-                                    isinstance(target, ast.Attribute)
-                                    and isinstance(target.value, ast.Name)
-                                    and target.value.id == "self"
-                                ):
-                                    attrs.add(target.attr)
-                        elif isinstance(stmt, ast.AnnAssign):
-                            t = stmt.target
+            if isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef) and item.name == "__init__":
+                for stmt in ast.walk(item):
+                    if isinstance(stmt, ast.Assign):
+                        for target in stmt.targets:
                             if (
-                                isinstance(t, ast.Attribute)
-                                and isinstance(t.value, ast.Name)
-                                and t.value.id == "self"
+                                isinstance(target, ast.Attribute)
+                                and isinstance(target.value, ast.Name)
+                                and target.value.id == "self"
                             ):
-                                attrs.add(t.attr)
+                                attrs.add(target.attr)
+                    elif isinstance(stmt, ast.AnnAssign):
+                        t = stmt.target
+                        if isinstance(t, ast.Attribute) and isinstance(t.value, ast.Name) and t.value.id == "self":
+                            attrs.add(t.attr)
         return sorted(attrs)
 
     # ── Helpers ─────────────────────────────────────────────────────────
@@ -208,10 +191,8 @@ class PythonParser:
     ) -> list[str]:
         names: list[str] = []
         for dec in decorator_list:
-            try:
+            with contextlib.suppress(Exception):
                 names.append(ast.unparse(dec))
-            except Exception:
-                pass
         return names
 
     @staticmethod
@@ -239,8 +220,10 @@ class PythonParser:
         # Fallback: slice by line numbers
         try:
             lines = source.splitlines()
-            start = (node.lineno or 1) - 1
-            end = node.end_lineno or node.lineno or 1
+            lineno = getattr(node, "lineno", 1) or 1
+            end_lineno = getattr(node, "end_lineno", lineno) or lineno
+            start = lineno - 1
+            end = end_lineno
             return "\n".join(lines[start:end])
         except Exception:
             return ""
@@ -249,7 +232,10 @@ class PythonParser:
     def _get_docstring(node: ast.AST) -> str:
         """Extract docstring from a module, class, or function node."""
         try:
-            doc = ast.get_docstring(node)
-            return doc if doc else ""
+            if isinstance(node, ast.AsyncFunctionDef | ast.FunctionDef | ast.ClassDef | ast.Module):
+                doc = ast.get_docstring(node)
+
+                return doc if doc else ""
+            return ""
         except Exception:
             return ""

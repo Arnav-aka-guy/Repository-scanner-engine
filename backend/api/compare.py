@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -70,7 +69,8 @@ async def compare_repos(
         parsed_a = await parser.parse_repository(str(path_a))
         parsed_b = await parser.parse_repository(str(path_b))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Parse error: {exc}") from exc
+        logger.error("Failed to parse repositories for comparison: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to parse repositories for comparison.") from exc
 
     result = compare_repositories(
         parsed_a,

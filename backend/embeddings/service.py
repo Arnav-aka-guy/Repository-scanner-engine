@@ -1,10 +1,17 @@
-"""Embeddings service for indexing and searching codebase repositories."""
+"""Embeddings service for indexing and searching codebase repositories.
+
+Supports multiple isolated repositories, automated index persistence (save/load),
+incremental re-indexing, and cache management.
+"""
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+import numpy as np
 
 from backend.core.config import settings
 from backend.embeddings.encoder import EmbeddingEncoder
@@ -22,92 +29,184 @@ class EmbeddingsService:
     def __init__(self, model_name: str | None = None) -> None:
         model = model_name or settings.embedding_model
         self.encoder = EmbeddingEncoder(model)
+        # Primary / fallback active vector store
         self.store = VectorStore(self.encoder.dimension)
+        # Isolated per-repository vector stores keyed by repo path / identifier
+        self._stores: dict[str, VectorStore] = {}
+        # Per-repo chunk embeddings cache: repo_id -> {file_path: (texts, metadata, embs)}
+        self._file_embeddings_cache: dict[str, dict[str, tuple[list[str], list[dict[str, Any]], np.ndarray]]] = {}
 
-    async def index_repository(self, parsed_files: dict[str, ParsedFile]) -> int:
+    def _get_repo_id(self, repo_path: str) -> str:
+        """Derive a safe filesystem folder identifier from a repository path."""
+        p = Path(repo_path).resolve()
+        name = p.name or "repo"
+        # Combine folder name with sha256 prefix of full path for global uniqueness
+        path_hash = hashlib.sha256(str(p).encode("utf-8")).hexdigest()[:8]
+        return f"{name}_{path_hash}"
+
+    def get_store(self, repo_path: str | None = None) -> VectorStore:
+        """Get or lazily load the VectorStore for a given repository."""
+        if not repo_path:
+            return self.store
+
+        norm_path = str(Path(repo_path).resolve())
+        if norm_path not in self._stores:
+            store = VectorStore(self.encoder.dimension)
+            repo_id = self._get_repo_id(norm_path)
+            # Try to load existing persisted index if available on disk
+            load_path = Path(settings.embeddings_dir) / repo_id / "index"
+            try:
+                store.load(load_path)
+                logger.info("Loaded persisted vector index for repo %s (%d vectors)", repo_id, len(store))
+            except (FileNotFoundError, Exception):
+                logger.debug("No existing vector index for repo %s to load.", repo_id)
+            self._stores[norm_path] = store
+        return self._stores[norm_path]
+
+    async def index_repository(
+        self,
+        parsed_files: dict[str, ParsedFile],
+        repo_path: str | None = None,
+        force_reindex: bool = False,
+    ) -> int:
         """Create text chunks from parsed repository code, compute embeddings, and store them.
+
+        Supports incremental indexing: unchanged files reuse cached chunk embeddings,
+        avoiding unnecessary recomputation.
 
         Args:
             parsed_files: Dictionary of file paths to ParsedFile objects.
+            repo_path: Optional repository path for per-repo store isolation and persistence.
+            force_reindex: If True, bypass cache and recompute all embeddings.
 
         Returns:
             The number of indexed code chunks.
         """
-        self.store.clear()
-        texts, metadata = self._create_chunks(parsed_files)
+        parsed_files = {str(Path(p).resolve()): pf for p, pf in parsed_files.items()}
+        store = self.get_store(repo_path)
+        repo_id = self._get_repo_id(repo_path) if repo_path else "default"
+        file_cache = self._file_embeddings_cache.setdefault(repo_id, {})
 
-        if not texts:
-            logger.warning("No code entities found to index in the repository.")
-            return 0
+        if force_reindex:
+            file_cache.clear()
 
-        logger.info("Computing embeddings for %d code chunks ...", len(texts))
-        # Batch encode
-        embeddings = self.encoder.encode(texts)
+        # Prune deleted files from file_cache
+        for cached_fpath in list(file_cache.keys()):
+            if cached_fpath not in parsed_files:
+                file_cache.pop(cached_fpath, None)
 
-        # Add to FAISS vector store
-        self.store.add(embeddings, metadata)
-        return len(texts)
+        all_texts: list[str] = []
+        all_metadata: list[dict[str, Any]] = []
+        embs_list: list[np.ndarray] = []
 
-    async def search(self, query: str, top_k: int = 10) -> list[dict[str, Any]]:
+        files_to_encode: list[str] = []
+        for fpath in parsed_files:
+            if fpath not in file_cache:
+                files_to_encode.append(fpath)
+
+        # Batch encode new/modified files
+        for fpath in files_to_encode:
+            parsed = parsed_files[fpath]
+            texts, metadata = self._create_chunks_for_file(fpath, parsed)
+            embs = self.encoder.encode(texts) if texts else np.empty((0, store.dimension), dtype=np.float32)
+            file_cache[fpath] = (texts, metadata, embs)
+
+        # Aggregate across all active repository files
+        for _fpath, (texts, metadata, embs) in file_cache.items():
+            all_texts.extend(texts)
+            all_metadata.extend(metadata)
+            if len(embs) > 0:
+                embs_list.append(embs)
+
+        store.clear()
+        if embs_list:
+            combined_embs = np.vstack(embs_list)
+            store.add(combined_embs, all_metadata)
+
+        # Mirror into default store as active repository
+        if store is not self.store:
+            self.store = store
+
+        # Automatically persist the index to disk
+        if repo_path:
+            try:
+                await self.save_index(repo_id, repo_path=repo_path)
+            except Exception as exc:
+                logger.error("Failed to auto-persist vector index for %s: %s", repo_id, exc)
+
+        return len(all_texts)
+
+    async def search(
+        self,
+        query: str,
+        top_k: int = 10,
+        repo_path: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Search the indexed repository for relevant code entities matching the query.
 
         Args:
             query: The natural language search query.
             top_k: Number of results to return.
+            repo_path: Optional repo path for isolated repository search.
 
         Returns:
             List of search results containing "score" and "metadata".
         """
-        if len(self.store) == 0:
+        store = self.get_store(repo_path)
+        if len(store) == 0:
             logger.warning("Search failed: Vector store is empty.")
             return []
 
         logger.info("Performing semantic search for: '%s'", query)
         query_embedding = self.encoder.encode_single(query)
-        return self.store.search(query_embedding, top_k=top_k)
+        return store.search(query_embedding, top_k=top_k)
 
-    async def save_index(self, repo_name: str) -> None:
+    async def save_index(self, repo_name: str, repo_path: str | None = None) -> None:
         """Save vector database index and metadata to the cache directory.
 
         Args:
             repo_name: The name/identifier of the repository.
+            repo_path: Optional repository root path to locate the isolated store.
         """
+        store = self.get_store(repo_path)
         save_dir = Path(settings.embeddings_dir) / repo_name
         save_dir.mkdir(parents=True, exist_ok=True)
         base_path = save_dir / "index"
-        self.store.save(base_path)
+        store.save(base_path)
 
-    async def load_index(self, repo_name: str) -> bool:
+    async def load_index(self, repo_name: str, repo_path: str | None = None) -> None:
         """Load vector database index and metadata from the cache directory.
 
         Args:
             repo_name: The name/identifier of the repository.
-
-        Returns:
-            True if loaded successfully, False otherwise.
+            repo_path: Optional repository root path to bind the isolated store.
         """
+        store = self.get_store(repo_path)
         load_path = Path(settings.embeddings_dir) / repo_name / "index"
-        try:
-            self.store.load(load_path)
-            return True
-        except FileNotFoundError:
-            logger.warning("No saved vector index found at %s", load_path)
-            return False
-        except Exception as e:
-            logger.error("Failed to load vector store from %s: %s", load_path, e)
-            return False
+        store.load(load_path)
 
-    def _create_chunks(self, parsed_files: dict[str, ParsedFile]) -> tuple[list[str], list[dict[str, Any]]]:
-        """Convert parsed repository structure into search-friendly text chunks and metadata."""
+        if store is not self.store:
+            self.store = store
+
+    def invalidate_repo(self, repo_path: str, clear_cache: bool = False) -> None:
+        """Evict the cached VectorStore for a repository from memory."""
+        norm_path = str(Path(repo_path).resolve())
+        self._stores.pop(norm_path, None)
+        if clear_cache:
+            repo_id = self._get_repo_id(norm_path)
+            self._file_embeddings_cache.pop(repo_id, None)
+
+    def _create_chunks_for_file(self, file_path: str, parsed: ParsedFile) -> tuple[list[str], list[dict[str, Any]]]:
+        """Convert a single parsed file into search-friendly text chunks and metadata."""
         texts: list[str] = []
         metadata: list[dict[str, Any]] = []
 
-        for file_path, parsed in parsed_files.items():
-            # 1. Module chunk
-            mod_doc = parsed.module_docstring or ""
-            module_text = f"Module: {file_path}\nLanguage: {parsed.language}\nDocstring: {mod_doc}"
-            texts.append(module_text)
-            metadata.append({
+        # 1. Module chunk
+        mod_doc = parsed.module_docstring or ""
+        module_text = f"Module: {file_path}\nLanguage: {parsed.language}\nDocstring: {mod_doc}"
+        texts.append(module_text)
+        metadata.append(
+            {
                 "file_path": file_path,
                 "entity_name": file_path,
                 "entity_type": "module",
@@ -115,21 +214,23 @@ class EmbeddingsService:
                 "end_line": 1,
                 "source_code": "",
                 "docstring": mod_doc,
-            })
+            }
+        )
 
-            # 2. Classes chunks
-            for cls in parsed.classes:
-                methods_str = ", ".join(m.name for m in cls.methods) if cls.methods else "none"
-                class_text = (
-                    f"Class: {cls.name}\n"
-                    f"File: {file_path}\n"
-                    f"Bases: {', '.join(cls.bases)}\n"
-                    f"Docstring: {cls.docstring or ''}\n"
-                    f"Methods: {methods_str}\n"
-                    f"Source Code:\n{cls.source_code}"
-                )
-                texts.append(class_text)
-                metadata.append({
+        # 2. Classes chunks
+        for cls in parsed.classes:
+            methods_str = ", ".join(m.name for m in cls.methods) if cls.methods else "none"
+            class_text = (
+                f"Class: {cls.name}\n"
+                f"File: {file_path}\n"
+                f"Bases: {', '.join(cls.bases)}\n"
+                f"Docstring: {cls.docstring or ''}\n"
+                f"Methods: {methods_str}\n"
+                f"Source Code:\n{cls.source_code}"
+            )
+            texts.append(class_text)
+            metadata.append(
+                {
                     "file_path": file_path,
                     "entity_name": cls.name,
                     "entity_type": "class",
@@ -137,19 +238,21 @@ class EmbeddingsService:
                     "end_line": cls.end_line,
                     "source_code": cls.source_code,
                     "docstring": cls.docstring or "",
-                })
+                }
+            )
 
-                # 3. Method chunks (inside classes)
-                for method in cls.methods:
-                    method_text = (
-                        f"Method: {cls.name}.{method.name}\n"
-                        f"File: {file_path}\n"
-                        f"Arguments: {', '.join(method.args)}\n"
-                        f"Docstring: {method.docstring or ''}\n"
-                        f"Source Code:\n{method.source_code}"
-                    )
-                    texts.append(method_text)
-                    metadata.append({
+            # 3. Method chunks (inside classes)
+            for method in cls.methods:
+                method_text = (
+                    f"Method: {cls.name}.{method.name}\n"
+                    f"File: {file_path}\n"
+                    f"Arguments: {', '.join(method.args)}\n"
+                    f"Docstring: {method.docstring or ''}\n"
+                    f"Source Code:\n{method.source_code}"
+                )
+                texts.append(method_text)
+                metadata.append(
+                    {
                         "file_path": file_path,
                         "entity_name": f"{cls.name}.{method.name}",
                         "entity_type": "method",
@@ -157,19 +260,21 @@ class EmbeddingsService:
                         "end_line": method.end_line,
                         "source_code": method.source_code,
                         "docstring": method.docstring or "",
-                    })
-
-            # 4. Standalone function chunks
-            for func in parsed.functions:
-                func_text = (
-                    f"Function: {func.name}\n"
-                    f"File: {file_path}\n"
-                    f"Arguments: {', '.join(func.args)}\n"
-                    f"Docstring: {func.docstring or ''}\n"
-                    f"Source Code:\n{func.source_code}"
+                    }
                 )
-                texts.append(func_text)
-                metadata.append({
+
+        # 4. Standalone function chunks
+        for func in parsed.functions:
+            func_text = (
+                f"Function: {func.name}\n"
+                f"File: {file_path}\n"
+                f"Arguments: {', '.join(func.args)}\n"
+                f"Docstring: {func.docstring or ''}\n"
+                f"Source Code:\n{func.source_code}"
+            )
+            texts.append(func_text)
+            metadata.append(
+                {
                     "file_path": file_path,
                     "entity_name": func.name,
                     "entity_type": "function",
@@ -177,6 +282,19 @@ class EmbeddingsService:
                     "end_line": func.end_line,
                     "source_code": func.source_code,
                     "docstring": func.docstring or "",
-                })
+                }
+            )
+
+        return texts, metadata
+
+    def _create_chunks(self, parsed_files: dict[str, ParsedFile]) -> tuple[list[str], list[dict[str, Any]]]:
+        """Convert parsed repository structure into search-friendly text chunks and metadata."""
+        texts: list[str] = []
+        metadata: list[dict[str, Any]] = []
+
+        for file_path, parsed in parsed_files.items():
+            f_texts, f_meta = self._create_chunks_for_file(file_path, parsed)
+            texts.extend(f_texts)
+            metadata.extend(f_meta)
 
         return texts, metadata

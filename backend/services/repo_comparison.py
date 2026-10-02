@@ -10,8 +10,8 @@ import logging
 from dataclasses import dataclass, field
 
 from backend.parser.models import ParsedFile
-from backend.services.health_score import HealthReport, compute_health_score
-from backend.services.tech_debt import TechDebtReport, analyse_tech_debt
+from backend.services.health_score import compute_health_score
+from backend.services.tech_debt import analyse_tech_debt
 
 logger = logging.getLogger(__name__)
 
@@ -73,9 +73,7 @@ def _compute_stats(
             stats.total_lines = max(stats.total_lines, cls.end_line)
 
     stats.function_count = total_funcs
-    stats.avg_function_length = round(
-        total_func_length / total_funcs if total_funcs > 0 else 0, 1
-    )
+    stats.avg_function_length = round(total_func_length / total_funcs if total_funcs > 0 else 0, 1)
     stats.languages = lang_counts
 
     # Health score
@@ -174,8 +172,10 @@ def compare_repositories(
 
     logger.info(
         "Repository comparison: %s (%s) vs %s (%s) — winner: %s",
-        name_a, stats_a.health_grade,
-        name_b, stats_b.health_grade,
+        name_a,
+        stats_a.health_grade,
+        name_b,
+        stats_b.health_grade,
         winner_name,
     )
     return result

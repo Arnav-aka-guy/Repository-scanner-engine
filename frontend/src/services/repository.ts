@@ -9,7 +9,10 @@ export async function listFiles(repoPath: string): Promise<FileInfo[]> {
   return apiGet<FileInfo[]>('/repository/files', { repo_path: repoPath });
 }
 
-export async function getFile(filePath: string): Promise<{
+export async function getFile(
+  filePath: string,
+  repoPath?: string
+): Promise<{
   file_path: string;
   content: string;
   language: string;
@@ -17,5 +20,10 @@ export async function getFile(filePath: string): Promise<{
 }> {
   // Don't use encodeURIComponent — it encodes slashes (%2F) which breaks
   // FastAPI's {file_path:path} parameter. Just pass the raw path.
-  return apiGet<any>(`/repository/file/${filePath}`);
+  const params: Record<string, string> = {};
+  if (repoPath) {
+    params.repo_path = repoPath;
+  }
+  return apiGet<any>(`/repository/file/${filePath}`, params);
 }
+

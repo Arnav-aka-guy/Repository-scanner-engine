@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -11,10 +13,10 @@ from backend.api.dependencies import get_docs
 from backend.core.config import get_settings
 from backend.security.path_validator import validate_repository_path
 
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from backend.documentation.service import DocumentationService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/docs", tags=["documentation"])
 
@@ -69,9 +71,10 @@ async def generate_docs(
     try:
         docs: dict = await docs_svc.generate_full_docs(str(path))
     except Exception as exc:
+        logger.error("Documentation generation failed for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Documentation generation failed: {exc}",
+            detail="Documentation generation failed.",
         ) from exc
 
     output_dir = Path(settings.docs_dir) / path.name
@@ -83,9 +86,10 @@ async def generate_docs(
         else:
             await docs_svc.export_html(docs, path.name)
     except Exception as exc:
+        logger.error("Documentation export failed for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Export failed: {exc}",
+            detail="Documentation export failed.",
         ) from exc
 
     return GenerateResponse(
@@ -123,9 +127,10 @@ async def export_docs(
     try:
         docs: dict = await docs_svc.generate_full_docs(str(path))
     except Exception as exc:
+        logger.error("Documentation generation failed for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Documentation generation failed: {exc}",
+            detail="Documentation generation failed.",
         ) from exc
 
     output_dir = Path(settings.docs_dir) / path.name
@@ -137,9 +142,10 @@ async def export_docs(
         else:
             await docs_svc.export_html(docs, path.name)
     except Exception as exc:
+        logger.error("Documentation export failed for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Export failed: {exc}",
+            detail="Documentation export failed.",
         ) from exc
 
     return GenerateResponse(

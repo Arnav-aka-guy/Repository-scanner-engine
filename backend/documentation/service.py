@@ -37,7 +37,7 @@ class DocumentationService:
             and a "modules" dict mapping relative file paths to their module docs.
         """
         logger.info("Starting documentation suite compilation for: %s", repo_path)
-        
+
         # 1. Fetch scanned repo info and parsed modules
         repo_info = await self.parser_service.scan_repository(repo_path)
         parsed_files = await self.parser_service.parse_repository(repo_path)
@@ -50,6 +50,7 @@ class DocumentationService:
         # Map Cytoscape output to the generator's expected GraphData structure
         # Cytoscape format: {"elements": [{"data": {...}, "group": "nodes"|"edges"}, ...]}
         from backend.graph.models import GraphData, GraphEdge, GraphNode
+
         elements = graph_data.get("elements", [])
         formatted_nodes = [
             GraphNode(
@@ -57,16 +58,20 @@ class DocumentationService:
                 label=el["data"]["label"],
                 node_type=el["data"]["node_type"],
                 file_path=el["data"].get("file_path", ""),
-                metadata=el["data"].get("metadata", {})
-            ) for el in elements if el.get("group") == "nodes"
+                metadata=el["data"].get("metadata", {}),
+            )
+            for el in elements
+            if el.get("group") == "nodes"
         ]
         formatted_edges = [
             GraphEdge(
                 source=el["data"]["source"],
                 target=el["data"]["target"],
                 edge_type=el["data"]["edge_type"],
-                metadata=el["data"].get("metadata", {})
-            ) for el in elements if el.get("group") == "edges"
+                metadata=el["data"].get("metadata", {}),
+            )
+            for el in elements
+            if el.get("group") == "edges"
         ]
         graph_obj = GraphData(nodes=formatted_nodes, edges=formatted_edges)
         architecture_doc = await self.generator.generate_architecture_doc(graph_obj, repo_info)
@@ -83,7 +88,7 @@ class DocumentationService:
         dependency_map = await self.generator.generate_dependency_map(parsed_files)
 
         logger.info("Documentation suite successfully compiled.")
-        
+
         return {
             "overview": overview_doc,
             "architecture": architecture_doc,
@@ -136,13 +141,13 @@ class DocumentationService:
             # Let's keep it extremely clean and readable with Tailwind CDN
             return (
                 f"<!DOCTYPE html>\n<html>\n<head>\n"
-                f"<meta charset=\"utf-8\">\n"
+                f'<meta charset="utf-8">\n'
                 f"<title>{title}</title>\n"
-                f"<script src=\"https://cdn.tailwindcss.com\"></script>\n"
+                f'<script src="https://cdn.tailwindcss.com"></script>\n'
                 f"</head>\n"
-                f"<body class=\"bg-slate-900 text-slate-100 p-8\">\n"
-                f"<div class=\"max-w-4xl mx-auto bg-slate-800 p-8 rounded-xl shadow-xl border border-slate-700\">\n"
-                f"<pre class=\"whitespace-pre-wrap font-sans leading-relaxed text-sm\">"
+                f'<body class="bg-slate-900 text-slate-100 p-8">\n'
+                f'<div class="max-w-4xl mx-auto bg-slate-800 p-8 rounded-xl shadow-xl border border-slate-700">\n'
+                f'<pre class="whitespace-pre-wrap font-sans leading-relaxed text-sm">'
                 f"{markdown_content}"
                 f"</pre>\n"
                 f"</div>\n"

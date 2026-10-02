@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import math
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -41,12 +41,14 @@ class KeywordSearcher:
 
         for doc_id, meta in enumerate(metadata_list):
             # Combine searchable fields into one text
-            text = " ".join([
-                meta.get("entity_name", ""),
-                meta.get("entity_type", ""),
-                meta.get("file_path", ""),
-                meta.get("docstring", ""),
-            ]).lower()
+            text = " ".join(
+                [
+                    meta.get("entity_name", ""),
+                    meta.get("entity_type", ""),
+                    meta.get("file_path", ""),
+                    meta.get("docstring", ""),
+                ]
+            ).lower()
 
             tokens = self._tokenize(text)
             self.doc_lengths.append(len(tokens))

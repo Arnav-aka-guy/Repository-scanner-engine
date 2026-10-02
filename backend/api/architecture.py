@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from backend.core.container import get_container
@@ -19,11 +19,13 @@ router = APIRouter(prefix="/api/architecture", tags=["architecture"])
 
 class ArchitectureRequest(BaseModel):
     """Request body for architecture analysis."""
+
     repo_path: str
 
 
 class ArchitectureReportResponse(BaseModel):
     """Full architecture analysis response."""
+
     score: int = 0
     layers: dict[str, list[str]] = Field(default_factory=dict)
     circular_dependencies: list[list[str]] = Field(default_factory=list)

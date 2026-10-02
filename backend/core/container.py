@@ -23,6 +23,7 @@ class Container:
 
     _instance: Container | None = None
     _lock: threading.Lock = threading.Lock()
+    _initialised: bool = False
 
     def __new__(cls) -> Container:
         with cls._lock:
@@ -79,10 +80,7 @@ class Container:
         if self._retrieval_service is None:
             from backend.retrieval.service import RetrievalService
 
-            self._retrieval_service = RetrievalService(
-                self.embeddings_service,
-                self.graph_service
-            )
+            self._retrieval_service = RetrievalService(self.embeddings_service, self.graph_service)
         return self._retrieval_service  # type: ignore[return-value]
 
     # ── LLM ─────────────────────────────────────────────────────────────
@@ -103,9 +101,7 @@ class Container:
             from backend.documentation.service import DocumentationService
 
             self._documentation_service = DocumentationService(
-                self.llm_service,
-                self.parser_service,
-                self.graph_service
+                self.llm_service, self.parser_service, self.graph_service
             )
         return self._documentation_service  # type: ignore[return-value]
 
@@ -113,4 +109,3 @@ class Container:
 def get_container() -> Container:
     """Return the global Container singleton."""
     return Container()
-

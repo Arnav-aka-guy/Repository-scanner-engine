@@ -2,6 +2,11 @@
 
 Provides a global async engine, a session factory, and a FastAPI
 dependency that yields per-request database sessions.
+
+When ``DATABASE_ENABLED=false`` (the default) the application runs
+without a relational database — vector indexes and metadata are stored
+on the local filesystem only.  Set ``DATABASE_ENABLED=true`` together
+with a reachable ``DATABASE_URL`` to enable full persistence.
 """
 
 from __future__ import annotations
@@ -43,7 +48,9 @@ def _get_engine():
             max_overflow=10,
             pool_pre_ping=True,
         )
-        logger.info("Database engine created: %s", settings.database_url.split("@")[-1])
+        # Log only the host/db portion — never the credentials.
+        db_host = settings.database_url.split("@")[-1]
+        logger.info("Database engine created: %s", db_host)
     return _engine
 
 
@@ -75,11 +82,24 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Create all tables.  Call once during application startup."""
+    """Create all tables.  Call once during application startup.
+
+    No-ops when ``DATABASE_ENABLED=false`` so the application starts
+    correctly without a Postgres connection.
+    """
+    settings = get_settings()
+    if not settings.database_enabled:
+        logger.info("Database disabled (DATABASE_ENABLED=false) — skipping table creation.")
+        return
+
     engine = _get_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables created/verified")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables created/verified")
+    except Exception as exc:
+        logger.error("Database initialization failed: %s", exc)
+        raise
 
 
 async def close_db() -> None:

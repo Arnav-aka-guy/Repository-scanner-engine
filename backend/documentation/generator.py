@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.core.models import RepositoryInfo
@@ -48,8 +48,7 @@ class DocumentationGenerator:
 
         try:
             overview = await self.llm_service.manager.generate(
-                prompt,
-                system_prompt="You are a senior developer writing professional onboarding documentation."
+                prompt, system_prompt="You are a senior developer writing professional onboarding documentation."
             )
             return overview
         except Exception as e:
@@ -100,13 +99,13 @@ class DocumentationGenerator:
         doc += "## Class & Module Dependency Graph\n\n"
         doc += "Below is the structural dependency layout representing code entity relationships:\n\n"
         doc += "```mermaid\ngraph TD\n"
-        
+
         # Add nodes with appropriate styling labels
         node_styles = []
         for node in graph_data.nodes[:40]:  # Limit diagram size to keep it clean and readable
             label = node.label.replace('"', '\\"')
-            doc += f"    {node.id}[\"{label} ({node.node_type})\"]\n"
-            
+            doc += f'    {node.id}["{label} ({node.node_type})"]\n'
+
             # Group colors by node type
             if node.node_type == "file":
                 node_styles.append(f"style {node.id} fill:#24283b,stroke:#419cff,stroke-width:2px,color:#fff")
@@ -114,18 +113,18 @@ class DocumentationGenerator:
                 node_styles.append(f"style {node.id} fill:#24283b,stroke:#bb9af7,stroke-width:2px,color:#fff")
             elif node.node_type == "function":
                 node_styles.append(f"style {node.id} fill:#24283b,stroke:#9ece6a,stroke-width:2px,color:#fff")
-        
+
         # Add edges
         for edge in graph_data.edges[:50]:  # Limit edge count
             # Edge labels
             label = edge.edge_type
             doc += f"    {edge.source} -->|{label}| {edge.target}\n"
-            
+
         doc += "\n" + "\n".join(node_styles) + "\n```\n\n"
 
         doc += "## Core Components breakdown\n\n"
         doc += "The graph identifies the primary functional hubs of this project:\n\n"
-        
+
         # Analyze centrality simply from graph_data (nodes with most incoming/outgoing edges)
         connections: dict[str, int] = {}
         for edge in graph_data.edges:
@@ -178,13 +177,13 @@ class DocumentationGenerator:
     def _fallback_repository_overview(self, repo_info: RepositoryInfo, parsed_files: dict[str, ParsedFile]) -> str:
         """Create a structural Markdown description if LLM model is unavailable."""
         doc = f"# Repository Technical Overview: `{repo_info.name}`\n\n"
-        doc += f"This overview was automatically compiled by the parser engine.\n\n"
+        doc += "This overview was automatically compiled by the parser engine.\n\n"
         doc += "## Repository Metrics\n\n"
         doc += f"- **Location**: `{repo_info.path}`\n"
         doc += f"- **Files Indexed**: {repo_info.total_files}\n"
         doc += f"- **Total Line Count**: {repo_info.total_lines}\n"
         doc += f"- **Scan Timestamp**: {repo_info.scanned_at}\n\n"
-        
+
         doc += "## Source Code Inventory\n\n"
         doc += "| File Path | Classes | Functions | Language |\n"
         doc += "| --- | --- | --- | --- |\n"
@@ -192,7 +191,7 @@ class DocumentationGenerator:
             classes = ", ".join(f"`{c.name}`" for c in parsed.classes) or "*none*"
             funcs = ", ".join(f"`{f.name}`" for f in parsed.functions) or "*none*"
             doc += f"| `{path}` | {classes} | {funcs} | {parsed.language} |\n"
-            
+
         return doc
 
     # ── New v2 doc types ─────────────────────────────────────────────────
@@ -317,4 +316,3 @@ class DocumentationGenerator:
             doc += "\n"
 
         return doc
-

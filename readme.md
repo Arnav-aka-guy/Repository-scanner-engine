@@ -1,37 +1,44 @@
-# Antigravity Engine v2.0
+# Repository Scanner Engine v2.0
 
-An AI-powered codebase intelligence platform that indexes, analyses, and visualises software repositories. Combines AST parsing, interactive graph intelligence, semantic vector search, Graph-RAG conversation, and portfolio-grade code quality analysis.
+An AI-powered codebase intelligence platform that indexes, analyses, and visualises software repositories. Combines AST parsing, interactive graph intelligence, isolated semantic vector search, Graph-RAG conversation with exact citations, incremental change detection, and code health analysis.
 
-> **v2.0 Highlights:** JWT auth · Rate limiting · Path validation · PostgreSQL persistence · Health scoring · Tech debt analysis · Dependency risk audit · Docker · CI/CD · 80%+ test coverage target
+> **v2.0 Highlights:** Strict Canonical Path Validation · Per-Repository FAISS Isolation · Auto-Persistence · Incremental Rescanning · Async Background Scan Jobs · Public GitHub URL Scanning · JWT Auth Enforced · Rate Limiting · Scanner Resource Limits · Modular Health Dashboard · Production SPA Static Serving · 140+ Tests · Strict Mypy & Ruff CI
 
 ---
 
-
 ## 🌟 Core Features
 
-### 📁 1. Repository Explorer
+### 📁 1. Repository Explorer & Multi-Language AST
 - **AST-Based Parser**: Performs detailed static code analysis to extract directories, files, imports, classes, functions, methods, and relationships.
-- **Codebase Navigation**: Browse parsed code structures, explore inline docstrings, inspect defined classes/methods, and trace module dependencies in real time.
+- **Language Extensibility**: Pluggable `LanguageParser` protocol supporting Python, TypeScript, and JavaScript with support for future language additions.
+- **Incremental Rescanning**: Computes file manifests with SHA-256 hashes. Only modified and newly created files are parsed and re-embedded, while deleted files are purged immediately.
+- **Strict Canonical Security**: File exploration enforces absolute canonical path containment inside the repository root, blocking `../` traversal, symlink escapes, and Windows device/UNC path tricks.
 
-### 🕸️ 2. Dependency Graph Viewer
-- **Interactive Visualizer**: Dynamic 2D rendering of class and module relationships powered by **Cytoscape.js** and **Dagre** layout algorithms.
+### 🌐 2. Public GitHub Scanning
+- **Safe Remote Scanning**: Scan public GitHub repositories directly via `POST /api/repository/scan-github`.
+- **Injection-Safe Shallow Clones**: Validates URLs with strict HTTPS patterns, prevents command injection, performs `--depth 1` shallow clones, and isolates temporary data.
+
+### ⚡ 3. Asynchronous Scan Jobs
+- **Background Task Processing**: Non-blocking scanning for large repositories via `POST /api/repository/scan/async`.
+- **Status & Progress Polling**: Poll `GET /api/repository/scan/jobs/{job_id}` for real-time progress percentages, status stages, and completion diagnostics.
+
+### 🕸️ 4. Dependency Graph Viewer
+- **Interactive Visualizer**: Dynamic 2D rendering of class and module relationships powered by graph layout algorithms.
 - **Relationship Filtering**: Highlight import statements, inheritance hierarchies, parent-child containments, and cross-module call graphs.
 
-### 🏛️ 3. Architecture Viewer
-- **Automatic Diagrams**: Spits out system architecture layouts dynamically utilizing **Mermaid.js**.
-- **Hub Analysis**: Analyzes graph centrality to locate topological code "hubs" (classes or modules with the highest number of imports and dependencies).
+### 🔍 5. Semantic Code Search
+- **Repository-Isolated Vector Store**: Independent FAISS index per repository. Searching Repository A never bleeds results into Repository B.
+- **Auto-Persistence**: Vector indexes and metadata are automatically persisted to disk (`data/embeddings/<repo_id>/index.faiss`) and reloaded across restarts without re-embedding.
+- **Deterministic Mock Encoder**: Optional `MOCK_EMBEDDINGS=true` mode for lightning-fast testing and CI execution without downloading multi-gigabyte models.
 
-### 🔍 4. Semantic Code Search
-- **Natural Language Querying**: Locate where features, functions, or concepts are implemented without exact keyword matching.
-- **Local Embedding Pipeline**: Embeds chunks locally using the Hugging Face **`all-MiniLM-L6-v2`** model, indexed and searched in seconds via **FAISS** vector store.
+### 💬 6. Graph-RAG AI Chat with Source Citations
+- **Context-Aware Assistance**: Chat with local or cloud LLMs (Groq, OpenAI, Ollama, OpenRouter) grounded in actual code structures.
+- **Exact Source Citations**: Responses include explicit file, function, and line-range citations (`Sources: - <file_path>:<start_line>-<end_line>`) linking directly into the code explorer.
 
-### 💬 5. Graph-RAG AI Chat
-- **Context-Aware Assistance**: Chat with a local or cloud LLM that understands the repository structure.
-- **Relational Retrieval**: Combines semantic text retrieval (FAISS) with codebase graph structures (NetworkX) to resolve deep context, such as explaining a service's full request-response lifecycle.
-
-### 📄 6. Documentation Generator
-- **Automated Guides**: Generates professional developer onboarding guides, code architecture summaries, and module reference files.
-- **Multi-Format Export**: Compile and write results directly to `Markdown` files or clean, styled `HTML` pages.
+### 🩺 7. Health & Technical Debt Dashboard
+- **Explainable Health Score**: Structured breakdown covering Documentation, Complexity, Architecture, Maintainability, and Security.
+- **Comprehensive Secret Detection**: Scans entire source files and configuration files for exposed API keys and credentials, with automated redaction.
+- **Modular Architecture**: Modular frontend components (`HealthOverview`, `HealthCategoryBreakdown`, `TechnicalDebtPanel`, `DependencyRiskPanel`).
 
 ---
 
@@ -39,16 +46,16 @@ An AI-powered codebase intelligence platform that indexes, analyses, and visuali
 
 | Layer | Technologies |
 |---|---|
-| **Frontend** | React (v19), TypeScript, Vite, TailwindCSS (v4) |
-| **Backend** | Python 3.12+, FastAPI, Uvicorn, Pydantic |
-| **Desktop Shell** | Electron (v32) |
-| **Security** | JWT (python-jose), slowapi rate limiting, path validation |
-| **Database** | PostgreSQL, SQLAlchemy 2.0 (async), Alembic migrations |
-| **Code Analysis** | Python AST Parser |
+| **Frontend** | React 19, TypeScript, Vite, TailwindCSS v4, Zustand, Framer Motion |
+| **Backend** | Python 3.12+, FastAPI, Uvicorn, Pydantic v2 |
+| **Desktop Shell** | Electron |
+| **Security** | JWT (python-jose), slowapi rate limiting, canonical path validation, input sanitization |
+| **Database** | Optional PostgreSQL (SQLAlchemy 2.0 async, Alembic) — runs standalone by default |
+| **Code Analysis** | Python AST, TypeScript/JavaScript parser, pluggable LanguageParser protocol |
 | **Graph Processing** | NetworkX |
-| **Embeddings & Vector DB** | Sentence Transformers (`all-MiniLM-L6-v2`), FAISS (CPU) |
-| **AI / LLM Integration** | Groq (default), Ollama (local), OpenAI & OpenRouter |
-| **Infrastructure** | Docker, GitHub Actions CI/CD |
+| **Vector Index** | Sentence Transformers (`all-MiniLM-L6-v2`), FAISS (CPU IndexFlatIP), Incremental Caching |
+| **AI Providers** | Groq (default), Ollama (local offline), OpenAI, OpenRouter |
+| **Infrastructure** | Docker multi-stage builds, Docker Compose, GitHub Actions CI/CD |
 
 ---
 
@@ -63,228 +70,173 @@ An AI-powered codebase intelligence platform that indexes, analyses, and visuali
                                  v
        ┌────────────────────────────────────────────────────────┐
        │                Vite React Frontend                     │
-       │   (Cytoscape.js, Tailwind, Health Dashboard, Chat)     │
+       │   (Health Dashboard, Dependency Graph, Search, Chat)   │
        └─────────────────────────┬──────────────────────────────┘
-                                 │ HTTP / REST
+                                 │ HTTP / REST (SPA served by FastAPI in prod)
                                  v
        ┌────────────────────────────────────────────────────────┐
        │              Security Middleware Layer                  │
-       │   (JWT Auth, Rate Limiting, Path Validation, CORS)     │
+       │ (JWT Auth, slowapi Rate Limiter, Sanitizer, Validator) │
        └─────────────────────────┬──────────────────────────────┘
                                  │
                                  v
        ┌────────────────────────────────────────────────────────┐
        │                   FastAPI Backend                      │
-       │          (DI Container, Structured Logging)             │
+       │    (Async Scan Jobs, SPA Fallback, Dependency Inject)  │
        └──┬──────────┬───────────┬──────────┬──────────────┬────┘
           │          │           │          │              │
           v          v           v          v              v
    ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐
-   │  Parser  │ │  Graph   │ │Semantic │ │ Portfolio│ │    LLM   │
-   │(AST/TS)  │ │(NetworkX)│ │ (FAISS) │ │ Services │ │ Manager  │
+   │  Parser  │ │  Graph   │ │Semantic │ │ Services │ │    LLM   │
+   │ Service  │ │(NetworkX)│ │ (FAISS) │ │ (Health, │ │ Provider │
+   │(Manifest)│ │          │ │Per-Repo │ │TechDebt) │ │ Manager  │
    └──────────┘ └──────────┘ └─────────┘ └──────────┘ └──────────┘
           │                        │          │              │
           └────────────┬───────────┘          │              │
                        v                      v              v
                ┌───────────────┐     ┌──────────────┐  ┌──────────┐
-               │  PostgreSQL   │     │ Health Score  │  │Groq/OAI/ │
-               │  (SQLAlchemy) │     │ Tech Debt     │  │Ollama    │
-               └───────────────┘     │ Dep Risk      │  │OpenRouter│
-                                     └──────────────┘  └──────────┘
+               │  Local Disk   │     │ Health Score │  │Groq/OAI/ │
+               │(FAISS, Cache, │     │ Tech Debt    │  │Ollama/   │
+               │  Manifests)   │     │ Dep Risk     │  │OpenRouter│
+               └───────────────┘     └──────────────┘  └──────────┘
 ```
 
 ---
 
 ## 🚀 Installation & Setup
 
-Ensure you have **Node.js (v18+)** and **Python (3.12+)** installed.
+Prerequisites: **Node.js (v18+)** and **Python (3.12+)**.
 
-### 1. Configure the Backend
+### 1. Backend Setup
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Create and activate a virtual environment (recommended):
-   ```bash
-   python -m venv venv
-   # On Windows:
-   .\venv\Scripts\activate
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-3. Install the required Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Create a `.env` file in the root of the project (`d:\projects\summer-project-1\.env`):
-   ```env
-   # Data storage root directory
-   DATA_DIR=data
+```bash
+# Create and activate virtual environment
+python -m venv venv
 
-   # LLM Provider Configuration ("ollama" or "openai")
-   LLM_PROVIDER=ollama
-   LLM_MODEL=llama3
-   LLM_BASE_URL=http://localhost:11434
+# On Windows:
+.\venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
 
-   # If using OpenAI:
-   # LLM_PROVIDER=openai
-   # LLM_MODEL=gpt-4o
-   # OPENAI_API_KEY=your_openai_api_key_here
-   ```
+# Install dependencies
+pip install -r backend/requirements.txt
+```
 
-### 2. Configure the Frontend
+### 2. Environment Configuration
 
-1. Navigate to the frontend directory:
-   ```bash
-   cd ../frontend
-   ```
-2. Install the Node modules:
-   ```bash
-   npm install
-   ```
+Copy the example configuration:
 
-### 3. Configure the Desktop Shell
+```bash
+cp .env.example .env
+```
 
-1. Navigate to the desktop directory:
-   ```bash
-   cd ../desktop
-   ```
-2. Install the Electron dependencies:
-   ```bash
-   npm install
-   ```
+To enable JWT authentication (`AUTH_ENABLED=true`), generate a secure secret:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Configure your preferred LLM provider in `.env`:
+
+```env
+# LLM Provider: "groq", "openai", "openrouter", or "ollama"
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_key_here
+```
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+```
 
 ---
 
 ## 💻 Running the Application
 
-### Quick Start
+### Development Mode (Concurrent Backend + Frontend)
 
-From the **project root**, install dependencies once and launch:
+From project root:
 
 ```bash
-npm install            # installs concurrently (root orchestrator)
-npm run dev            # starts backend + frontend in one terminal
-```
-
-> 💡 Make sure your Python virtual environment is active and frontend dependencies are installed (see [Installation & Setup](#-installation--setup)).
-
-### Web Mode (Backend + Frontend)
-```bash
+npm install
 npm run dev
 ```
-Launches the FastAPI backend on `http://127.0.0.1:8000` and the Vite dev server on `http://localhost:5173`.
 
-### Desktop Mode (Backend + Frontend + Electron)
+- Backend API: `http://127.0.0.1:8000`
+- API Interactive Docs: `http://127.0.0.1:8000/docs`
+- Frontend UI: `http://localhost:5173`
+
+### Production Mode (FastAPI Serving Compiled SPA)
+
+```bash
+cd frontend && npm run build && cd ..
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+FastAPI automatically mounts `frontend/dist/assets` and provides full client-side SPA routing on `http://127.0.0.1:8000`.
+
+### Desktop Mode (Electron)
+
 ```bash
 npm run dev:desktop
 ```
-Launches all three services. Electron will display the React app (connected via HMR) and automatically query the backend health endpoint.
 
-### Advanced: Individual Services
+---
 
-If you prefer running services in separate terminals:
+## 🧪 Testing & Quality Assurance
 
-**Terminal 1 — FastAPI Backend** (run from project root):
+Run all test suites across the repository:
+
 ```bash
-python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-```
+# Run backend tests (140+ tests)
+pytest
 
-**Terminal 2 — Vite Dev Server:**
-```bash
-cd frontend && npm run dev
-```
+# Run tests in ultra-fast mock mode (no model downloads)
+MOCK_EMBEDDINGS=true pytest
 
-**Terminal 3 — Electron:**
-```bash
-cd desktop && npm run dev
+# Run frontend tests (Vitest)
+npm run test:frontend
+
+# Run full test suite (backend + frontend)
+npm test
+
+# Linting and Type Checking
+ruff check backend
+ruff format --check backend
+mypy backend
 ```
 
 ---
 
-## 📖 How to Use
+## 🐳 Docker Deployment
 
-1. **Scan a Codebase**: Open the **Repository Explorer** and use the native folder picker to select a local codebase repository. The backend will parse the directories, build structural indexes, and register classes, modules, and functions.
-2. **Visualize Architecture**: Head over to the **Dependency Graph** tab to navigate the interactive module diagram. Inspect which files import one another and search nodes to find components.
-3. **Semantic Querying**: Open **Semantic Search** and type natural language queries like `"where does the backend authenticate users?"` or `"database connection pool configuration"`. It returns ranked code files and functions.
-4. **Chat with Codebase (Graph-RAG)**: Open **AI Chat** and ask structural questions. The engine fetches vector chunks, extracts dependency relationships, and serves them to your configured LLM (via Ollama or OpenAI) to formulate an architecture-grounded response.
-5. **Generate Documentation**: In the **Documentation Generator**, click to compile a repository guide. Choose to export it to clean Markdown files or self-contained HTML pages.
-
----
-
-## 📂 Project Structure
-
-```text
-antigravity-engine/
-├── backend/
-│   ├── api/              # FastAPI REST endpoints (thin handlers + Depends())
-│   ├── core/             # Config, constants, DI container, logging, models
-│   ├── db/               # PostgreSQL (async SQLAlchemy, Alembic)
-│   ├── middleware/        # Request logging, request-ID injection
-│   ├── security/         # JWT auth, rate limiting, path validation, sanitiser
-│   ├── services/         # Health score, tech debt, dep risk, comparison
-│   ├── documentation/    # Markdown/HTML documentation compiler
-│   ├── embeddings/       # SentenceTransformers + FAISS vector indexer
-│   ├── graph/            # Dependency graph building (NetworkX)
-│   ├── llm/              # Multi-provider manager (Groq/OAI/Ollama/OpenRouter)
-│   ├── parser/           # AST-based static code analysers
-│   ├── retrieval/        # Graph-RAG pipeline (vector + graph context)
-│   ├── main.py           # Application entry point
-│   └── requirements.txt  # Python dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── components/   # Sidebar, StatusBar, ErrorBoundary, etc.
-│   │   ├── pages/        # Explorer, Graph, Search, Chat, Docs, Health Dashboard
-│   │   ├── services/     # REST API client layer
-│   │   ├── stores/       # Zustand state management
-│   │   └── App.tsx       # Application router + animated transitions
-│   ├── package.json
-│   └── vite.config.ts
-├── desktop/
-│   ├── main.js           # Electron main process
-│   ├── preload.js        # Context isolation bridge
-│   └── package.json
-├── tests/                # 102 pytest tests (security, services, API, parser, graph)
-├── alembic/              # Database migrations
-├── .github/workflows/    # CI/CD pipeline (lint, test, build)
-├── Dockerfile            # Multi-stage production build
-├── docker-compose.yml    # App + PostgreSQL orchestration
-├── pyproject.toml        # Ruff + pytest + mypy config
-├── .env.example          # Environment variable template
-└── package.json          # Root orchestrator (concurrently)
-```
-
----
-
-## 🧪 Testing
+The multi-stage `Dockerfile` compiles the React frontend and packages the FastAPI backend into an optimized runtime container.
 
 ```bash
-# Run all tests (102 tests)
-python -m pytest tests/ -v
-
-# Run specific test suites
-python -m pytest tests/test_security.py -v    # Security & auth tests
-python -m pytest tests/test_services.py -v    # Health score & tech debt
-python -m pytest tests/test_portfolio.py -v   # Comparison & dependency risk
-python -m pytest tests/test_api.py -v         # API integration tests
-```
-
----
-
-## 🐳 Docker
-
-```bash
-# Start the full stack (app + PostgreSQL)
+# Start full application stack
 docker compose up --build
-
-# Or run just the backend
-docker compose up backend
 ```
+
+Mounted user repositories volume:
+Place repositories into `./repos` to scan them directly from within the Docker container at `/repos/...`.
+
+---
+
+## 🔒 Security Model
+
+- **File Containment**: Filesystem operations strictly require canonical validation anchored to the repository root. Path traversals, absolute escapes, and symlink breaks return HTTP 403.
+- **Resource Constraints**: Maximum file count (`MAX_FILES`), file size (`MAX_FILE_SIZE`), and traversal depth (`MAX_DIRECTORY_DEPTH`) are enforced early during directory traversal.
+- **Authentication**: When `AUTH_ENABLED=true`, all operational routes require a valid JWT Bearer token. Startup is rejected if default/placeholder secrets are detected.
+- **Rate Limiting**: Critical endpoints (`/scan`, `/search`, `/chat`, `/file`) enforce rate limits via slowapi.
+- **Input Sanitization**: User inputs are checked for control characters, maximum lengths, and malformed strings.
+- **Error Sanitization**: API errors return stable generic messages without leaking server stack traces, absolute paths, or database configurations.
 
 ---
 
 ## 📜 License
 
 MIT
-

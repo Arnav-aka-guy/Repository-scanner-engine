@@ -6,7 +6,6 @@ import networkx as nx
 
 from backend.graph.models import AnalysisResult, GraphNode
 
-
 # Entry-point patterns that should not be flagged as dead code
 _ENTRY_POINT_NAMES: set[str] = {
     "main",
@@ -57,11 +56,7 @@ class GraphAnalyzer:
                     label=label,
                     node_type=node_type,
                     file_path=data.get("file_path", ""),
-                    metadata={
-                        k: v
-                        for k, v in data.items()
-                        if k not in {"label", "node_type", "file_path"}
-                    },
+                    metadata={k: v for k, v in data.items() if k not in {"label", "node_type", "file_path"}},
                 )
             )
         return dead
@@ -117,9 +112,7 @@ class GraphAnalyzer:
         top_n: int = 10,
     ) -> list[tuple[str, int]]:
         """Return the *top_n* nodes sorted by total degree (in + out)."""
-        degree_pairs: list[tuple[str, int]] = [
-            (nid, deg) for nid, deg in graph.degree()
-        ]
+        degree_pairs: list[tuple[str, int]] = list(graph.degree())
         degree_pairs.sort(key=lambda x: x[1], reverse=True)
         return degree_pairs[:top_n]
 

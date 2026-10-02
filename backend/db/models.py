@@ -6,9 +6,9 @@ and generated documentation.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, Float
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.database import Base
@@ -16,7 +16,7 @@ from backend.db.database import Base
 
 def _utcnow() -> datetime:
     """Return timezone-aware UTC now."""
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 class Repository(Base):
@@ -30,12 +30,8 @@ class Repository(Base):
     total_files: Mapped[int] = mapped_column(Integer, default=0)
     total_lines: Mapped[int] = mapped_column(Integer, default=0)
     languages_json: Mapped[str] = mapped_column(Text, default="{}")
-    last_scanned_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    last_scanned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
     scans: Mapped[list[ScanRecord]] = relationship(
@@ -66,12 +62,8 @@ class ScanRecord(Base):
     files_indexed: Mapped[int] = mapped_column(Integer, default=0)
     duration_ms: Mapped[float] = mapped_column(Float, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     repository: Mapped[Repository] = relationship("Repository", back_populates="scans")
@@ -86,18 +78,12 @@ class ChatMessage(Base):
     repository_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
     )
-    role: Mapped[str] = mapped_column(
-        Enum("user", "assistant", name="message_role"), nullable=False
-    )
+    role: Mapped[str] = mapped_column(Enum("user", "assistant", name="message_role"), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
-    repository: Mapped[Repository] = relationship(
-        "Repository", back_populates="chat_messages"
-    )
+    repository: Mapped[Repository] = relationship("Repository", back_populates="chat_messages")
 
 
 class GeneratedDoc(Base):
@@ -110,16 +96,11 @@ class GeneratedDoc(Base):
         Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
     )
     doc_type: Mapped[str] = mapped_column(
-        Enum("overview", "module", "architecture", "api_reference", "dependency_map",
-             name="doc_type"),
+        Enum("overview", "module", "architecture", "api_reference", "dependency_map", name="doc_type"),
         nullable=False,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
-    repository: Mapped[Repository] = relationship(
-        "Repository", back_populates="generated_docs"
-    )
+    repository: Mapped[Repository] = relationship("Repository", back_populates="generated_docs")

@@ -20,7 +20,11 @@ select = [
     "UP",  # pyupgrade
     "SIM", # flake8-simplify
 ]
-ignore = ["E501"]  # line too long (handled by formatter)
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # Depends() in default arg is the correct FastAPI dependency injection pattern
+]
+
 
 [tool.ruff.lint.isort]
 known-first-party = ["backend"]
@@ -32,7 +36,11 @@ quote-style = "double"
 testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 addopts = "-v --tb=short"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 
 [tool.mypy]
 python_version = "3.11"

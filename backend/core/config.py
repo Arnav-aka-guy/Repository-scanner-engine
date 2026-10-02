@@ -10,7 +10,23 @@ import os
 from pathlib import Path
 from typing import ClassVar
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Known insecure placeholder values that must never be used in production
+_INSECURE_SECRETS: frozenset[str] = frozenset(
+    {
+        "change-me-to-a-random-secret",
+        "secret",
+        "changeme",
+        "your-secret-here",
+        "jwt-secret",
+        "mysecret",
+        "placeholder",
+    }
+)
+
+_MIN_SECRET_LENGTH: int = 32
 
 
 class Settings(BaseSettings):
@@ -22,6 +38,9 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    # ── Application version ──────────────────────────────────────────────
+    app_version: str = "2.0.0"
 
     # ── Data directories ────────────────────────────────────────────────
     data_dir: str = "data"
@@ -56,7 +75,7 @@ class Settings(BaseSettings):
 
     # ── Groq settings ─────────────────────────────────────────────────
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
 
     # ── OpenRouter settings ───────────────────────────────────────────
     openrouter_api_key: str = ""
@@ -64,22 +83,65 @@ class Settings(BaseSettings):
 
     # ── Database ──────────────────────────────────────────────────────
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/antigravity"
+    # When False the application works without a relational database (indexes
+    # are stored on the local filesystem only).
+    database_enabled: bool = False
 
     # ── Authentication ────────────────────────────────────────────────
     auth_enabled: bool = False
+    # Safe placeholder for development (only safe when auth_enabled=False).
     jwt_secret_key: str = "change-me-to-a-random-secret"
     jwt_algorithm: str = "HS256"
     jwt_expiry_hours: int = 24
 
+    # ── CORS ──────────────────────────────────────────────────────────
+    cors_origins: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+    ]
+
+    # ── Scanning limits ───────────────────────────────────────────────
+    max_files: int = 10_000
+    max_file_size_bytes: int = 5 * 1024 * 1024  # 5 MB
+    max_directory_depth: int = 30
+
     # ── Directory list for bulk creation ────────────────────────────────
     _SUBDIRS: ClassVar[tuple[str, ...]] = ("graphs", "embeddings", "docs", "cache")
+
+    # ── Validators ───────────────────────────────────────────────────────
+    @model_validator(mode="after")
+    def _validate_auth_secret(self) -> Settings:
+        """Refuse to start in authenticated mode with an insecure secret.
+
+        When ``AUTH_ENABLED=true`` the JWT secret:
+        - must be present
+        - must not be a known placeholder
+        - must be at least 32 characters long
+
+        To generate a secure secret run:
+            python -c "import secrets; print(secrets.token_hex(32))"
+        """
+        if self.auth_enabled:
+            secret = self.jwt_secret_key
+            if not secret or secret.lower() in _INSECURE_SECRETS:
+                raise ValueError(
+                    "AUTH_ENABLED=true requires a secure JWT_SECRET_KEY. "
+                    "The current value is a known insecure placeholder. "
+                    'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
+                )
+            if len(secret) < _MIN_SECRET_LENGTH:
+                raise ValueError(
+                    f"AUTH_ENABLED=true requires JWT_SECRET_KEY of at least "
+                    f"{_MIN_SECRET_LENGTH} characters (got {len(secret)})."
+                )
+        return self
 
     def ensure_directories(self) -> None:
         """Create the data root and all sub-directories if they don't exist."""
         for subdir in self._SUBDIRS:
-            Path(os.path.join(self.data_dir, subdir)).mkdir(
-                parents=True, exist_ok=True
-            )
+            Path(os.path.join(self.data_dir, subdir)).mkdir(parents=True, exist_ok=True)
 
 
 # ── Module-level singleton ──────────────────────────────────────────────
@@ -97,4 +159,3 @@ def get_settings() -> Settings:
 
 # Global settings instance
 settings = get_settings()
-

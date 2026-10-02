@@ -21,9 +21,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     the response so that logs can be correlated across services.
     """
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Process the request, log it, and return the response."""
         rid = request.headers.get("X-Request-ID") or generate_request_id()
         token = request_id_var.set(rid)
@@ -60,6 +58,5 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 response.status_code,
                 duration_ms,
             )
-
 
         return response

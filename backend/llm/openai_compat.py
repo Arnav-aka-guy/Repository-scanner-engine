@@ -18,7 +18,9 @@ class OpenAICompatProvider(LLMProvider):
 
     _client: httpx.AsyncClient | None = None
 
-    def __init__(self, base_url: str = "https://api.openai.com/v1", api_key: str = "", model: str = "gpt-4o-mini") -> None:
+    def __init__(
+        self, base_url: str = "https://api.openai.com/v1", api_key: str = "", model: str = "gpt-4o-mini"
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
@@ -42,27 +44,22 @@ class OpenAICompatProvider(LLMProvider):
         temperature: float = 0.7,
     ) -> str:
         url = f"{self.base_url}/chat/completions"
-        
+
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": temperature,
-            "stream": False
-        }
+        payload = {"model": self.model, "messages": messages, "temperature": temperature, "stream": False}
 
         try:
             client = self._get_client()
             response = await client.post(url, json=payload, headers=self._headers())
             if response.status_code != 200:
                 raise RuntimeError(f"OpenAI API returned status code {response.status_code}: {response.text}")
-            
+
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+            return str(data["choices"][0]["message"]["content"])
 
         except httpx.RequestError as e:
             logger.error("Failed to connect to OpenAI-compatible API at %s: %s", url, e)
@@ -78,34 +75,32 @@ class OpenAICompatProvider(LLMProvider):
         temperature: float = 0.7,
     ) -> AsyncGenerator[str, None]:
         url = f"{self.base_url}/chat/completions"
-        
+
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": temperature,
-            "stream": True
-        }
+        payload = {"model": self.model, "messages": messages, "temperature": temperature, "stream": True}
 
         try:
             client = self._get_client()
             async with client.stream("POST", url, json=payload, headers=self._headers()) as response:
                 if response.status_code != 200:
-                    raise RuntimeError(f"OpenAI API returned status code {response.status_code}")
-                
+                    await response.aread()
+                    err_msg = response.text
+                    logger.error("OpenAI-compatible stream error (%d): %s", response.status_code, err_msg)
+                    raise RuntimeError(f"OpenAI API returned status code {response.status_code}: {err_msg}")
+
                 async for line in response.aiter_lines():
                     if not line:
                         continue
-                    
+
                     if line.startswith("data: "):
                         data_str = line[6:].strip()
                         if data_str == "[DONE]":
                             break
-                        
+
                         try:
                             chunk = json.loads(data_str)
                             choices = chunk.get("choices", [])
@@ -119,6 +114,4 @@ class OpenAICompatProvider(LLMProvider):
 
         except httpx.RequestError as e:
             logger.error("Failed to connect to OpenAI-compatible stream at %s: %s", url, e)
-            raise ConnectionError(
-                f"Failed to connect to OpenAI-compatible API stream at {self.base_url}."
-            ) from e
+            raise ConnectionError(f"Failed to connect to OpenAI-compatible API stream at {self.base_url}.") from e

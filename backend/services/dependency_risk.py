@@ -134,10 +134,7 @@ def _parse_package_json(content: str) -> list[DependencyInfo]:
             if version.startswith("*") or version == "latest":
                 dep.risk_level = "high"
                 dep.issues.append("Wildcard/latest version — extremely risky")
-            elif _NPM_CARET.match(version):
-                dep.risk_level = "low"
-                # Caret is standard npm behavior
-            elif _NPM_EXACT.match(version):
+            elif _NPM_CARET.match(version) or _NPM_EXACT.match(version):
                 dep.risk_level = "low"
                 # Exactly pinned
 
@@ -213,17 +210,12 @@ def analyse_dependency_risk(repo_path: str) -> DependencyRiskReport:
     # Generate suggestions
     suggestions: list[str] = []
     if risk_counts["high"] > 0:
-        suggestions.append(
-            f"⚠️ {risk_counts['high']} high-risk dependencies need immediate attention"
-        )
+        suggestions.append(f"⚠️ {risk_counts['high']} high-risk dependencies need immediate attention")
     if risk_counts["medium"] > 3:
-        suggestions.append(
-            f"Consider pinning {risk_counts['medium']} loosely-constrained dependencies"
-        )
+        suggestions.append(f"Consider pinning {risk_counts['medium']} loosely-constrained dependencies")
     if python_count + node_count > 30:
         suggestions.append(
-            f"Total dependency count ({python_count + node_count}) is high — "
-            "audit for unnecessary packages"
+            f"Total dependency count ({python_count + node_count}) is high — " "audit for unnecessary packages"
         )
     unpinned = sum(1 for d in all_deps if "unpinned" in d.version_spec.lower() or d.version_spec == "")
     if unpinned > 0:

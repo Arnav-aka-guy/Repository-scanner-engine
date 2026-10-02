@@ -15,6 +15,11 @@ export async function sendChatMessageStream(
   return apiPostStream('/chat/', { question, repo_path: repoPath }, onChunk, onClose);
 }
 
-export async function getChatHistory(): Promise<ChatHistoryResponse[]> {
-  return apiGet<ChatHistoryResponse[]>('/chat/history');
+export async function getChatHistory(repoPath?: string): Promise<ChatHistoryResponse[]> {
+  const params: Record<string, string> = {};
+  if (repoPath) {
+    params.repo_path = repoPath;
+  }
+  return apiGet<ChatHistoryResponse[]>('/chat/history', params);
 }
+

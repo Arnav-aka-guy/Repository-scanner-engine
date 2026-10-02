@@ -35,6 +35,25 @@ class TestHealthEndpoints:
         assert "llm_provider" in data
         assert "embedding_model" in data
 
+    def test_root_browser_returns_html(self, client: TestClient):
+        """Root endpoint with text/html accept header should return HTML when built."""
+        response = client.get("/", headers={"Accept": "text/html,application/xhtml+xml"})
+        assert response.status_code == 200
+        assert "text/html" in response.headers.get("content-type", "")
+
+    def test_spa_routes_return_html(self, client: TestClient):
+        """Client-side SPA routes should return the frontend index HTML."""
+        for path in ("/dashboard", "/search", "/chat"):
+            response = client.get(path, headers={"Accept": "text/html"})
+            assert response.status_code == 200
+            assert "text/html" in response.headers.get("content-type", "")
+
+    def test_api_404_not_intercepted_by_spa(self, client: TestClient):
+        """Unknown API paths must return 404 JSON, not HTML index."""
+        response = client.get("/api/unknown_route_12345")
+        assert response.status_code == 404
+        assert "application/json" in response.headers.get("content-type", "")
+
 
 class TestRepositoryEndpoints:
     """Test repository scanning and file endpoints."""

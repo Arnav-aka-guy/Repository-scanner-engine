@@ -9,12 +9,11 @@ consistent shape.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
 from jose import JWTError, jwt
 
 from backend.core.config import get_settings
@@ -46,10 +45,8 @@ def create_access_token(
     settings = get_settings()
     to_encode = data.copy()
 
-    expire = datetime.now(timezone.utc) + (
-        expires_delta
-        if expires_delta is not None
-        else timedelta(hours=settings.jwt_expiry_hours)
+    expire = datetime.now(UTC) + (
+        expires_delta if expires_delta is not None else timedelta(hours=settings.jwt_expiry_hours)
     )
     to_encode["exp"] = expire
 
@@ -59,7 +56,7 @@ def create_access_token(
         algorithm=settings.jwt_algorithm,
     )
     logger.debug("Access token created, expires at %s", expire.isoformat())
-    return encoded
+    return str(encoded)
 
 
 def verify_token(token: str) -> dict[str, Any]:

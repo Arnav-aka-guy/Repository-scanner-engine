@@ -46,7 +46,8 @@ async def get_health_score(
     try:
         parsed = await parser.parse_repository(str(path))
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to parse: {exc}") from exc
+        logger.error("Failed to parse repository %s for health score: %s", path.name, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to parse repository for health score.") from exc
 
     # Try to get analysis for architecture scoring
     analysis = None

@@ -29,9 +29,11 @@ class ProviderManager:
         """Build the provider fallback chain based on available API keys."""
         settings = get_settings()
 
+        provider: LLMProvider
         # 1. Groq (preferred — free, fast)
         if settings.groq_api_key:
             from backend.llm.groq import GroqProvider
+
             provider = GroqProvider(
                 api_key=settings.groq_api_key,
                 model=settings.groq_model,
@@ -42,6 +44,7 @@ class ProviderManager:
         # 2. OpenAI
         if settings.openai_api_key:
             from backend.llm.openai_compat import OpenAICompatProvider
+
             provider = OpenAICompatProvider(
                 base_url=settings.openai_base_url,
                 api_key=settings.openai_api_key,
@@ -53,6 +56,7 @@ class ProviderManager:
         # 3. OpenRouter
         if settings.openrouter_api_key:
             from backend.llm.openrouter import OpenRouterProvider
+
             provider = OpenRouterProvider(
                 api_key=settings.openrouter_api_key,
                 model=settings.openrouter_model,
@@ -62,6 +66,7 @@ class ProviderManager:
 
         # 4. Ollama (local fallback — always available)
         from backend.llm.ollama import OllamaProvider
+
         provider = OllamaProvider(
             base_url=settings.llm_base_url,
             model=settings.llm_model,
@@ -71,14 +76,14 @@ class ProviderManager:
 
         if self.providers:
             self.active_provider_name = self.providers[0][0]
-            logger.info("Active LLM provider: %s (with %d fallbacks)",
-                        self.active_provider_name, len(self.providers) - 1)
+            logger.info(
+                "Active LLM provider: %s (with %d fallbacks)", self.active_provider_name, len(self.providers) - 1
+            )
 
     def get_provider_status(self) -> list[dict[str, Any]]:
         """Return status info for all configured providers."""
         return [
-            {"name": name, "model": getattr(p, "model", "unknown"),
-             "active": name == self.active_provider_name}
+            {"name": name, "model": getattr(p, "model", "unknown"), "active": name == self.active_provider_name}
             for name, p in self.providers
         ]
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,9 +21,7 @@ logger = logging.getLogger(__name__)
 # ── Repository CRUD ─────────────────────────────────────────────────────
 
 
-async def get_or_create_repository(
-    db: AsyncSession, *, path: str, name: str
-) -> Repository:
+async def get_or_create_repository(db: AsyncSession, *, path: str, name: str) -> Repository:
     """Return an existing repository by path, or create a new one."""
     stmt = select(Repository).where(Repository.path == path)
     result = await db.execute(stmt)
@@ -50,7 +48,7 @@ async def update_repository_stats(
     repo.total_files = total_files
     repo.total_lines = total_lines
     repo.languages_json = json.dumps(languages)
-    repo.last_scanned_at = datetime.now(tz=timezone.utc)
+    repo.last_scanned_at = datetime.now(tz=UTC)
     await db.flush()
     return repo
 
@@ -65,9 +63,7 @@ async def list_repositories(db: AsyncSession) -> list[Repository]:
 # ── Scan Records ────────────────────────────────────────────────────────
 
 
-async def create_scan_record(
-    db: AsyncSession, *, repository_id: int, status: str = "pending"
-) -> ScanRecord:
+async def create_scan_record(db: AsyncSession, *, repository_id: int, status: str = "pending") -> ScanRecord:
     """Create a new scan record."""
     record = ScanRecord(repository_id=repository_id, status=status)
     db.add(record)
@@ -97,7 +93,7 @@ async def update_scan_record(
     if error_message is not None:
         record.error_message = error_message
     if status in ("completed", "failed"):
-        record.completed_at = datetime.now(tz=timezone.utc)
+        record.completed_at = datetime.now(tz=UTC)
     await db.flush()
     return record
 
@@ -119,9 +115,7 @@ async def save_chat_message(
     return msg
 
 
-async def get_chat_history(
-    db: AsyncSession, repository_id: int, *, limit: int = 100
-) -> list[ChatMessage]:
+async def get_chat_history(db: AsyncSession, repository_id: int, *, limit: int = 100) -> list[ChatMessage]:
     """Retrieve recent chat messages for a repository."""
     stmt = (
         select(ChatMessage)
@@ -145,35 +139,25 @@ async def save_generated_doc(
 ) -> GeneratedDoc:
     """Save or update a generated documentation entry."""
     stmt = (
-        select(GeneratedDoc)
-        .where(GeneratedDoc.repository_id == repository_id)
-        .where(GeneratedDoc.doc_type == doc_type)
+        select(GeneratedDoc).where(GeneratedDoc.repository_id == repository_id).where(GeneratedDoc.doc_type == doc_type)
     )
     result = await db.execute(stmt)
     existing = result.scalar_one_or_none()
 
     if existing:
         existing.content = content
-        existing.created_at = datetime.now(tz=timezone.utc)
+        existing.created_at = datetime.now(tz=UTC)
         await db.flush()
         return existing
 
-    doc = GeneratedDoc(
-        repository_id=repository_id, doc_type=doc_type, content=content
-    )
+    doc = GeneratedDoc(repository_id=repository_id, doc_type=doc_type, content=content)
     db.add(doc)
     await db.flush()
     return doc
 
 
-async def get_generated_docs(
-    db: AsyncSession, repository_id: int
-) -> list[GeneratedDoc]:
+async def get_generated_docs(db: AsyncSession, repository_id: int) -> list[GeneratedDoc]:
     """Retrieve all generated docs for a repository."""
-    stmt = (
-        select(GeneratedDoc)
-        .where(GeneratedDoc.repository_id == repository_id)
-        .order_by(GeneratedDoc.doc_type)
-    )
+    stmt = select(GeneratedDoc).where(GeneratedDoc.repository_id == repository_id).order_by(GeneratedDoc.doc_type)
     result = await db.execute(stmt)
     return list(result.scalars().all())

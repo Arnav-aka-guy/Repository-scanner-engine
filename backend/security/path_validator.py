@@ -24,6 +24,7 @@ _IS_WINDOWS = platform.system() == "Windows"
 
 # ── Internal helpers ────────────────────────────────────────────────────
 
+
 def _blocked_paths() -> frozenset[str]:
     """Return the set of blocked root paths for the current OS."""
     return BLOCKED_PATHS_WINDOWS if _IS_WINDOWS else BLOCKED_PATHS_UNIX
@@ -37,7 +38,10 @@ def _is_under_blocked_path(resolved: Path) -> bool:
         if resolved == blocked_path or resolved_str.startswith(str(blocked_path) + ("/" if not _IS_WINDOWS else "\\")):
             return True
         # Also check with os.sep normalisation
-        if resolved_str.lower().startswith(str(blocked_path).lower() + "\\") or resolved_str.lower() == str(blocked_path).lower():
+        if (
+            resolved_str.lower().startswith(str(blocked_path).lower() + "\\")
+            or resolved_str.lower() == str(blocked_path).lower()
+        ):
             return True
     return False
 
@@ -49,6 +53,7 @@ def _reject(reason: str) -> HTTPException:
 
 
 # ── Public API ──────────────────────────────────────────────────────────
+
 
 def validate_repository_path(path: str) -> Path:
     """Validate and resolve a user-supplied repository path.
@@ -150,10 +155,8 @@ def validate_file_path(
 
         try:
             resolved.relative_to(root_resolved)
-        except ValueError:
-            raise _reject(
-                f"File '{resolved}' is outside the repository root '{root_resolved}'."
-            )
+        except ValueError as exc:
+            raise _reject(f"File '{resolved}' is outside the repository root '{root_resolved}'.") from exc
 
     # Must exist and be a regular file
     if not resolved.exists():

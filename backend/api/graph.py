@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.api.dependencies import get_graph, get_parser
-from backend.graph.models import AnalysisResult, GraphData
+from backend.graph.models import AnalysisResult
 from backend.parser.models import ParsedFile
 from backend.security.path_validator import validate_repository_path
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.graph.service import GraphService
     from backend.parser.service import ParserService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
 
@@ -33,17 +36,19 @@ async def dependency_graph(
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
+        logger.error("Failed to parse repository %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to parse repository: {exc}",
+            detail="Failed to parse repository.",
         ) from exc
 
     try:
         return await graph_svc.get_cytoscape_data(parsed_files, "dependency")
     except Exception as exc:
+        logger.error("Failed to build dependency graph for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to build dependency graph: {exc}",
+            detail="Failed to build dependency graph.",
         ) from exc
 
 
@@ -59,17 +64,19 @@ async def call_graph(
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
+        logger.error("Failed to parse repository %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to parse repository: {exc}",
+            detail="Failed to parse repository.",
         ) from exc
 
     try:
         return await graph_svc.get_cytoscape_data(parsed_files, "call")
     except Exception as exc:
+        logger.error("Failed to build call graph for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to build call graph: {exc}",
+            detail="Failed to build call graph.",
         ) from exc
 
 
@@ -85,15 +92,17 @@ async def analysis(
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
+        logger.error("Failed to parse repository %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to parse repository: {exc}",
+            detail="Failed to parse repository.",
         ) from exc
 
     try:
         return await graph_svc.analyze(parsed_files)
     except Exception as exc:
+        logger.error("Graph analysis failed for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Analysis failed: {exc}",
+            detail="Graph analysis failed.",
         ) from exc
