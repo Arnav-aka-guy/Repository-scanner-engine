@@ -315,6 +315,53 @@ class TestScannedRepoRegistryAndFileLeak:
             )
             assert r3.status_code == 403
 
+    def test_github_workflows_and_gitignore_readable_but_git_config_blocked(self, tmp_path: Path):
+        """.github/workflows/ci.yml and .gitignore are readable inside a scanned repo; .git/config still blocked."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        from backend.security.repo_registry import register_scanned_repo
+
+        repo_dir = tmp_path / "my_project"
+        repo_dir.mkdir()
+        register_scanned_repo(repo_dir)
+
+        workflows_dir = repo_dir / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        ci_file = workflows_dir / "ci.yml"
+        ci_file.write_text("name: CI\n")
+
+        gitignore_file = repo_dir / ".gitignore"
+        gitignore_file.write_text("node_modules/\n")
+
+        git_dir = repo_dir / ".git"
+        git_dir.mkdir()
+        git_config = git_dir / "config"
+        git_config.write_text("[core]\n")
+
+        with TestClient(app) as client:
+            # .github/workflows/ci.yml readable
+            r_ci = client.get(
+                "/api/repository/file/.github/workflows/ci.yml",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert r_ci.status_code == 200
+            assert "name: CI" in r_ci.json()["content"]
+
+            # .gitignore readable
+            r_gi = client.get(
+                "/api/repository/file/.gitignore",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert r_gi.status_code == 200
+            assert "node_modules/" in r_gi.json()["content"]
+
+            # .git/config still blocked
+            r_gc = client.get(
+                "/api/repository/file/.git/config",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert r_gc.status_code == 403
+
 
 # ── Input Sanitizer Tests ──────────────────────────────────────────────
 

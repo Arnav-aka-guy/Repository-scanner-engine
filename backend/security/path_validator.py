@@ -29,7 +29,18 @@ _SENSITIVE_PARTS: frozenset[str] = frozenset(
 
 # Sensitive components forbidden in file paths even inside repo root
 _SENSITIVE_FILE_PARTS: frozenset[str] = frozenset(
-    {".ssh", ".aws", ".gnupg", ".config", ".env", ".git", ".docker", ".bash_history", ".zsh_history"}
+    {
+        ".ssh",
+        ".aws",
+        ".gnupg",
+        ".config",
+        ".env",
+        ".git",
+        ".git-credentials",
+        ".docker",
+        ".bash_history",
+        ".zsh_history",
+    }
 )
 
 
@@ -46,7 +57,7 @@ def _has_sensitive_file_component(path_parts: tuple[str, ...]) -> bool:
     """Return True if any part in path_parts matches sensitive names."""
     for part in path_parts:
         lower = part.lower()
-        if lower in _SENSITIVE_FILE_PARTS or lower.startswith(".env") or lower.startswith(".git"):
+        if lower in _SENSITIVE_FILE_PARTS or lower.startswith(".env") or lower in (".git", ".git-credentials"):
             return True
     return False
 
