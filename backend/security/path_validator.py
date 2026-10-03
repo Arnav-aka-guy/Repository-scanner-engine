@@ -12,6 +12,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
+from backend.core.config import settings
 from backend.core.constants import (
     BLOCKED_PATHS_UNIX,
     BLOCKED_PATHS_WINDOWS,
@@ -20,6 +21,30 @@ from backend.core.constants import (
 logger = logging.getLogger(__name__)
 
 _IS_WINDOWS = platform.system() == "Windows"
+
+# Sensitive directory components forbidden when allowed_roots is empty
+_SENSITIVE_PARTS: frozenset[str] = frozenset({".ssh", ".aws", ".gnupg", ".config", ".env"})
+
+# Sensitive components forbidden in file paths even inside repo root
+_SENSITIVE_FILE_PARTS: frozenset[str] = frozenset({".ssh", ".aws", ".gnupg", ".config", ".env", ".git"})
+
+
+def _has_sensitive_component(path: Path) -> bool:
+    """Return True if path contains any hidden sensitive directory component."""
+    for part in path.parts:
+        lower = part.lower()
+        if lower in _SENSITIVE_PARTS or lower.startswith(".env"):
+            return True
+    return False
+
+
+def _has_sensitive_file_component(path_parts: tuple[str, ...]) -> bool:
+    """Return True if any part in path_parts matches sensitive names."""
+    for part in path_parts:
+        lower = part.lower()
+        if lower in _SENSITIVE_FILE_PARTS or lower.startswith(".env") or lower.startswith(".git"):
+            return True
+    return False
 
 
 # ── Internal helpers ────────────────────────────────────────────────────
@@ -60,8 +85,7 @@ def validate_repository_path(path: str) -> Path:
 
     Raises:
         HTTPException(403): If the path is blocked, contains traversal
-            sequences, is a symlink escaping the target, or is not an
-            existing directory.
+            sequences, is outside allowed roots, or is not an existing directory.
 
     Returns:
         The resolved, absolute ``Path`` object.
@@ -88,16 +112,29 @@ def validate_repository_path(path: str) -> Path:
     if not resolved.is_absolute():
         raise _reject("Path must be absolute.")
 
-    # Block system directories
+    # Block system directories (defense in depth)
     if _is_under_blocked_path(resolved):
         raise _reject(f"Access to system path '{resolved}' is forbidden.")
 
-    # Reject symlinks that escape the apparent target directory
-    raw = Path(path)
-    if raw.is_symlink():
-        link_target = raw.resolve()
-        if link_target != resolved:
-            raise _reject("Symlink escapes the target directory.")
+    # Check configured allowed roots (allowlist)
+    allowed_roots = [Path(r).resolve() for r in settings.allowed_roots if str(r).strip()]
+    if allowed_roots:
+        is_allowed = any(resolved == root or (root in resolved.parents) for root in allowed_roots)
+        if not is_allowed:
+            raise _reject(f"Repository path '{resolved}' is not within any allowed root.")
+    else:
+        # Fall back to blocklist + home directory + sensitive hidden components
+        try:
+            home = Path.home().resolve()
+            if resolved == home:
+                raise _reject("Access to user home directory is forbidden.")
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+        if _has_sensitive_component(resolved):
+            raise _reject(f"Access to path containing sensitive component '{resolved}' is forbidden.")
 
     # Must exist and be a directory
     if not resolved.exists():
@@ -145,6 +182,10 @@ def validate_file_path(
     # Block system directories
     if _is_under_blocked_path(resolved):
         raise _reject(f"Access to system path '{resolved}' is forbidden.")
+
+    # Block sensitive hidden components
+    if _has_sensitive_file_component(Path(file_path).parts) or _has_sensitive_file_component(resolved.parts):
+        raise _reject(f"Access to sensitive file or path '{file_path}' is forbidden.")
 
     # Constrain to repo root when given
     if repo_root is not None:

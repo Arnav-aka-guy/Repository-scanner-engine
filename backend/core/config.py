@@ -6,11 +6,12 @@ creates required data directories on initialization.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Known insecure placeholder values that must never be used in production
@@ -107,10 +108,32 @@ class Settings(BaseSettings):
     max_file_size_bytes: int = 5 * 1024 * 1024  # 5 MB
     max_directory_depth: int = 30
 
+    # ── Path allowlist ────────────────────────────────────────────────
+    allowed_roots: list[str] = []
+
     # ── Directory list for bulk creation ────────────────────────────────
     _SUBDIRS: ClassVar[tuple[str, ...]] = ("graphs", "embeddings", "docs", "cache")
 
     # ── Validators ───────────────────────────────────────────────────────
+    @field_validator("allowed_roots", mode="before")
+    @classmethod
+    def _parse_allowed_roots(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(item) for item in parsed]
+                except Exception:
+                    pass
+            return [part.strip() for part in v.split(",") if part.strip()]
+        if isinstance(v, (list, tuple, set)):
+            return [str(item) for item in v]
+        return []
+
     @model_validator(mode="after")
     def _validate_auth_secret(self) -> Settings:
         """Refuse to start in authenticated mode with an insecure secret.

@@ -59,6 +59,66 @@ class TestValidateRepositoryPath:
             validate_repository_path("/etc")
         assert exc_info.value.status_code == 403
 
+    def test_home_directory_rejected_as_repo_path(self, monkeypatch, tmp_path: Path):
+        """A repo_path equal to the home directory must be rejected with 403."""
+        from backend.core.config import settings
+        from backend.security.path_validator import validate_repository_path
+
+        monkeypatch.setattr(settings, "allowed_roots", [])
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_repository_path(str(tmp_path))
+        assert exc_info.value.status_code == 403
+        assert "home directory" in exc_info.value.detail.lower()
+
+    def test_allowed_roots_containment(self, tmp_path: Path, monkeypatch):
+        """With ALLOWED_ROOTS set to a tmp dir, a repo inside it is accepted and a repo outside it is rejected."""
+        from backend.core.config import settings
+        from backend.security.path_validator import validate_repository_path
+
+        allowed_dir = tmp_path / "allowed_zone"
+        allowed_dir.mkdir(parents=True, exist_ok=True)
+        repo_inside = allowed_dir / "my_project"
+        repo_inside.mkdir()
+
+        outside_dir = tmp_path / "outside_zone"
+        outside_dir.mkdir(parents=True, exist_ok=True)
+
+        monkeypatch.setattr(settings, "allowed_roots", [str(allowed_dir)])
+
+        # Inside is accepted
+        res = validate_repository_path(str(repo_inside))
+        assert res == repo_inside.resolve()
+
+        # Outside is rejected
+        with pytest.raises(HTTPException) as exc_info:
+            validate_repository_path(str(outside_dir))
+        assert exc_info.value.status_code == 403
+        assert "allowed root" in exc_info.value.detail.lower()
+
+    def test_symlink_inside_allowed_root_pointing_outside_rejected(self, tmp_path: Path, monkeypatch):
+        """A symlink inside an allowed root that points outside it is rejected."""
+        from backend.core.config import settings
+        from backend.security.path_validator import validate_repository_path
+
+        allowed_dir = tmp_path / "allowed"
+        allowed_dir.mkdir(parents=True, exist_ok=True)
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir(parents=True, exist_ok=True)
+
+        link_inside = allowed_dir / "link_to_outside"
+        try:
+            link_inside.symlink_to(outside_dir, target_is_directory=True)
+        except OSError:
+            pytest.skip("Symlink creation requires elevated privileges on this OS")
+
+        monkeypatch.setattr(settings, "allowed_roots", [str(allowed_dir)])
+
+        with pytest.raises(HTTPException) as exc_info:
+            validate_repository_path(str(link_inside))
+        assert exc_info.value.status_code == 403
+
 
 class TestValidateFilePath:
     """Test suite for validate_file_path()."""
@@ -96,6 +156,30 @@ class TestValidateFilePath:
         with pytest.raises(HTTPException) as exc_info:
             validate_file_path(fake, str(tmp_path))
         assert exc_info.value.status_code in (404, 400, 403)
+
+    def test_read_ssh_key_through_api_rejected(self, tmp_path: Path):
+        """Reading <tmp_home>/.ssh/id_rsa through /api/repository/file is rejected with 403."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        tmp_home = tmp_path / "fake_home"
+        ssh_dir = tmp_home / ".ssh"
+        ssh_dir.mkdir(parents=True, exist_ok=True)
+        key_file = ssh_dir / "id_rsa"
+        key_file.write_text("PRIVATE_KEY_DATA")
+
+        with TestClient(app) as client:
+            resp = client.get(
+                f"/api/repository/file/{key_file.name}",
+                params={"repo_path": str(ssh_dir)},
+            )
+            assert resp.status_code == 403
+
+            resp2 = client.get(
+                "/api/repository/file/.ssh/id_rsa",
+                params={"repo_path": str(tmp_home)},
+            )
+            assert resp2.status_code == 403
 
 
 # ── Input Sanitizer Tests ──────────────────────────────────────────────

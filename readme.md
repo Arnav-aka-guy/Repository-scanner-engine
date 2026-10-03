@@ -144,6 +144,14 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=your_key_here
 ```
 
+To restrict repository scanning and file exploration to trusted directories (path allowlist), set `ALLOWED_ROOTS` in `.env`:
+
+```env
+ALLOWED_ROOTS=/home/user/projects,/var/repos
+```
+
+When `ALLOWED_ROOTS` is configured, any repository outside these directories or symlinks pointing outside them are blocked with `403 Forbidden`. When left empty, the engine falls back to system blocklists while strictly forbidding access to the user's home directory root and sensitive hidden components (`.ssh`, `.aws`, `.gnupg`, `.config`, `.env`).
+
 ### 3. Frontend Setup
 
 ```bash
