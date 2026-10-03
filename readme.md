@@ -182,8 +182,10 @@ npm run dev
 
 ```bash
 cd frontend && npm run build && cd ..
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
+
+> **Security Note:** Always bind to `127.0.0.1` for local usage. Only bind to `0.0.0.0` in production environments when `AUTH_ENABLED=true` is set and `ALLOWED_ROOTS` is configured.
 
 FastAPI automatically mounts `frontend/dist/assets` and provides full client-side SPA routing on `http://127.0.0.1:8000`.
 
