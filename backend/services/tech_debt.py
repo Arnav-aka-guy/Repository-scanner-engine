@@ -330,13 +330,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
     suggestions: list[str] = []
     if smells_by_cat.get("long_function", 0) > 3:
         suggestions.append(
-            f"Refactor {smells_by_cat['long_function']} long functions — "
-            "extract helper methods and use guard clauses"
+            f"Refactor {smells_by_cat['long_function']} long functions — extract helper methods and use guard clauses"
         )
     if smells_by_cat.get("god_class", 0) > 0:
-        suggestions.append(
-            f"Split {smells_by_cat['god_class']} God class(es) — " "apply Single Responsibility Principle"
-        )
+        suggestions.append(f"Split {smells_by_cat['god_class']} God class(es) — apply Single Responsibility Principle")
     if smells_by_cat.get("large_file", 0) > 2:
         suggestions.append(f"Break up {smells_by_cat['large_file']} oversized files into focused modules")
     if smells_by_cat.get("missing_docstring", 0) > 5:

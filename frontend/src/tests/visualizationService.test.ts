@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getMermaidDiagram, getArchitectureDiagram } from '../services/visualization';
 
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn();
 
 const mockFetch = (data: unknown, status = 200) => {
-  (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+  (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
     status,
     json: async () => data,
@@ -29,7 +29,7 @@ describe('getMermaidDiagram', () => {
   it('defaults to dependency graph type', async () => {
     mockFetch({ graph_type: 'dependency', diagram: 'graph TD' });
     await getMermaidDiagram('/repo/path');
-    const calledUrl = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     expect(calledUrl).toContain('graph_type=dependency');
   });
 });

@@ -2,8 +2,28 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
+
+
+@pytest.fixture(autouse=True)
+def _ensure_dist_index():
+    """Ensure a minimal frontend/dist/index.html exists for SPA tests in CI."""
+    dist_dir = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+    index_file = dist_dir / "index.html"
+    created = False
+    if not index_file.exists():
+        dist_dir.mkdir(parents=True, exist_ok=True)
+        index_file.write_text("<!DOCTYPE html><html><body>Test SPA</body></html>", encoding="utf-8")
+        created = True
+    yield
+    if created:
+        try:
+            index_file.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 @pytest.fixture

@@ -126,9 +126,7 @@ class VectorStore:
         metadata_file = json_file if json_file.exists() else pkl_file
 
         if not faiss_file.exists() or not metadata_file.exists():
-            raise FileNotFoundError(
-                f"Could not load vector store from {base_path}: " f".faiss or metadata file missing."
-            )
+            raise FileNotFoundError(f"Could not load vector store from {base_path}: .faiss or metadata file missing.")
 
         logger.info("Loading FAISS index from %s ...", faiss_file)
         self.index = faiss.read_index(str(faiss_file))

@@ -174,8 +174,7 @@ class ArchitectureAnalyzer:
 
         # DFS-based cycle detection
         WHITE, GRAY, BLACK = 0, 1, 2
-        color = {nid: WHITE for nid in node_ids}
-        {nid: None for nid in node_ids}
+        color = dict.fromkeys(node_ids, WHITE)
         cycles: list[list[str]] = []
 
         def dfs(u: str, path: list[str]) -> None:
@@ -353,7 +352,7 @@ class ArchitectureAnalyzer:
         else:
             count = len(report.circular_dependencies)
             problems.append(
-                f"{count} circular dependency cycle(s) found. " "These make the codebase harder to refactor and test."
+                f"{count} circular dependency cycle(s) found. These make the codebase harder to refactor and test."
             )
 
         # Dead code

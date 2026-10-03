@@ -215,7 +215,7 @@ def analyse_dependency_risk(repo_path: str) -> DependencyRiskReport:
         suggestions.append(f"Consider pinning {risk_counts['medium']} loosely-constrained dependencies")
     if python_count + node_count > 30:
         suggestions.append(
-            f"Total dependency count ({python_count + node_count}) is high — " "audit for unnecessary packages"
+            f"Total dependency count ({python_count + node_count}) is high — audit for unnecessary packages"
         )
     unpinned = sum(1 for d in all_deps if "unpinned" in d.version_spec.lower() or d.version_spec == "")
     if unpinned > 0:
