@@ -192,7 +192,7 @@ npm run dev
 ```
 
 - Backend API: `http://127.0.0.1:8000`
-- API Interactive Docs: `http://127.0.0.1:8000/docs`
+- API Interactive Docs: `http://127.0.0.1:8000/api/docs`
 - Frontend UI: `http://localhost:5173`
 
 ### Production Mode (FastAPI Serving Compiled SPA)

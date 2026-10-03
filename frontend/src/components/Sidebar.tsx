@@ -27,8 +27,8 @@ const menuItems: MenuItem[] = [
   { name: 'Architecture', icon: Tv, path: '/architecture' },
   { name: 'Search', icon: Search, path: '/search' },
   { name: 'AI Chat', icon: MessageSquare, path: '/chat' },
-  { name: 'Docs', icon: FileText, path: '/docs' },
-  { name: 'Health', icon: Activity, path: '/health' },
+  { name: 'Docs', icon: FileText, path: '/documentation' },
+  { name: 'Health', icon: Activity, path: '/health-dashboard' },
 ];
 
 /* ─── Framer Variants ───────────────────────────────────────── */

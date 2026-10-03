@@ -11,8 +11,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/architecture': 'Architecture Viewer',
   '/search': 'Semantic Search',
   '/chat': 'AI Chat',
-  '/docs': 'Documentation',
-  '/health': 'Code Health',
+  '/documentation': 'Documentation',
+  '/health-dashboard': 'Code Health',
   '/settings': 'Settings',
 };
 

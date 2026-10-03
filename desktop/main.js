@@ -217,7 +217,7 @@ function buildMenu() {
         {
           label: 'Open Backend API Docs',
           click() {
-            shell.openExternal(`${BACKEND_URL}/docs`);
+            shell.openExternal(`${BACKEND_URL}/api/docs`);
           },
         },
         {

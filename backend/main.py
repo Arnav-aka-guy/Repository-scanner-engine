@@ -75,6 +75,9 @@ app = FastAPI(
         "and AI-powered documentation."
     ),
     lifespan=lifespan,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 # ── Middleware stack (order matters — outermost first) ──────────────────
@@ -176,7 +179,8 @@ app.include_router(compare_router, dependencies=_auth_deps)
 @app.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa_route(full_path: str, request: Request) -> Any:
     """Fallback handler to support client-side SPA routing."""
-    if full_path.startswith(("api/", "api", "docs", "openapi.json", "redoc", "health")):
+    clean_path = full_path.strip("/")
+    if clean_path == "api" or full_path.startswith("api/") or clean_path == "health":
         raise HTTPException(status_code=404, detail="Endpoint not found")
     index_file = _dist_dir / "index.html"
     if index_file.exists():

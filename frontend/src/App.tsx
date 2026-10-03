@@ -69,7 +69,7 @@ function AnimatedRoutes() {
             }
           />
           <Route
-            path="/docs"
+            path="/documentation"
             element={
               <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
                 <DocumentationGenerator />
@@ -77,7 +77,7 @@ function AnimatedRoutes() {
             }
           />
           <Route
-            path="/health"
+            path="/health-dashboard"
             element={
               <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
                 <HealthDashboard />

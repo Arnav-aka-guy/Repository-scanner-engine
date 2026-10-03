@@ -63,10 +63,32 @@ class TestHealthEndpoints:
 
     def test_spa_routes_return_html(self, client: TestClient):
         """Client-side SPA routes should return the frontend index HTML."""
-        for path in ("/dashboard", "/search", "/chat"):
+        for path in ("/dashboard", "/search", "/chat", "/documentation", "/health-dashboard"):
             response = client.get(path, headers={"Accept": "text/html"})
             assert response.status_code == 200
             assert "text/html" in response.headers.get("content-type", "")
+
+    def test_api_docs_and_health_routing(self, client: TestClient):
+        """Verify Swagger UI is at /api/docs and /health returns JSON health check."""
+        # /documentation returns SPA HTML
+        doc_resp = client.get("/documentation", headers={"Accept": "text/html"})
+        assert doc_resp.status_code == 200
+        assert "text/html" in doc_resp.headers.get("content-type", "")
+
+        # /health-dashboard returns SPA HTML
+        dash_resp = client.get("/health-dashboard", headers={"Accept": "text/html"})
+        assert dash_resp.status_code == 200
+        assert "text/html" in dash_resp.headers.get("content-type", "")
+
+        # /health returns JSON health check
+        health_resp = client.get("/health")
+        assert health_resp.status_code == 200
+        assert health_resp.json()["status"] == "healthy"
+
+        # /api/docs returns Swagger UI
+        swagger_resp = client.get("/api/docs")
+        assert swagger_resp.status_code == 200
+        assert "text/html" in swagger_resp.headers.get("content-type", "")
 
     def test_api_404_not_intercepted_by_spa(self, client: TestClient):
         """Unknown API paths must return 404 JSON, not HTML index."""
