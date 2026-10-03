@@ -6,6 +6,7 @@ incremental re-indexing, and cache management.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 from pathlib import Path
@@ -104,12 +105,32 @@ class EmbeddingsService:
             if fpath not in file_cache:
                 files_to_encode.append(fpath)
 
-        # Batch encode new/modified files
+        # Collect chunks across all new/modified files to batch encode efficiently
+        file_chunks: dict[str, tuple[list[str], list[dict[str, Any]]]] = {}
+        all_new_texts: list[str] = []
+        file_slices: dict[str, tuple[int, int]] = {}
+
         for fpath in files_to_encode:
             parsed = parsed_files[fpath]
             texts, metadata = self._create_chunks_for_file(fpath, parsed)
-            embs = self.encoder.encode(texts) if texts else np.empty((0, store.dimension), dtype=np.float32)
-            file_cache[fpath] = (texts, metadata, embs)
+            start_idx = len(all_new_texts)
+            all_new_texts.extend(texts)
+            end_idx = len(all_new_texts)
+            file_chunks[fpath] = (texts, metadata)
+            file_slices[fpath] = (start_idx, end_idx)
+
+        all_embs = (
+            await asyncio.to_thread(self.encoder.encode, all_new_texts)
+            if all_new_texts
+            else np.empty((0, store.dimension), dtype=np.float32)
+        )
+
+        for fpath, (texts, metadata) in file_chunks.items():
+            start_idx, end_idx = file_slices[fpath]
+            f_embs = (
+                all_embs[start_idx:end_idx] if end_idx > start_idx else np.empty((0, store.dimension), dtype=np.float32)
+            )
+            file_cache[fpath] = (texts, metadata, f_embs)
 
         # Aggregate across all active repository files
         for _fpath, (texts, metadata, embs) in file_cache.items():
@@ -158,7 +179,7 @@ class EmbeddingsService:
             return []
 
         logger.info("Performing semantic search for: '%s'", query)
-        query_embedding = self.encoder.encode_single(query)
+        query_embedding = await asyncio.to_thread(self.encoder.encode_single, query)
         return store.search(query_embedding, top_k=top_k)
 
     async def save_index(self, repo_name: str, repo_path: str | None = None) -> None:

@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 import shutil
+import stat
 import subprocess
 from pathlib import Path
 
@@ -23,6 +25,25 @@ logger = logging.getLogger(__name__)
 _GITHUB_URL_REGEX = re.compile(
     r"^https://github\.com/(?P<owner>[a-zA-Z0-9_.-]+)/(?P<repo>[a-zA-Z0-9_.-]+?)(?:\.git)?/?$"
 )
+
+
+def _force_remove_readonly(func, path, _exc_info) -> None:
+    """Clear readonly bit on Windows so git files in .git/objects can be deleted."""
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except Exception:
+        pass
+
+
+def _safe_rmtree(path: Path) -> None:
+    """Safely and completely delete a directory tree, handling Windows readonly git files."""
+    if not path.exists():
+        return
+    try:
+        shutil.rmtree(path, onerror=_force_remove_readonly)
+    except Exception as exc:
+        logger.warning("Failed cleaning directory at %s: %s", path, exc)
 
 
 def validate_github_url(url: str) -> tuple[str, str, str]:
@@ -72,12 +93,29 @@ def clone_github_repo(
     clean_repo_name = f"{owner}_{repo}_{url_hash}"
     target_dir = (parent_dir / clean_repo_name).resolve()
 
-    # If repo directory already exists from previous clone, remove it first for fresh state
-    if target_dir.exists():
+    # If repo directory already exists and is a valid clone with git metadata, reuse or pull
+    if target_dir.exists() and (target_dir / ".git").is_dir():
+        logger.info("Found existing clone for %s at %s. Verifying repository...", normalized_url, target_dir)
         try:
-            shutil.rmtree(target_dir, ignore_errors=True)
-        except OSError as exc:
-            logger.warning("Failed cleaning existing clone at %s: %s", target_dir, exc)
+            pull_res = subprocess.run(  # noqa: S603
+                ["git", "-C", str(target_dir), "pull", "--ff-only"],
+                shell=False,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            if pull_res.returncode == 0:
+                logger.info("Successfully refreshed existing clone at %s", target_dir)
+                return target_dir
+            logger.warning(
+                "Git pull returned %d (%s), re-cloning fresh...", pull_res.returncode, pull_res.stderr.strip()
+            )
+        except Exception as exc:
+            logger.warning("Git pull check failed (%s), re-cloning fresh...", exc)
+        _safe_rmtree(target_dir)
+    elif target_dir.exists():
+        _safe_rmtree(target_dir)
 
     cmd = [
         "git",
@@ -103,14 +141,22 @@ def clone_github_repo(
         )
         if result.returncode != 0:
             logger.error("Git clone failed (code %d): %s", result.returncode, result.stderr)
+            _safe_rmtree(target_dir)
+            err_msg = result.stderr.strip()
+            detail = (
+                f"Failed to clone GitHub repository. {err_msg}"
+                if err_msg
+                else "Failed to clone GitHub repository. Ensure repository is public and accessible."
+            )
             raise HTTPException(
                 status_code=400,
-                detail="Failed to clone GitHub repository. Ensure repository is public and accessible.",
+                detail=detail,
             )
+    except HTTPException:
+        raise
     except subprocess.TimeoutExpired as exc:
         logger.error("Git clone timed out after %ds for %s", timeout_seconds, normalized_url)
-        # Cleanup partial clone
-        shutil.rmtree(target_dir, ignore_errors=True)
+        _safe_rmtree(target_dir)
         raise HTTPException(
             status_code=408,
             detail="Repository clone timed out.",
@@ -123,6 +169,7 @@ def clone_github_repo(
         ) from exc
     except Exception as exc:
         logger.error("Unexpected error during git clone: %s", exc, exc_info=True)
+        _safe_rmtree(target_dir)
         raise HTTPException(
             status_code=500,
             detail="Repository cloning encountered an unexpected error.",

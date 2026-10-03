@@ -1,32 +1,66 @@
 const API_BASE = '/api';
 
+function formatApiError(status: number, text: string, statusText: string): string {
+  try {
+    const data = JSON.parse(text);
+    if (data?.detail) {
+      const msg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+      return msg;
+    }
+  } catch {
+    // not JSON
+  }
+  return text || statusText || `HTTP ${status}`;
+}
+
 export async function apiGet<T>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${API_BASE}${path}`, window.location.origin);
   if (params) {
     Object.entries(params).forEach(([key, val]) => url.searchParams.append(key, val));
   }
 
-  const response = await fetch(url.toString());
+  let response: Response;
+  try {
+    response = await fetch(url.toString());
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
+      throw new Error(
+        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.'
+      );
+    }
+    throw err;
+  }
+
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`API error (${response.status}): ${text || response.statusText}`);
+    throw new Error(formatApiError(response.status, text, response.statusText));
   }
 
   return response.json() as Promise<T>;
 }
 
 export async function apiPost<T>(path: string, body: any): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
+      throw new Error(
+        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.'
+      );
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`API error (${response.status}): ${text || response.statusText}`);
+    throw new Error(formatApiError(response.status, text, response.statusText));
   }
 
   return response.json() as Promise<T>;

@@ -69,6 +69,7 @@ class FileDetail(BaseModel):
 async def scan_repository(
     request: Request,
     body: ScanRequest,
+    background_tasks: BackgroundTasks,
     parser: ParserService = Depends(get_parser),
     embeddings: EmbeddingsService = Depends(get_embeddings),
 ) -> RepositoryInfo:
@@ -101,7 +102,7 @@ async def scan_repository(
 
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
-        await _index_embeddings(embeddings, parsed_files, repo_path=str(path))
+        background_tasks.add_task(_index_embeddings, embeddings, parsed_files, repo_path=str(path))
     except ScanLimitError as exc:
         logger.warning("Repository %s exceeded limits during parsing: %s", path.name, exc)
         raise HTTPException(
@@ -123,6 +124,7 @@ async def scan_repository(
 async def scan_github_repository(
     request: Request,
     body: GitHubScanRequest,
+    background_tasks: BackgroundTasks,
     parser: ParserService = Depends(get_parser),
     embeddings: EmbeddingsService = Depends(get_embeddings),
 ) -> RepositoryInfo:
@@ -148,7 +150,7 @@ async def scan_github_repository(
 
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(target_dir))
-        await _index_embeddings(embeddings, parsed_files, repo_path=str(target_dir))
+        background_tasks.add_task(_index_embeddings, embeddings, parsed_files, repo_path=str(target_dir))
     except Exception as exc:
         logger.error("Indexing failed for cloned repo %s: %s", target_dir.name, exc, exc_info=True)
         raise HTTPException(
@@ -351,5 +353,10 @@ async def _index_embeddings(
     repo_path: str | None = None,
 ) -> int:
     """Index all parsed files into the embeddings store and return the count."""
-    count: int = await embeddings_service.index_repository(parsed_files, repo_path=repo_path)
-    return count
+    try:
+        count: int = await embeddings_service.index_repository(parsed_files, repo_path=repo_path)
+        logger.info("Indexed %d code chunks for repository: %s", count, repo_path)
+        return count
+    except Exception as exc:
+        logger.error("Background embeddings indexing failed for %s: %s", repo_path, exc, exc_info=True)
+        return 0
