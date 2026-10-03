@@ -25,6 +25,40 @@ logger = logging.getLogger(__name__)
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
+# ── Password hashing helpers ───────────────────────────────────────────
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a bcrypt hash."""
+    if not hashed_password:
+        return False
+    try:
+        import bcrypt
+
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except Exception:
+        try:
+            from passlib.context import CryptContext
+
+            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+            return pwd_context.verify(plain_password, hashed_password)
+        except Exception:
+            return False
+
+
+def hash_password(password: str) -> str:
+    """Generate a bcrypt password hash."""
+    try:
+        import bcrypt
+
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    except Exception:
+        from passlib.context import CryptContext
+
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        return pwd_context.hash(password)
+
+
 # ── Token helpers ──────────────────────────────────────────────────────
 
 

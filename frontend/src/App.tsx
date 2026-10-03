@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout } from './layouts/MainLayout';
@@ -12,6 +12,8 @@ import { HealthDashboard } from './pages/HealthDashboard';
 import { Settings } from './pages/Settings';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/ToastContainer';
+import { useAuthStore } from './stores/authStore';
+import { LoginForm } from './components/LoginForm';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -97,12 +99,19 @@ function AnimatedRoutes() {
     </AnimatePresence>
   );
 }
-
 function App() {
+  const { authEnabled, token, checkAuthStatus } = useAuthStore();
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
+
+  const showLogin = authEnabled && !token;
+
   return (
     <BrowserRouter>
       <AnimatedBackground />
-      <AnimatedRoutes />
+      {showLogin ? <LoginForm /> : <AnimatedRoutes />}
       <ToastContainer />
     </BrowserRouter>
   );

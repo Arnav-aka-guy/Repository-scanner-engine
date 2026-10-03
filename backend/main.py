@@ -135,6 +135,7 @@ from fastapi import Depends  # noqa: E402
 
 from backend.api.ai_settings import router as settings_router  # noqa: E402
 from backend.api.architecture import router as architecture_router  # noqa: E402
+from backend.api.auth import router as auth_router  # noqa: E402
 from backend.api.chat import router as chat_router  # noqa: E402
 from backend.api.documentation import router as docs_router  # noqa: E402
 from backend.api.graph import router as graph_router  # noqa: E402
@@ -142,6 +143,9 @@ from backend.api.repository import router as repository_router  # noqa: E402
 from backend.api.search import router as search_router  # noqa: E402
 from backend.api.visualization import router as viz_router  # noqa: E402
 from backend.security.auth import get_current_user  # noqa: E402
+
+# Mount public auth router (login and status endpoints require no token)
+app.include_router(auth_router)
 
 _auth_deps = [Depends(get_current_user)]
 

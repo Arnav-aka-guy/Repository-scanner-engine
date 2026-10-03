@@ -130,11 +130,28 @@ Copy the example configuration:
 cp .env.example .env
 ```
 
-To enable JWT authentication (`AUTH_ENABLED=true`), generate a secure secret:
+#### Authentication (Optional, Off by Default)
 
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
+Authentication is completely optional and disabled by default (`AUTH_ENABLED=false`). When disabled, all routes are accessible without credentials.
+
+To enable single-user admin authentication:
+
+1. Set `AUTH_ENABLED=true` in `.env`.
+2. Generate a secure secret for `JWT_SECRET_KEY` (≥ 32 chars):
+   ```bash
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+3. Generate an admin password bcrypt hash:
+   ```bash
+   python scripts/hash_password.py
+   ```
+4. Set the credentials in `.env`:
+   ```env
+   ADMIN_USERNAME=admin
+   ADMIN_PASSWORD_HASH=$2b$12$...
+   ```
+
+When enabled, the frontend prompts for administrator login, issues JWT tokens via `POST /api/auth/token`, and attaches `Authorization: Bearer <token>` to requests.
 
 Configure your preferred LLM provider in `.env`:
 

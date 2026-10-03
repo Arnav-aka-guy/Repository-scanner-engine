@@ -1,4 +1,14 @@
+import { useAuthStore } from '../stores/authStore';
+
 const API_BASE = '/api';
+
+function getAuthHeaders(): Record<string, string> {
+  const token = useAuthStore.getState().token;
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
 
 function formatApiError(status: number, text: string, statusText: string): string {
   try {
@@ -21,7 +31,11 @@ export async function apiGet<T>(path: string, params?: Record<string, string>): 
 
   let response: Response;
   try {
-    response = await fetch(url.toString());
+    response = await fetch(url.toString(), {
+      headers: {
+        ...getAuthHeaders(),
+      },
+    });
   } catch (err: any) {
     if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
       throw new Error(
@@ -29,6 +43,10 @@ export async function apiGet<T>(path: string, params?: Record<string, string>): 
       );
     }
     throw err;
+  }
+
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
   }
 
   if (!response.ok) {
@@ -46,6 +64,7 @@ export async function apiPost<T>(path: string, body: any): Promise<T> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify(body),
     });
@@ -56,6 +75,10 @@ export async function apiPost<T>(path: string, body: any): Promise<T> {
       );
     }
     throw err;
+  }
+
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
   }
 
   if (!response.ok) {
@@ -76,9 +99,14 @@ export async function apiPostStream(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(body),
   });
+
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
+  }
 
   if (!response.ok) {
     const text = await response.text();

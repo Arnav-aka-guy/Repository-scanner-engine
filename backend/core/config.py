@@ -94,6 +94,8 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me-to-a-random-secret"
     jwt_algorithm: str = "HS256"
     jwt_expiry_hours: int = 24
+    admin_username: str = "admin"
+    admin_password_hash: str = ""
 
     # ── CORS ──────────────────────────────────────────────────────────
     cors_origins: list[str] = [

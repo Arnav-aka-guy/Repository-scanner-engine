@@ -272,3 +272,87 @@ class TestAuth:
         )
         with pytest.raises(HTTPException):
             verify_token(token)
+
+    def test_token_endpoint_success_and_failure(self, monkeypatch):
+        """Token endpoint returns a token for correct credentials and 401 for wrong ones."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        from backend.core.config import settings
+        from backend.security.auth import hash_password
+
+        pwd_hash = hash_password("secret123")
+        monkeypatch.setattr(settings, "auth_enabled", True)
+        monkeypatch.setattr(settings, "admin_username", "admin")
+        monkeypatch.setattr(settings, "admin_password_hash", pwd_hash)
+
+        with TestClient(app) as client:
+            # 1. Correct credentials -> 200 with access_token
+            resp = client.post(
+                "/api/auth/token",
+                json={"username": "admin", "password": "secret123"},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert "access_token" in data
+            assert data["token_type"] == "bearer"
+
+            # 2. Wrong credentials -> 401
+            resp_bad = client.post(
+                "/api/auth/token",
+                json={"username": "admin", "password": "wrongpassword"},
+            )
+            assert resp_bad.status_code == 401
+
+            # 3. Wrong username -> 401
+            resp_bad_user = client.post(
+                "/api/auth/token",
+                json={"username": "wronguser", "password": "secret123"},
+            )
+            assert resp_bad_user.status_code == 401
+
+    def test_protected_route_enforcement_when_auth_enabled(self, monkeypatch, tmp_path: Path):
+        """A protected route returns 401 without a token and 200 with one when AUTH_ENABLED=true."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        from backend.core.config import settings
+        from backend.security.auth import create_access_token
+
+        monkeypatch.setattr(settings, "auth_enabled", True)
+        token = create_access_token(data={"sub": "admin"})
+
+        # Create a minimal repo for scanning
+        (tmp_path / "hello.py").write_text("print('hello')")
+
+        with TestClient(app) as client:
+            # 1. Request without token -> 401
+            resp_no_auth = client.get(
+                "/api/repository/files",
+                params={"repo_path": str(tmp_path)},
+            )
+            assert resp_no_auth.status_code == 401
+
+            # 2. Request with valid token -> 200
+            resp_with_auth = client.get(
+                "/api/repository/files",
+                params={"repo_path": str(tmp_path)},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert resp_with_auth.status_code == 200
+
+    def test_auth_status_endpoint(self, monkeypatch):
+        """GET /api/auth/status returns the current auth_enabled flag."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        from backend.core.config import settings
+
+        monkeypatch.setattr(settings, "auth_enabled", False)
+        with TestClient(app) as client:
+            resp = client.get("/api/auth/status")
+            assert resp.status_code == 200
+            assert resp.json()["auth_enabled"] is False
+
+        monkeypatch.setattr(settings, "auth_enabled", True)
+        with TestClient(app) as client:
+            resp = client.get("/api/auth/status")
+            assert resp.status_code == 200
+            assert resp.json()["auth_enabled"] is True
