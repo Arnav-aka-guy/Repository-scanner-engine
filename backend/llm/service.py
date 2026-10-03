@@ -52,13 +52,17 @@ class LLMService:
     ) -> list[str]:
         """Add whole retrieved chunks in rank order until the budget is reached.
 
-        Never splits a chunk in half. Chunks that do not fit in their entirety
-        are excluded to ensure only whole chunks are cited.
+        Skips oversized chunks using continue so smaller later chunks can fit.
+        If no chunk fits at all, includes the top-ranked chunk cut at the last
+        newline before the budget with a '[truncated]' marker.
         """
         if budget is None:
             budget = self.get_context_budget()
 
         chunks = self._split_into_chunks(context)
+        if not chunks or budget <= 0:
+            return []
+
         included: list[str] = []
         current_len = 0
 
@@ -68,8 +72,19 @@ class LLMService:
                 included.append(chunk)
                 current_len += needed
             else:
-                # Do not slice in half — stop adding chunks
-                break
+                continue
+
+        # If no chunk fits at all, include top-ranked chunk cut at last newline before budget
+        if not included and chunks:
+            top_chunk = chunks[0]
+            marker = "\n[truncated]"
+            if budget > len(marker):
+                max_content = budget - len(marker)
+                last_nl = top_chunk[:max_content].rfind("\n")
+                cut_content = top_chunk[:last_nl] if last_nl > 0 else top_chunk[:max_content]
+                included.append(f"{cut_content}{marker}")
+            else:
+                included.append(top_chunk[:budget])
 
         return included
 

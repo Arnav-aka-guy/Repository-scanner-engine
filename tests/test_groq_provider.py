@@ -168,6 +168,29 @@ class TestContextBudgeting:
         assert service.get_context_budget("groq") == 15_000
         assert service.get_context_budget("openai") == 15_000
 
+    def test_oversized_first_chunk_skipped_for_small_second_chunk(self) -> None:
+        """An oversized first chunk is skipped and smaller second chunk is included."""
+        from backend.llm.service import LLMService
+
+        service = LLMService()
+        chunk1 = "A" * 200
+        chunk2 = "B" * 50
+
+        result = service.fit_context_budget([chunk1, chunk2], budget=100)
+        assert result == [chunk2]
+
+    def test_single_oversized_chunk_truncated_never_empty(self) -> None:
+        """A single oversized chunk returns a truncated version and is never empty."""
+        from backend.llm.service import LLMService
+
+        service = LLMService()
+        chunk = "line 1\nline 2\nline 3\nline 4\nline 5\n" + ("X" * 100)
+
+        result = service.fit_context_budget([chunk], budget=30)
+        assert len(result) == 1
+        assert "[truncated]" in result[0]
+        assert len(result[0]) <= 30
+
     def test_sanitize_error_message_strips_api_keys_and_caps_length(self) -> None:
         """Verify chat error message sanitizer strips API keys and caps length to ~300 chars."""
         from backend.api.chat import _sanitize_error_message
