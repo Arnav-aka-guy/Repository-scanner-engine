@@ -38,6 +38,15 @@ def setup_logging(level: str = "INFO") -> None:
     log_format = "%(asctime)s | %(levelname)-8s | %(request_id)s | %(name)-30s | %(message)s"
     date_format = "%Y-%m-%d %H:%M:%S"
 
+    import contextlib
+
+    if hasattr(sys.stdout, "reconfigure"):
+        with contextlib.suppress(Exception):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        with contextlib.suppress(Exception):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     # Create formatter
     formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
 
