@@ -1,14 +1,14 @@
-# AI Codebase Understanding Engine — Desktop Shell
+# Repository Scanner Engine — Desktop Shell v2.0
 
-Electron wrapper that hosts the React frontend and spawns the FastAPI backend.
+Electron wrapper that hosts the React frontend and spawns the FastAPI backend as a child process.
 
 ## Prerequisites
 
-| Tool       | Version  |
-|------------|----------|
-| Node.js    | 18+      |
-| Python     | 3.12+    |
-| npm        | 9+       |
+| Tool    | Minimum version |
+|---------|----------------|
+| Node.js | 18+            |
+| Python  | 3.12+          |
+| npm     | 9+             |
 
 ## Install
 
@@ -19,7 +19,7 @@ npm install
 
 ## Running in Development
 
-You need **three terminals** (or use a process manager):
+You need **three terminals** (or a process manager):
 
 ### 1. Start the Backend
 
@@ -38,11 +38,14 @@ npm run dev
 ### 3. Start Electron
 
 ```bash
+cd desktop
 npm start
 ```
 
-> **Tip:** In dev mode, Electron will also attempt to start the backend automatically.
-> If you already have it running, the health-check will pass immediately.
+> **Tip:** In dev mode Electron also tries to start the backend itself.  
+> If you already have it running, the health-check passes immediately.
+
+---
 
 ## Production Build
 
@@ -50,36 +53,73 @@ npm start
    ```bash
    cd ../frontend && npm run build
    ```
-2. Package with [electron-builder](https://www.electron.build/) or [electron-forge](https://www.electronforge.io/) (not yet configured).
+2. Package with [electron-builder](https://www.electron.build/) or [electron-forge](https://www.electronforge.io/).
+
+---
 
 ## Project Structure
 
 ```
 desktop/
-├── main.js        # Electron main process (window, IPC, backend spawn)
-├── preload.js     # Context-isolated bridge to renderer
-├── package.json   # Electron dependencies and scripts
-└── README.md      # This file
+├── main.js      # Electron main process (window, IPC, backend lifecycle, native menu)
+├── preload.js   # Context-isolated bridge exposed to the React renderer
+├── package.json # Dependencies and scripts
+└── README.md    # This file
 ```
 
-## IPC API
+---
 
-| Channel             | Direction        | Description                                     |
-|---------------------|------------------|-------------------------------------------------|
-| `select-directory`  | renderer → main  | Opens native directory picker, returns path      |
-| `get-app-info`      | renderer → main  | Returns `{ version, platform }`                  |
+## IPC API (window.electronAPI)
 
-## Frontend Integration
+Exposed by `preload.js` to the React renderer via `contextBridge`:
 
-The preload script exposes `window.electronAPI`:
+| Method / Property          | Direction       | Description                                                  |
+|----------------------------|-----------------|--------------------------------------------------------------|
+| `isElectron`               | property        | `true` — detect desktop shell vs plain browser               |
+| `selectDirectory()`        | renderer → main | Opens native directory picker; returns selected path or null |
+| `getAppInfo()`             | renderer → main | Returns `{ version, platform, electron, node, backendUrl }`  |
+| `showInFolder(filePath)`   | renderer → main | Reveals a file in Finder / Explorer                          |
+| `openExternal(url)`        | renderer → main | Opens URL in OS default browser (https/http only)            |
+| `onOpenRepository(cb)`     | main → renderer | Subscribe to File → Open Repository menu action; returns unsub |
+
+### Listening for menu-initiated repo opens
 
 ```typescript
-interface ElectronAPI {
-  selectDirectory(): Promise<string | null>;
-  getAppInfo(): Promise<{ version: string; platform: string }>;
-  isElectron: true;
-}
+useEffect(() => {
+  if (!window.electronAPI?.isElectron) return;
+  const unsub = window.electronAPI.onOpenRepository((repoPath) => {
+    setActiveRepository(repoPath);
+  });
+  return unsub; // cleanup on unmount
+}, []);
 ```
 
-Check `window.electronAPI?.isElectron` in the React app to conditionally enable
-Electron-only features (e.g., native dialogs).
+---
+
+## Native Menu
+
+| Menu  | Item                    | Shortcut        | Action                                  |
+|-------|-------------------------|-----------------|-----------------------------------------|
+| File  | Select Repository…      | Ctrl/Cmd+O      | Directory picker → sends `open-repository` to renderer |
+| View  | Reload / DevTools       | F5 / F12        | Standard Electron roles                 |
+| Help  | Open Backend API Docs   | —               | Opens `http://127.0.0.1:8000/docs`      |
+| Help  | Open GitHub Repository  | —               | Opens project GitHub page               |
+| Help  | About                   | —               | Shows version dialog                    |
+
+---
+
+## Environment Variables
+
+| Variable       | Default | Description                                    |
+|----------------|---------|------------------------------------------------|
+| `BACKEND_PORT` | `8000`  | Port the Python backend listens on             |
+
+---
+
+## Security
+
+- `nodeIntegration: false` — no Node access in renderer
+- `contextIsolation: true` — preload runs in isolated context
+- `webSecurity: true` — same-origin policy enforced
+- `will-navigate` guard: external URLs are opened in OS browser, not in-app
+- `setWindowOpenHandler`: new-window requests are denied in-app and opened in OS browser

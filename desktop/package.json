@@ -1,7 +1,7 @@
 {
-  "name": "ai-codebase-engine",
-  "version": "1.0.0",
-  "description": "AI Codebase Understanding Engine",
+  "name": "repository-scanner-engine",
+  "version": "2.0.0",
+  "description": "AI-Powered Codebase Intelligence Platform — Desktop Shell",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
