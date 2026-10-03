@@ -174,10 +174,18 @@ def validate_file_path(
     if ".." in file_path.replace("\\", "/").split("/"):
         raise _reject("File path must not contain '..' components.")
 
-    try:
-        resolved = Path(file_path).resolve()
-    except (OSError, ValueError) as exc:
-        raise _reject(f"Cannot resolve file path: {exc}") from exc
+    raw_path = Path(file_path)
+    if repo_root is not None and not raw_path.is_absolute():
+        try:
+            root_resolved = Path(repo_root).resolve()
+            resolved = (root_resolved / raw_path).resolve()
+        except (OSError, ValueError) as exc:
+            raise _reject(f"Cannot resolve file path: {exc}") from exc
+    else:
+        try:
+            resolved = raw_path.resolve()
+        except (OSError, ValueError) as exc:
+            raise _reject(f"Cannot resolve file path: {exc}") from exc
 
     # Block system directories
     if _is_under_blocked_path(resolved):

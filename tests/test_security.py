@@ -181,6 +181,43 @@ class TestValidateFilePath:
             )
             assert resp2.status_code == 403
 
+    def test_relative_file_path_resolution(self, tmp_path: Path):
+        """Relative file paths resolve against repo_path; escapes return 403."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        from backend.security.path_validator import validate_file_path
+
+        repo_dir = tmp_path / "my_repo"
+        repo_dir.mkdir()
+        (repo_dir / "src").mkdir()
+        test_file = repo_dir / "src" / "a.py"
+        test_file.write_text("def hello(): return 'world'")
+
+        outside_file = tmp_path / "outside.py"
+        outside_file.write_text("outside secret")
+
+        with TestClient(app) as client:
+            # Relative path should succeed (200) and return file content
+            resp = client.get(
+                "/api/repository/file/src/a.py",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert "def hello():" in data["content"]
+
+            # Escaping via .. should return 403
+            resp_esc = client.get(
+                "/api/repository/file/%2e%2e/outside.py",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert resp_esc.status_code == 403
+
+        # Direct function call check
+        with pytest.raises(HTTPException) as exc_info:
+            validate_file_path("../outside.py", str(repo_dir))
+        assert exc_info.value.status_code == 403
+
 
 # ── Input Sanitizer Tests ──────────────────────────────────────────────
 
