@@ -35,13 +35,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         import bcrypt
 
-        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+        return bool(bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8")))
     except Exception:
         try:
             from passlib.context import CryptContext
 
             pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-            return pwd_context.verify(plain_password, hashed_password)
+            return bool(pwd_context.verify(plain_password, hashed_password))
         except Exception:
             return False
 
@@ -56,7 +56,7 @@ def hash_password(password: str) -> str:
         from passlib.context import CryptContext
 
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        return pwd_context.hash(password)
+        return str(pwd_context.hash(password))
 
 
 # ── Token helpers ──────────────────────────────────────────────────────

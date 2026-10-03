@@ -130,6 +130,38 @@ class TestRepositoryEndpoints:
         assert "total_files" in data
         assert data["path"] == str(tmp_path)
 
+    def test_scan_jobs_capped_and_expired_cleaned_up(self):
+        """Async scan jobs are capped at 100 and expired jobs older than 1hr are purged."""
+        import time
+        from backend.api.repository import _scan_jobs, _cleanup_scan_jobs
+
+        _scan_jobs.clear()
+        now = time.time()
+
+        # Add an expired finished job (> 1 hour old)
+        _scan_jobs["old_done"] = {
+            "status": "completed",
+            "created_at": now - 3700,
+        }
+        # Add a recent finished job
+        _scan_jobs["recent_done"] = {
+            "status": "completed",
+            "created_at": now - 10,
+        }
+        _cleanup_scan_jobs()
+
+        assert "old_done" not in _scan_jobs
+        assert "recent_done" in _scan_jobs
+
+        # Test capping at 100
+        for i in range(120):
+            _scan_jobs[f"job_{i}"] = {
+                "status": "pending",
+                "created_at": now + i,
+            }
+        _cleanup_scan_jobs()
+        assert len(_scan_jobs) <= 100
+
 
 class TestSearchEndpoints:
     """Test semantic search endpoints."""

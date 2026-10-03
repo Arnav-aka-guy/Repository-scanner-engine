@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import time
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
@@ -21,8 +22,31 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/repository", tags=["repository"])
 
-# In-memory store for async scan jobs
+# In-memory store for async scan jobs.
+# NOTE: Jobs are stored in-process and do not survive application restarts or multiple worker processes.
+_MAX_SCAN_JOBS: int = 100
+_JOB_TTL_SECONDS: float = 3600.0  # 1 hour
 _scan_jobs: dict[str, dict] = {}
+
+
+def _cleanup_scan_jobs() -> None:
+    """Drop finished jobs older than 1 hour and cap total stored jobs at 100."""
+    now = time.time()
+    # Drop finished jobs older than 1 hour
+    expired = [
+        jid
+        for jid, job in _scan_jobs.items()
+        if job.get("status") in ("completed", "failed") and now - job.get("created_at", now) > _JOB_TTL_SECONDS
+    ]
+    for jid in expired:
+        _scan_jobs.pop(jid, None)
+
+    # Cap total jobs to 100 by dropping oldest finished or completed jobs
+    if len(_scan_jobs) > _MAX_SCAN_JOBS:
+        sorted_jobs = sorted(_scan_jobs.items(), key=lambda kv: kv[1].get("created_at", 0))
+        excess = len(_scan_jobs) - _MAX_SCAN_JOBS
+        for jid, _ in sorted_jobs[:excess]:
+            _scan_jobs.pop(jid, None)
 
 
 # ── Request / Response schemas ──────────────────────────────────────────
@@ -215,6 +239,7 @@ async def scan_repository_async(
     sanitized = SanitizedRepoPath(path=body.path)
     path = validate_repository_path(sanitized.path)
 
+    _cleanup_scan_jobs()
     job_id = str(uuid.uuid4())
     _scan_jobs[job_id] = {
         "job_id": job_id,
@@ -223,6 +248,7 @@ async def scan_repository_async(
         "message": "Scan job queued.",
         "result": None,
         "error": None,
+        "created_at": time.time(),
     }
 
     # Invalidate cache for fresh scan

@@ -2,7 +2,7 @@
 
 An AI-powered codebase intelligence platform that indexes, analyses, and visualises software repositories. Combines AST parsing, interactive graph intelligence, isolated semantic vector search, Graph-RAG conversation with exact citations, incremental change detection, and code health analysis.
 
-> **v2.0 Highlights:** Strict Canonical Path Validation · Per-Repository FAISS Isolation · Auto-Persistence · Incremental Rescanning · Async Background Scan Jobs · Public GitHub URL Scanning · JWT Auth Enforced · Rate Limiting · Scanner Resource Limits · Modular Health Dashboard · Production SPA Static Serving · 140+ Tests · Strict Mypy & Ruff CI
+> **v2.0 Highlights:** Strict Canonical Path Validation · Per-Repository FAISS Isolation · Auto-Persistence · Incremental Rescanning · Async Background Scan Jobs · Public GitHub URL Scanning · Optional JWT Auth · Rate Limiting · Scanner Resource Limits · Modular Health Dashboard · Production SPA Static Serving · 170+ Tests · Strict Mypy & Ruff CI
 
 ---
 
@@ -219,7 +219,7 @@ npm run dev:desktop
 Run all test suites across the repository:
 
 ```bash
-# Run backend tests (140+ tests)
+# Run backend tests (170+ tests)
 pytest
 
 # Run tests in ultra-fast mock mode (no model downloads)
