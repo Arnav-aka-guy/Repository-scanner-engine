@@ -95,8 +95,14 @@ async def chat(
                 yield f"data: {payload}\n\n"
         except Exception as exc:
             logger.error("LLM streaming error: %s", exc, exc_info=True)
-            # Do not expose raw exception to client
-            error_payload = json.dumps({"type": "error", "content": "LLM response generation failed."})
+            msg = str(exc)
+            if "All LLM providers failed" in msg:
+                bullets = [line.strip().lstrip("• ") for line in msg.splitlines() if line.strip().startswith("•")]
+                detail = bullets[0] if bullets else "Inference provider temporarily unavailable."
+                user_msg = f"LLM Error: {detail}"
+            else:
+                user_msg = f"LLM Error: {msg}"
+            error_payload = json.dumps({"type": "error", "content": user_msg})
             yield f"data: {error_payload}\n\n"
             return
 

@@ -56,7 +56,12 @@ class OpenAICompatProvider(LLMProvider):
             client = self._get_client()
             response = await client.post(url, json=payload, headers=self._headers())
             if response.status_code != 200:
-                raise RuntimeError(f"OpenAI API returned status code {response.status_code}: {response.text}")
+                try:
+                    err_json = response.json()
+                    parsed_msg = err_json.get("error", {}).get("message", response.text)
+                except Exception:
+                    parsed_msg = response.text
+                raise RuntimeError(f"API Error ({response.status_code}): {parsed_msg}")
 
             data = response.json()
             return str(data["choices"][0]["message"]["content"])
@@ -90,7 +95,12 @@ class OpenAICompatProvider(LLMProvider):
                     await response.aread()
                     err_msg = response.text
                     logger.error("OpenAI-compatible stream error (%d): %s", response.status_code, err_msg)
-                    raise RuntimeError(f"OpenAI API returned status code {response.status_code}: {err_msg}")
+                    try:
+                        err_json = json.loads(err_msg)
+                        parsed_msg = err_json.get("error", {}).get("message", err_msg)
+                    except Exception:
+                        parsed_msg = err_msg
+                    raise RuntimeError(f"API Error ({response.status_code}): {parsed_msg}")
 
                 async for line in response.aiter_lines():
                     if not line:

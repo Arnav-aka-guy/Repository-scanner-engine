@@ -56,9 +56,17 @@ class LLMService:
             "Only cite documents actually provided in the context."
         )
 
+        # Truncate context to stay safely within free-tier TPM limits (e.g., Groq's 7,000-8,000 ITPM ceiling)
+        max_context_chars = 12_000
+        safe_context = context
+        if len(safe_context) > max_context_chars:
+            safe_context = (
+                safe_context[:max_context_chars] + "\n\n... [Remaining context omitted to fit token limit] ..."
+            )
+
         user = (
             f"Here is the retrieved codebase context:\n\n"
-            f"{context}\n\n"
+            f"{safe_context}\n\n"
             f"Question: {question}\n\n"
             f"Provide a clear, detailed, professional answer followed by the Sources citation list."
         )

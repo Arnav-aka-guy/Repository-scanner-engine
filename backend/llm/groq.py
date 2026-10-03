@@ -40,8 +40,18 @@ class GroqProvider(OpenAICompatProvider):
         logger.info("Groq provider initialized (model: %s)", model)
 
     def _is_model_error(self, exc_str: str) -> bool:
-        """Check if an exception is due to an unavailable or decommissioned model."""
-        indicators = ("model_not_found", "model_decommissioned", "does not exist", "not found", "404")
+        """Check if an exception is due to an unavailable, decommissioned, or rate-limited model."""
+        indicators = (
+            "model_not_found",
+            "model_decommissioned",
+            "does not exist",
+            "not found",
+            "404",
+            "rate_limit",
+            "too large",
+            "413",
+            "429",
+        )
         return any(ind in exc_str.lower() for ind in indicators)
 
     async def generate(
