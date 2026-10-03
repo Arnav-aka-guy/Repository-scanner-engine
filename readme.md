@@ -1,271 +1,440 @@
-# Repository Scanner Engine v2.0
+<div align="center">
 
-An AI-powered codebase intelligence platform that indexes, analyses, and visualises software repositories. Combines AST parsing, interactive graph intelligence, isolated semantic vector search, Graph-RAG conversation with exact citations, incremental change detection, and code health analysis.
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f172a,50:4f46e5,100:06b6d4&height=230&section=header&text=Repository%20Scanner%20Engine&fontSize=46&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=AI-powered%20codebase%20intelligence&descAlignY=56&descSize=18" width="100%" alt="Repository Scanner Engine" />
 
-> **v2.0 Highlights:** Strict Canonical Path Validation · Per-Repository FAISS Isolation · Auto-Persistence · Incremental Rescanning · Async Background Scan Jobs · Public GitHub URL Scanning · Optional JWT Auth · Rate Limiting · Scanner Resource Limits · Modular Health Dashboard · Production SPA Static Serving · 170+ Tests · mypy type checking & Ruff CI
+<a href="https://github.com/Arnav-aka-guy/Repository-scanner-engine">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=20&duration=3000&pause=900&color=6366F1&center=true&vCenter=true&width=720&lines=Point+it+at+a+repo.+Understand+it+in+minutes.;AST+parsing+%E2%80%A2+Dependency+graphs+%E2%80%A2+Semantic+search;Chat+with+your+codebase+%E2%80%94+with+exact+line+citations;Health+scores%2C+tech+debt+and+dependency+risk" alt="Typing animation" />
+</a>
 
----
+<br/>
 
-## 🌟 Core Features
+<a href="https://github.com/Arnav-aka-guy/Repository-scanner-engine/actions/workflows/ci.yml"><img src="https://github.com/Arnav-aka-guy/Repository-scanner-engine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+<img src="https://img.shields.io/badge/version-2.0.0-6366f1?style=flat" alt="Version" />
+<img src="https://img.shields.io/badge/tests-175-22c55e?style=flat&logo=pytest&logoColor=white" alt="Tests" />
+<img src="https://img.shields.io/badge/license-MIT-0ea5e9?style=flat" alt="License" />
+<img src="https://img.shields.io/github/last-commit/Arnav-aka-guy/Repository-scanner-engine?style=flat&color=a855f7" alt="Last commit" />
+<img src="https://img.shields.io/github/stars/Arnav-aka-guy/Repository-scanner-engine?style=flat&color=f59e0b" alt="Stars" />
 
-### 📁 1. Repository Explorer & Multi-Language AST
-- **AST-Based Parser**: Performs detailed static code analysis to extract directories, files, imports, classes, functions, methods, and relationships.
-- **Language Extensibility**: Pluggable `LanguageParser` protocol supporting Python, TypeScript, and JavaScript with support for future language additions.
-- **Incremental Rescanning**: Computes file manifests with SHA-256 hashes. Only modified and newly created files are parsed and re-embedded, while deleted files are purged immediately.
-- **Strict Canonical Security**: File exploration enforces absolute canonical path containment inside the repository root, blocking `../` traversal, symlink escapes, and Windows device/UNC path tricks.
+<br/><br/>
 
-### 🌐 2. Public GitHub Scanning
-- **Safe Remote Scanning**: Scan public GitHub repositories directly via `POST /api/repository/scan-github`.
-- **Injection-Safe Shallow Clones**: Validates URLs with strict HTTPS patterns, prevents command injection, performs `--depth 1` shallow clones, and isolates temporary data.
+<img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+<img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+<img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+<img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+<img src="https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron" />
+<img src="https://img.shields.io/badge/FAISS-0467DF?style=for-the-badge&logo=meta&logoColor=white" alt="FAISS" />
+<img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
 
-### ⚡ 3. Asynchronous Scan Jobs
-- **Background Task Processing**: Non-blocking scanning for large repositories via `POST /api/repository/scan/async`.
-- **Status & Progress Polling**: Poll `GET /api/repository/scan/jobs/{job_id}` for real-time progress percentages, status stages, and completion diagnostics.
+<br/><br/>
 
-### 🕸️ 4. Dependency Graph Viewer
-- **Interactive Visualizer**: Dynamic 2D rendering of class and module relationships powered by graph layout algorithms.
-- **Relationship Filtering**: Highlight import statements, inheritance hierarchies, parent-child containments, and cross-module call graphs.
+**[Features](#-features)** &nbsp;•&nbsp;
+**[Quick start](#-quick-start)** &nbsp;•&nbsp;
+**[Architecture](#%EF%B8%8F-architecture)** &nbsp;•&nbsp;
+**[Configuration](#%EF%B8%8F-configuration)** &nbsp;•&nbsp;
+**[API](#-api-at-a-glance)** &nbsp;•&nbsp;
+**[Security](#-security)**
 
-### 🔍 5. Semantic Code Search
-- **Repository-Isolated Vector Store**: Independent FAISS index per repository. Searching Repository A never bleeds results into Repository B.
-- **Auto-Persistence**: Vector indexes and metadata are automatically persisted to disk (`data/embeddings/<repo_id>/index.faiss`) and reloaded across restarts without re-embedding.
-- **Deterministic Mock Encoder**: Optional `MOCK_EMBEDDINGS=true` mode for lightning-fast testing and CI execution without downloading multi-gigabyte models.
+</div>
 
-### 💬 6. Graph-RAG AI Chat with Source Citations
-- **Context-Aware Assistance**: Chat with local or cloud LLMs (Groq, OpenAI, Ollama, OpenRouter) grounded in actual code structures.
-- **Exact Source Citations**: Responses include explicit file, function, and line-range citations (`Sources: - <file_path>:<start_line>-<end_line>`) linking directly into the code explorer.
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:4f46e5,100:06b6d4&height=2&section=header" width="100%" alt="" />
 
-### 🩺 7. Health & Technical Debt Dashboard
-- **Explainable Health Score**: Structured breakdown covering Documentation, Complexity, Architecture, Maintainability, and Security.
-- **Comprehensive Secret Detection**: Scans entire source files and configuration files for exposed API keys and credentials, with automated redaction.
-- **Modular Architecture**: Modular frontend components (`HealthOverview`, `HealthCategoryBreakdown`, `TechnicalDebtPanel`, `DependencyRiskPanel`).
+## 💡 What is this?
 
----
+Opening a new codebase usually means hours of clicking through folders and guessing how things connect. **Repository Scanner Engine** does that groundwork for you.
 
-## 🛠️ Technology Stack
+You point it at a local folder or a public GitHub URL. It parses the code, builds a graph of how files, classes and functions relate, indexes everything for semantic search, and lets you ask questions in plain English. Answers come back with the exact files and line ranges they were drawn from, so you can check them yourself.
 
-| Layer | Technologies |
-|---|---|
-| **Frontend** | React 19, TypeScript, Vite, TailwindCSS v4, Zustand, Framer Motion |
-| **Backend** | Python 3.12+, FastAPI, Uvicorn, Pydantic v2 |
-| **Desktop Shell** | Electron |
-| **Security** | JWT (python-jose), slowapi rate limiting, canonical path validation, input sanitization |
-| **Database** | Optional PostgreSQL (SQLAlchemy 2.0 async, Alembic) — runs standalone by default |
-| **Code Analysis** | Python AST, TypeScript/JavaScript parser, pluggable LanguageParser protocol |
-| **Graph Processing** | NetworkX |
-| **Vector Index** | Sentence Transformers (`all-MiniLM-L6-v2`), FAISS (CPU IndexFlatIP), Incremental Caching |
-| **AI Providers** | Groq (default), Ollama (local offline), OpenAI, OpenRouter |
-| **Infrastructure** | Docker multi-stage builds, Docker Compose, GitHub Actions CI/CD |
+It runs as a web app, as a desktop app (Electron), or in Docker, and works with cloud LLMs (Groq, OpenAI, OpenRouter) or fully offline with Ollama.
 
----
+<!--
+  📸 Add a screenshot or GIF here — it's the single biggest upgrade for a README.
+  Record a short screen capture (ScreenToGif on Windows, Kap on macOS), save it as docs/demo.gif, then uncomment:
 
-## 🏗️ System Architecture
+<div align="center">
+  <img src="docs/demo.gif" width="90%" alt="Repository Scanner Engine demo" />
+</div>
+-->
 
-```text
-       ┌────────────────────────────────────────────────────────┐
-       │                   Desktop Shell                        │
-       │                    (Electron)                          │
-       └─────────────────────────┬──────────────────────────────┘
-                                 │ Hosts Frontend
-                                 v
-       ┌────────────────────────────────────────────────────────┐
-       │                Vite React Frontend                     │
-       │   (Health Dashboard, Dependency Graph, Search, Chat)   │
-       └─────────────────────────┬──────────────────────────────┘
-                                 │ HTTP / REST (SPA served by FastAPI in prod)
-                                 v
-       ┌────────────────────────────────────────────────────────┐
-       │              Security Middleware Layer                  │
-       │ (JWT Auth, slowapi Rate Limiter, Sanitizer, Validator) │
-       └─────────────────────────┬──────────────────────────────┘
-                                 │
-                                 v
-       ┌────────────────────────────────────────────────────────┐
-       │                   FastAPI Backend                      │
-       │    (Async Scan Jobs, SPA Fallback, Dependency Inject)  │
-       └──┬──────────┬───────────┬──────────┬──────────────┬────┘
-          │          │           │          │              │
-          v          v           v          v              v
-   ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐
-   │  Parser  │ │  Graph   │ │Semantic │ │ Services │ │    LLM   │
-   │ Service  │ │(NetworkX)│ │ (FAISS) │ │ (Health, │ │ Provider │
-   │(Manifest)│ │          │ │Per-Repo │ │TechDebt) │ │ Manager  │
-   └──────────┘ └──────────┘ └─────────┘ └──────────┘ └──────────┘
-          │                        │          │              │
-          └────────────┬───────────┘          │              │
-                       v                      v              v
-               ┌───────────────┐     ┌──────────────┐  ┌──────────┐
-               │  Local Disk   │     │ Health Score │  │Groq/OAI/ │
-               │(FAISS, Cache, │     │ Tech Debt    │  │Ollama/   │
-               │  Manifests)   │     │ Dep Risk     │  │OpenRouter│
-               └───────────────┘     └──────────────┘  └──────────┘
-```
+## ✨ Features
 
----
+<table>
+<tr>
+<td width="50%" valign="top">
 
-## 🚀 Installation & Setup
+### 📁 Repository explorer
+AST-based parsing for **Python, TypeScript and JavaScript** that pulls out files, imports, classes, functions and methods. The parser uses a pluggable `LanguageParser` protocol, so new languages can be added cleanly.
 
-Prerequisites: **Node.js (v18+)** and **Python (3.12+)**.
+</td>
+<td width="50%" valign="top">
 
-### 1. Backend Setup
+### 🕸️ Dependency graph
+An interactive view of how modules connect: imports, inheritance, containment and call relationships, with filters to cut through the noise. Built on NetworkX.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🔍 Semantic search
+Search by meaning, not just keywords. Each repository gets its **own FAISS index**, saved to disk and reloaded on restart, combined with keyword search and reranking.
+
+</td>
+<td width="50%" valign="top">
+
+### 💬 Graph-RAG chat
+Ask questions about the code. Retrieval mixes vector search with graph context, and every answer ends with a **Sources** list of `file:start-end` citations.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🩺 Health dashboard
+An explainable health score across documentation, complexity, architecture, maintainability and security, plus technical-debt and dependency-risk panels.
+
+</td>
+<td width="50%" valign="top">
+
+### ⚡ Fast rescans
+File manifests with SHA-256 hashes mean only changed files are re-parsed and re-embedded. Large repos can scan in the background with progress polling.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### 🌐 GitHub scanning
+Paste a public GitHub URL and it does a safe, validated `--depth 1` shallow clone into a temporary folder and scans it.
+
+</td>
+<td width="50%" valign="top">
+
+### 📝 Docs & comparisons
+Generate documentation from the parsed structure, export Mermaid architecture diagrams, and compare two repositories side by side.
+
+</td>
+</tr>
+</table>
+
+## 🚀 Quick start
+
+> **Prerequisites:** Python 3.12+ and Node.js 18+
 
 ```bash
-# Create and activate virtual environment
+# 1. Clone
+git clone https://github.com/Arnav-aka-guy/Repository-scanner-engine.git
+cd Repository-scanner-engine
+
+# 2. Backend
 python -m venv venv
-
-# On Windows:
-.\venv\Scripts\activate
-# On Linux/macOS:
-source venv/bin/activate
-
-# Install dependencies
+source venv/bin/activate          # Windows: .\venv\Scripts\activate
 pip install -r backend/requirements.txt
-```
 
-### 2. Environment Configuration
-
-Copy the example configuration:
-
-```bash
+# 3. Config — add at least one LLM key (or use Ollama)
 cp .env.example .env
-```
 
-#### Authentication (Optional, Off by Default)
-
-Authentication is completely optional and disabled by default (`AUTH_ENABLED=false`). When disabled, all routes are accessible without credentials.
-
-To enable single-user admin authentication:
-
-1. Set `AUTH_ENABLED=true` in `.env`.
-2. Generate a secure secret for `JWT_SECRET_KEY` (≥ 32 chars):
-   ```bash
-   python -c "import secrets; print(secrets.token_hex(32))"
-   ```
-3. Generate an admin password bcrypt hash:
-   ```bash
-   python scripts/hash_password.py
-   ```
-4. Set the credentials in `.env`:
-   ```env
-   ADMIN_USERNAME=admin
-   ADMIN_PASSWORD_HASH=$2b$12$...
-   ```
-
-When enabled, the frontend prompts for administrator login, issues JWT tokens via `POST /api/auth/token`, and attaches `Authorization: Bearer <token>` to requests.
-
-Configure your preferred LLM provider in `.env`:
-
-```env
-# LLM Provider: "groq", "openai", "openrouter", or "ollama"
-LLM_PROVIDER=groq
-GROQ_API_KEY=your_key_here
-```
-
-To restrict repository scanning and file exploration to trusted directories (path allowlist), set `ALLOWED_ROOTS` in `.env`:
-
-```env
-ALLOWED_ROOTS=/home/user/projects,/var/repos
-```
-
-When `ALLOWED_ROOTS` is configured, any repository outside these directories or symlinks pointing outside them are blocked with `403 Forbidden`. When left empty, the engine falls back to system blocklists while strictly forbidding root drives, the user's home directory root (and its parents), and sensitive hidden files/directories (`.ssh`, `.aws`, `.gnupg`, `.config`, `.env`, `.docker`, `.bash_history`).
-
-Furthermore, file exploration endpoints (`/api/repository/file` and `/api/repository/files`) only allow accessing repositories that have been explicitly scanned through the engine (registered in the persistent scanned-repo registry under `data/scanned_repos.json`). Unscanned repositories are rejected with `403 Forbidden`.
-
-### 3. Frontend Setup
-
-```bash
-cd frontend
+# 4. Frontend + run everything
 npm install
-npm run build
-cd ..
-```
-
----
-
-## 💻 Running the Application
-
-### Development Mode (Concurrent Backend + Frontend)
-
-From project root:
-
-```bash
-npm install
+cd frontend && npm install && cd ..
 npm run dev
 ```
 
-- Backend API: `http://127.0.0.1:8000`
-- API Interactive Docs: `http://127.0.0.1:8000/api/docs`
-- Frontend UI: `http://localhost:5173`
+Then open:
 
-### Production Mode (FastAPI Serving Compiled SPA)
+| What | Where |
+|---|---|
+| 🖥️ Web app | http://localhost:5173 |
+| ⚙️ Backend API | http://127.0.0.1:8000 |
+| 📖 Interactive API docs | http://127.0.0.1:8000/api/docs |
+
+<details>
+<summary><b>🖥️ Run as a desktop app (Electron)</b></summary>
+
+<br/>
+
+```bash
+cd desktop && npm install && cd ..
+npm run dev:desktop
+```
+
+The desktop shell starts the backend on `127.0.0.1` for you.
+
+</details>
+
+<details>
+<summary><b>📦 Production mode (FastAPI serves the built frontend)</b></summary>
+
+<br/>
 
 ```bash
 cd frontend && npm run build && cd ..
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-> **Security Note:** Always bind to `127.0.0.1` for local usage. Only bind to `0.0.0.0` in production environments when `AUTH_ENABLED=true` is set and `ALLOWED_ROOTS` is configured.
+Everything is then available at http://127.0.0.1:8000, including client-side routes.
 
-FastAPI automatically mounts `frontend/dist/assets` and provides full client-side SPA routing on `http://127.0.0.1:8000`.
+</details>
 
-### Desktop Mode (Electron)
+<details>
+<summary><b>🐳 Docker</b></summary>
 
-```bash
-npm run dev:desktop
-```
-
----
-
-## 🧪 Testing & Quality Assurance
-
-Run all test suites across the repository:
+<br/>
 
 ```bash
-# Run backend tests (170+ tests)
-pytest
-
-# Run tests in ultra-fast mock mode (no model downloads)
-MOCK_EMBEDDINGS=true pytest
-
-# Run frontend tests (Vitest)
-npm run test:frontend
-
-# Run full test suite (backend + frontend)
-npm test
-
-# Linting and Type Checking
-ruff check backend
-ruff format --check backend
-mypy backend
-```
-
----
-
-## 🐳 Docker Deployment
-
-The multi-stage `Dockerfile` compiles the React frontend and packages the FastAPI backend into an optimized runtime container.
-
-```bash
-# Start full application stack
 docker compose up --build
 ```
 
-Mounted user repositories volume:
-Place repositories into `./repos` to scan them directly from within the Docker container at `/repos/...`.
+Put the repositories you want to scan in `./repos`. Inside the container they appear under `/repos/...`. The compose file publishes the port on `127.0.0.1` only.
 
----
+</details>
 
-## 🔒 Security Model
+## 🏗️ Architecture
 
-- **File Containment**: Filesystem operations strictly require canonical validation anchored to the repository root. Path traversals, absolute escapes, and symlink breaks return HTTP 403.
-- **Resource Constraints**: Maximum file count (`MAX_FILES`), file size (`MAX_FILE_SIZE`), and traversal depth (`MAX_DIRECTORY_DEPTH`) are enforced early during directory traversal.
-- **Authentication**: When `AUTH_ENABLED=true`, all operational routes require a valid JWT Bearer token. Startup is rejected if default/placeholder secrets are detected.
-- **Rate Limiting**: Critical endpoints (`/scan`, `/search`, `/chat`, `/file`) enforce rate limits via slowapi.
-- **Input Sanitization**: User inputs are checked for control characters, maximum lengths, and malformed strings.
-- **Error Sanitization**: API errors return stable generic messages without leaking server stack traces, absolute paths, or database configurations.
+```mermaid
+flowchart TB
+    subgraph Client["🖥️ Client"]
+        E["Electron shell"] --> UI["React 19 + Vite UI"]
+    end
 
----
+    UI -- "REST / streaming" --> SEC
+
+    subgraph Backend["⚙️ FastAPI backend"]
+        SEC["Security layer<br/>JWT · rate limits · path validation"] --> API["API routers"]
+        API --> P["Parser<br/>AST + manifests"]
+        API --> G["Graph<br/>NetworkX"]
+        API --> S["Search<br/>FAISS + keyword + rerank"]
+        API --> R["Graph-RAG retriever"]
+        API --> H["Health · Tech debt · Dependency risk"]
+        R --> L["LLM provider manager"]
+    end
+
+    P --> D[("Local disk<br/>indexes · cache · manifests")]
+    S --> D
+    L --> X["Groq · OpenAI · OpenRouter · Ollama"]
+
+    classDef accent fill:#4f46e5,stroke:#312e81,color:#fff
+    classDef store fill:#0ea5e9,stroke:#075985,color:#fff
+    class SEC,L accent
+    class D store
+```
+
+<details>
+<summary><b>🔁 How a chat question is answered</b></summary>
+
+<br/>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as You
+    participant API as FastAPI
+    participant R as Hybrid retriever
+    participant F as FAISS index
+    participant G as Code graph
+    participant L as LLM
+
+    U->>API: "Where is auth handled?"
+    API->>R: retrieve(question, repo)
+    R->>F: vector search
+    R->>G: expand related nodes
+    R-->>API: ranked code chunks
+    API->>API: fit chunks to provider's context budget
+    API->>L: question + context
+    L-->>U: streamed answer + Sources (file:lines)
+```
+
+</details>
+
+## 🧰 Tech stack
+
+| Layer | Tools |
+|---|---|
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS v4, Zustand, Framer Motion |
+| **Backend** | Python 3.12+, FastAPI, Uvicorn, Pydantic v2 |
+| **Analysis** | Python `ast`, TypeScript/JavaScript parser, NetworkX |
+| **Search** | Sentence Transformers (`all-MiniLM-L6-v2`), FAISS |
+| **AI providers** | Groq, OpenAI, OpenRouter, Ollama (offline) |
+| **Security** | JWT (python-jose), bcrypt, slowapi |
+| **Storage** | Local filesystem by default; optional PostgreSQL (SQLAlchemy 2.0 async + Alembic) |
+| **Desktop / infra** | Electron, Docker multi-stage build, GitHub Actions |
+
+## ⚙️ Configuration
+
+All settings live in `.env`. The full list with comments is in [`.env.example`](.env.example).
+
+<details>
+<summary><b>🤖 LLM providers</b></summary>
+
+<br/>
+
+```env
+# "auto" picks the first provider that has a key, or Ollama
+LLM_PROVIDER=auto
+
+GROQ_API_KEY=
+OPENAI_API_KEY=
+OPENROUTER_API_KEY=
+
+# Ollama (local, offline)
+LLM_BASE_URL=http://localhost:11434
+LLM_MODEL=llama3
+
+# Optional: cap retrieved context (default 12,000 chars for Groq, 32,000 for others)
+# LLM_CONTEXT_CHAR_BUDGET=12000
+```
+
+If a model hits a rate limit or is unavailable, the provider manager falls back to another model automatically.
+
+</details>
+
+<details>
+<summary><b>📂 Allowed folders (recommended)</b></summary>
+
+<br/>
+
+Limit scanning and file reading to folders you trust:
+
+```env
+ALLOWED_ROOTS=/home/you/projects,/home/you/work
+```
+
+Anything outside these folders is refused with `403`. Setting this is strongly recommended.
+
+</details>
+
+<details>
+<summary><b>🔐 Authentication (optional, off by default)</b></summary>
+
+<br/>
+
+```bash
+# 1. Generate a JWT secret
+python -c "import secrets; print(secrets.token_hex(32))"
+
+# 2. Generate a password hash
+python scripts/hash_password.py
+```
+
+```env
+AUTH_ENABLED=true
+JWT_SECRET_KEY=<the secret from step 1>
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=<the hash from step 2>
+```
+
+With auth on, the web app shows a login screen and sends a Bearer token with every request. The server refuses to start if the secret is weak or a known placeholder.
+
+</details>
+
+<details>
+<summary><b>📏 Scan limits</b></summary>
+
+<br/>
+
+```env
+MAX_FILES=10000
+MAX_FILE_SIZE_BYTES=5242880   # 5 MB
+MAX_DIRECTORY_DEPTH=30
+```
+
+</details>
+
+## 🔌 API at a glance
+
+Full interactive docs are at **`/api/docs`** once the server is running.
+
+| Area | Endpoints |
+|---|---|
+| **Auth** | `POST /api/auth/token` · `GET /api/auth/status` |
+| **Repository** | `POST /api/repository/scan` · `POST /api/repository/scan/async` · `GET /api/repository/scan/jobs/{id}` · `POST /api/repository/scan-github` · `GET /api/repository/files` · `GET /api/repository/file/{path}` |
+| **Graph** | `GET /api/graph/dependency` · `GET /api/graph/call` · `GET /api/graph/analysis` |
+| **Search & chat** | `POST /api/search` · `POST /api/chat` (streaming) · `GET /api/chat/history` |
+| **Insights** | `GET /api/health-score` · `GET /api/tech-debt` · `GET /api/dependency-risk` · `POST /api/compare` |
+| **Architecture & docs** | `POST /api/architecture/report` · `GET /api/architecture/layers` · `POST /api/docs/generate` · `GET /api/docs/export` |
+| **Visualization** | `GET /api/viz/mermaid` · `GET /api/viz/architecture` |
+| **Settings** | `GET /api/settings/providers` · `GET /api/settings/ai-health` |
+
+## 🔒 Security
+
+This tool reads source code from your disk, so it is built to be careful about it:
+
+- **Local by default.** The server binds to `127.0.0.1`. Only expose it on a network with `AUTH_ENABLED=true` and `ALLOWED_ROOTS` set.
+- **Path containment.** Paths are resolved first and then checked against the repository root. `../` traversal, symlink escapes, system folders and sensitive folders such as `.ssh` and `.aws` are refused.
+- **Optional JWT auth** with bcrypt password hashing and startup checks for weak secrets.
+- **Rate limits** on scan, search, chat, file and login endpoints.
+- **Scan limits** on file count, file size and folder depth.
+- **Clean errors.** Error messages sent to the client are trimmed, and API keys are redacted.
+
+Found a security issue? Please open a private security advisory on GitHub instead of a public issue.
+
+## 🧪 Testing
+
+```bash
+# Backend tests — mock mode skips the embedding model download
+MOCK_EMBEDDINGS=true pytest
+
+# Frontend tests (Vitest)
+npm run test:frontend
+
+# Lint, format and type checks
+ruff check backend
+ruff format --check backend
+mypy backend --ignore-missing-imports
+```
+
+CI runs lint, backend tests with coverage, type checks and a frontend test + build on every push and pull request.
+
+## 📁 Project structure
+
+```text
+Repository-scanner-engine/
+├── backend/
+│   ├── api/            # FastAPI routers
+│   ├── parser/         # AST parsers, scanner, manifests
+│   ├── graph/          # Graph building and architecture analysis
+│   ├── embeddings/     # Encoder, FAISS store, keyword search, reranker
+│   ├── retrieval/      # Vector, graph and hybrid retrievers
+│   ├── llm/            # Groq, OpenAI-compatible, OpenRouter, Ollama providers
+│   ├── services/       # Health score, tech debt, dependency risk, GitHub scanner
+│   ├── security/       # Auth, path validation, sanitizing, rate limits
+│   └── main.py         # App entry point
+├── frontend/           # React 19 + Vite app
+├── desktop/            # Electron shell
+├── tests/              # Backend test suite
+├── alembic/            # Optional database migrations
+├── scripts/            # Helper scripts (password hashing)
+├── Dockerfile
+└── docker-compose.yml
+```
+
+## 🗺️ Roadmap
+
+- [ ] More languages (Go, Java, Rust) through the `LanguageParser` protocol
+- [ ] Persist scan jobs so they survive restarts
+- [ ] Private GitHub repositories with a personal access token
+- [ ] Export health reports as PDF
+
+## 🤝 Contributing
+
+Contributions are welcome.
+
+1. Fork the repo and create a branch: `git checkout -b feat/your-idea`
+2. Make your change and add tests
+3. Make sure `pytest`, `ruff check backend` and `npm run test:frontend` pass
+4. Open a pull request with a clear description
 
 ## 📜 License
 
-MIT
+Released under the [MIT License](LICENSE).
+
+<div align="center">
+
+<br/>
+
+**If this project helped you, consider giving it a ⭐**
+
+Made by [Arnav Chaudhary](https://github.com/Arnav-aka-guy)
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:06b6d4,50:4f46e5,100:0f172a&height=120&section=footer" width="100%" alt="" />
+
+</div>
