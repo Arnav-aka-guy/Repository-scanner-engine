@@ -491,6 +491,22 @@ class TestAuth:
             )
             assert resp_bad_user.status_code == 401
 
+    def test_auth_token_returns_400_when_auth_disabled(self, monkeypatch):
+        """POST /api/auth/token returns 400 'Authentication is disabled' when AUTH_ENABLED=false."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        from backend.core.config import settings
+
+        monkeypatch.setattr(settings, "auth_enabled", False)
+
+        with TestClient(app) as client:
+            resp = client.post(
+                "/api/auth/token",
+                json={"username": "admin", "password": "any"},
+            )
+            assert resp.status_code == 400
+            assert "Authentication is disabled" in resp.json()["detail"]
+
     def test_protected_route_enforcement_when_auth_enabled(self, monkeypatch, tmp_path: Path):
         """A protected route returns 401 without a token and 200 with one when AUTH_ENABLED=true."""
         from fastapi.testclient import TestClient

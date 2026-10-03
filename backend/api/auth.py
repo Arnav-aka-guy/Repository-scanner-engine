@@ -1,6 +1,7 @@
 """Authentication endpoints for single-user admin login and status."""
 
 import logging
+import secrets
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -46,10 +47,12 @@ async def login_for_access_token(
     settings = get_settings()
 
     if not settings.auth_enabled:
-        token = create_access_token(data={"sub": credentials.username or "admin"})
-        return TokenResponse(access_token=token)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Authentication is disabled",
+        )
 
-    valid_user = credentials.username == settings.admin_username
+    valid_user = secrets.compare_digest(credentials.username, settings.admin_username)
     valid_pass = verify_password(credentials.password, settings.admin_password_hash)
 
     if not (valid_user and valid_pass):

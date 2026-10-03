@@ -14,7 +14,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       token: null,
       authEnabled: false,
       loginError: null,
@@ -38,6 +38,11 @@ export const useAuthStore = create<AuthState>()(
       },
 
       login: async (username, password) => {
+        if (!get().authEnabled) {
+          set({ loginError: 'Authentication is disabled on this server.' });
+          return false;
+        }
+
         set({ isLoggingIn: true, loginError: null });
         try {
           const res = await fetch('/api/auth/token', {

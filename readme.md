@@ -2,7 +2,7 @@
 
 An AI-powered codebase intelligence platform that indexes, analyses, and visualises software repositories. Combines AST parsing, interactive graph intelligence, isolated semantic vector search, Graph-RAG conversation with exact citations, incremental change detection, and code health analysis.
 
-> **v2.0 Highlights:** Strict Canonical Path Validation · Per-Repository FAISS Isolation · Auto-Persistence · Incremental Rescanning · Async Background Scan Jobs · Public GitHub URL Scanning · Optional JWT Auth · Rate Limiting · Scanner Resource Limits · Modular Health Dashboard · Production SPA Static Serving · 170+ Tests · Strict Mypy & Ruff CI
+> **v2.0 Highlights:** Strict Canonical Path Validation · Per-Repository FAISS Isolation · Auto-Persistence · Incremental Rescanning · Async Background Scan Jobs · Public GitHub URL Scanning · Optional JWT Auth · Rate Limiting · Scanner Resource Limits · Modular Health Dashboard · Production SPA Static Serving · 170+ Tests · mypy type checking & Ruff CI
 
 ---
 
@@ -167,7 +167,9 @@ To restrict repository scanning and file exploration to trusted directories (pat
 ALLOWED_ROOTS=/home/user/projects,/var/repos
 ```
 
-When `ALLOWED_ROOTS` is configured, any repository outside these directories or symlinks pointing outside them are blocked with `403 Forbidden`. When left empty, the engine falls back to system blocklists while strictly forbidding access to the user's home directory root and sensitive hidden components (`.ssh`, `.aws`, `.gnupg`, `.config`, `.env`).
+When `ALLOWED_ROOTS` is configured, any repository outside these directories or symlinks pointing outside them are blocked with `403 Forbidden`. When left empty, the engine falls back to system blocklists while strictly forbidding root drives, the user's home directory root (and its parents), and sensitive hidden files/directories (`.ssh`, `.aws`, `.gnupg`, `.config`, `.env`, `.docker`, `.bash_history`).
+
+Furthermore, file exploration endpoints (`/api/repository/file` and `/api/repository/files`) only allow accessing repositories that have been explicitly scanned through the engine (registered in the persistent scanned-repo registry under `data/scanned_repos.json`). Unscanned repositories are rejected with `403 Forbidden`.
 
 ### 3. Frontend Setup
 
