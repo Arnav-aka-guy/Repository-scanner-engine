@@ -197,6 +197,7 @@ class TestValidateFilePath:
         outside_file.write_text("outside secret")
 
         with TestClient(app) as client:
+            client.post("/api/repository/scan", json={"path": str(repo_dir)})
             # Relative path should succeed (200) and return file content
             resp = client.get(
                 "/api/repository/file/src/a.py",
@@ -217,6 +218,102 @@ class TestValidateFilePath:
         with pytest.raises(HTTPException) as exc_info:
             validate_file_path("../outside.py", str(repo_dir))
         assert exc_info.value.status_code == 403
+
+
+class TestScannedRepoRegistryAndFileLeak:
+    """Tests for scanned repo registry and default-mode file leak protections."""
+
+    def test_root_path_rejected_as_repo_path(self, monkeypatch):
+        """repo_path='/' must be rejected with 403."""
+        from backend.core.config import settings
+        from backend.security.path_validator import validate_repository_path
+
+        monkeypatch.setattr(settings, "allowed_roots", [])
+        with pytest.raises(HTTPException) as exc_info:
+            validate_repository_path("/")
+        assert exc_info.value.status_code == 403
+
+    def test_unscanned_repo_path_rejected_by_file_endpoint(self, tmp_path: Path):
+        """Unscanned repo_path must be rejected with 403 'Repository has not been scanned.'."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        from backend.security.repo_registry import clear_scanned_repos
+
+        clear_scanned_repos()
+        repo_dir = tmp_path / "unscanned_repo"
+        repo_dir.mkdir()
+        (repo_dir / "file.py").write_text("print(1)")
+
+        with TestClient(app) as client:
+            resp = client.get(
+                "/api/repository/file/file.py",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert resp.status_code == 403
+            assert "Repository has not been scanned." in resp.json()["detail"]
+
+    def test_scanned_repo_path_accepted_by_file_endpoint(self, tmp_path: Path):
+        """Once scanned, repo_path is accepted by /file."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+
+        repo_dir = tmp_path / "scanned_repo"
+        repo_dir.mkdir()
+        (repo_dir / "file.py").write_text("print('scanned')")
+
+        with TestClient(app) as client:
+            scan_res = client.post("/api/repository/scan", json={"path": str(repo_dir)})
+            assert scan_res.status_code == 200
+
+            resp = client.get(
+                "/api/repository/file/file.py",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert resp.status_code == 200
+            assert "print('scanned')" in resp.json()["content"]
+
+    def test_bash_history_and_docker_config_unreadable(self, tmp_path: Path):
+        """~/.bash_history and ~/.docker/config.json are unreadable with any repo_path."""
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        from backend.security.repo_registry import register_scanned_repo
+
+        repo_dir = tmp_path / "repo"
+        repo_dir.mkdir()
+        register_scanned_repo(repo_dir)
+
+        fake_home = tmp_path / "fake_home"
+        fake_home.mkdir()
+        (fake_home / ".bash_history").write_text("secret_command")
+        docker_dir = fake_home / ".docker"
+        docker_dir.mkdir()
+        (docker_dir / "config.json").write_text('{"auths": {}}')
+
+        (repo_dir / ".bash_history").write_text("repo_secret")
+        repo_docker = repo_dir / ".docker"
+        repo_docker.mkdir()
+        (repo_docker / "config.json").write_text('{"auths": {}}')
+
+        with TestClient(app) as client:
+            # Inside scanned repo: blocked by sensitive file component check
+            r1 = client.get(
+                "/api/repository/file/.bash_history",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert r1.status_code == 403
+
+            r2 = client.get(
+                "/api/repository/file/.docker/config.json",
+                params={"repo_path": str(repo_dir)},
+            )
+            assert r2.status_code == 403
+
+            # Outside unscanned repo: blocked
+            r3 = client.get(
+                "/api/repository/file/.bash_history",
+                params={"repo_path": str(fake_home)},
+            )
+            assert r3.status_code == 403
 
 
 # ── Input Sanitizer Tests ──────────────────────────────────────────────
@@ -359,6 +456,9 @@ class TestAuth:
 
         # Create a minimal repo for scanning
         (tmp_path / "hello.py").write_text("print('hello')")
+        from backend.security.repo_registry import register_scanned_repo
+
+        register_scanned_repo(tmp_path)
 
         with TestClient(app) as client:
             # 1. Request without token -> 401

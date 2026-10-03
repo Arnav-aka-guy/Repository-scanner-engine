@@ -23,10 +23,14 @@ logger = logging.getLogger(__name__)
 _IS_WINDOWS = platform.system() == "Windows"
 
 # Sensitive directory components forbidden when allowed_roots is empty
-_SENSITIVE_PARTS: frozenset[str] = frozenset({".ssh", ".aws", ".gnupg", ".config", ".env"})
+_SENSITIVE_PARTS: frozenset[str] = frozenset(
+    {".ssh", ".aws", ".gnupg", ".config", ".env", ".docker", ".bash_history", ".zsh_history"}
+)
 
 # Sensitive components forbidden in file paths even inside repo root
-_SENSITIVE_FILE_PARTS: frozenset[str] = frozenset({".ssh", ".aws", ".gnupg", ".config", ".env", ".git"})
+_SENSITIVE_FILE_PARTS: frozenset[str] = frozenset(
+    {".ssh", ".aws", ".gnupg", ".config", ".env", ".git", ".docker", ".bash_history", ".zsh_history"}
+)
 
 
 def _has_sensitive_component(path: Path) -> bool:
@@ -123,11 +127,15 @@ def validate_repository_path(path: str) -> Path:
         if not is_allowed:
             raise _reject(f"Repository path '{resolved}' is not within any allowed root.")
     else:
-        # Fall back to blocklist + home directory + sensitive hidden components
+        # Reject root directory "/" and Windows drive roots (e.g. "C:\")
+        if resolved == resolved.parent or resolved == Path(resolved.anchor):
+            raise _reject("Access to filesystem root directory is forbidden.")
+
+        # Fall back to blocklist + home directory (and parents) + sensitive hidden components
         try:
             home = Path.home().resolve()
-            if resolved == home:
-                raise _reject("Access to user home directory is forbidden.")
+            if resolved == home or resolved in home.parents:
+                raise _reject("Access to user home directory or its parent directories is forbidden.")
         except HTTPException:
             raise
         except Exception:

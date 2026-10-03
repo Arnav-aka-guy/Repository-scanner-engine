@@ -17,6 +17,7 @@ from backend.parser.service import ParserService
 from backend.security.input_sanitizer import SanitizedRepoPath
 from backend.security.path_validator import validate_file_path, validate_repository_path
 from backend.security.rate_limiter import FILE_RATE, SCAN_RATE, limiter
+from backend.security.repo_registry import is_repo_scanned, register_scanned_repo
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,7 @@ async def scan_repository(
 
     try:
         repo_info: RepositoryInfo = await parser.scan_repository(str(path))
+        register_scanned_repo(path)
     except ScanLimitError as exc:
         logger.warning("Repository %s exceeded limits: %s (code=%s)", path.name, exc, exc.code)
         raise HTTPException(
@@ -159,6 +161,7 @@ async def scan_github_repository(
 
     try:
         repo_info: RepositoryInfo = await parser.scan_repository(str(target_dir))
+        register_scanned_repo(target_dir)
     except ScanLimitError as exc:
         logger.warning("Cloned repository %s exceeded limits: %s", target_dir.name, exc)
         raise HTTPException(
@@ -198,6 +201,7 @@ async def _run_scan_job(
         _scan_jobs[job_id]["progress"] = 0.3
 
         repo_info = await parser.scan_repository(path_str)
+        register_scanned_repo(path_str)
         _scan_jobs[job_id]["progress"] = 0.6
         _scan_jobs[job_id]["message"] = f"Parsing {repo_info.total_files} files..."
 
@@ -240,6 +244,7 @@ async def scan_repository_async(
     path = validate_repository_path(sanitized.path)
 
     _cleanup_scan_jobs()
+    register_scanned_repo(path)
     job_id = str(uuid.uuid4())
     _scan_jobs[job_id] = {
         "job_id": job_id,
@@ -279,6 +284,12 @@ async def list_files(
     sanitized = SanitizedRepoPath(path=repo_path)
     path = validate_repository_path(sanitized.path)
 
+    if not is_repo_scanned(path):
+        raise HTTPException(
+            status_code=403,
+            detail="Repository has not been scanned.",
+        )
+
     try:
         files = parser._scanner.get_files(str(path))
     except Exception as exc:
@@ -307,6 +318,12 @@ async def get_file(
     # Validate repo root first
     sanitized_repo = SanitizedRepoPath(path=repo_path)
     root = validate_repository_path(sanitized_repo.path)
+
+    if not is_repo_scanned(root):
+        raise HTTPException(
+            status_code=403,
+            detail="Repository has not been scanned.",
+        )
 
     # Validate file path constrained to the repo root — this is the critical security boundary
     target = validate_file_path(file_path, str(root))

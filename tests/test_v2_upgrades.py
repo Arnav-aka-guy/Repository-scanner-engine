@@ -55,6 +55,7 @@ class TestFileReadSecurity:
         """File within declared repo_path should be accessible."""
         test_file = tmp_path / "safe.py"
         test_file.write_text("x = 1")
+        client.post("/api/repository/scan", json={"path": str(tmp_path)})
 
         response = client.get(
             f"/api/repository/file/{test_file}",
