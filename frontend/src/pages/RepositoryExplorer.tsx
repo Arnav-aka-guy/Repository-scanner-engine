@@ -123,7 +123,7 @@ export const RepositoryExplorer: React.FC = () => {
               type="text"
               value={inputPath}
               onChange={(e) => setInputPath(e.target.value)}
-              placeholder="Repository path ..."
+              placeholder="Local folder or https://github.com/..."
               className="input-premium flex-1 !py-1.5 !px-2.5 !text-xs font-mono !rounded-lg"
             />
             {window.electronAPI && (
@@ -152,7 +152,13 @@ export const RepositoryExplorer: React.FC = () => {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-4 px-4">
               <Loader2 size={24} className="animate-spin text-[var(--accent-primary)]" />
-              <ScanProgress label="Indexing repository ..." />
+              <ScanProgress
+                label={
+                  inputPath.includes('github.com')
+                    ? 'Cloning and indexing repository ...'
+                    : 'Indexing repository ...'
+                }
+              />
             </div>
           ) : fileTree.length > 0 ? (
             <motion.div

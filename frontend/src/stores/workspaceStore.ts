@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { RepositoryInfo, FileInfo, FileTreeNode } from '../types/repository';
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
-import { scanRepository, listFiles, getFile } from '../services/repository';
+import { scanRepository, scanGitHubRepository, listFiles, getFile } from '../services/repository';
 import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph';
 import { semanticSearch, SearchResponse } from '../services/search';
 import { sendChatMessageStream } from '../services/chat';
@@ -165,17 +165,24 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (!path) return;
         set({ scanStatus: 'scanning', scanError: null });
         try {
-          const info = await scanRepository(path);
-          const fileList = await listFiles(path);
-          const tree = buildTree(fileList, path);
+          const isGitHub =
+            path.trim().startsWith('http://') ||
+            path.trim().startsWith('https://') ||
+            path.trim().includes('github.com');
+          const info = isGitHub
+            ? await scanGitHubRepository(path.trim())
+            : await scanRepository(path.trim());
+          const targetPath = info.path;
+          const fileList = await listFiles(targetPath);
+          const tree = buildTree(fileList, targetPath);
 
           // Update recent repositories
-          const recent = get().recentRepositories.filter((r) => r !== path);
+          const recent = get().recentRepositories.filter((r) => r !== path && r !== targetPath);
           recent.unshift(path);
           if (recent.length > 10) recent.pop();
 
           set({
-            activeRepository: path,
+            activeRepository: targetPath,
             repositoryInfo: info,
             files: fileList,
             fileTree: tree,
@@ -191,7 +198,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           });
           useToastStore.getState().addToast({
             type: 'success',
-            title: 'Repository Indexed',
+            title: isGitHub ? 'GitHub Repository Cloned & Indexed' : 'Repository Indexed',
             message: `${info.total_files} files indexed (${info.total_lines.toLocaleString()} lines)`,
           });
         } catch (err: any) {
