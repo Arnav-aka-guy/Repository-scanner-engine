@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator
 
+from backend.llm.exceptions import ProviderHTTPError
 from backend.llm.openai_compat import OpenAICompatProvider
 
 logger = logging.getLogger(__name__)
@@ -39,20 +40,20 @@ class GroqProvider(OpenAICompatProvider):
         )
         logger.info("Groq provider initialized (model: %s)", model)
 
-    def _is_model_error(self, exc_str: str) -> bool:
+    def _is_model_error(self, exc: Exception) -> bool:
         """Check if an exception is due to an unavailable, decommissioned, or rate-limited model."""
-        indicators = (
-            "model_not_found",
-            "model_decommissioned",
-            "does not exist",
-            "not found",
-            "404",
-            "rate_limit",
-            "too large",
-            "413",
-            "429",
-        )
-        return any(ind in exc_str.lower() for ind in indicators)
+        if isinstance(exc, ProviderHTTPError):
+            if exc.status_code in (404, 413, 429):
+                return True
+            known_error_codes = {
+                "model_not_found",
+                "model_decommissioned",
+                "rate_limit_exceeded",
+                "insufficient_quota",
+            }
+            if exc.error_code and exc.error_code in known_error_codes:
+                return True
+        return False
 
     async def generate(
         self,
@@ -62,8 +63,8 @@ class GroqProvider(OpenAICompatProvider):
     ) -> str:
         try:
             return await super().generate(prompt, system_prompt=system_prompt, temperature=temperature)
-        except RuntimeError as exc:
-            if self._is_model_error(str(exc)):
+        except Exception as exc:
+            if self._is_model_error(exc):
                 for candidate in FALLBACK_GROQ_MODELS:
                     if candidate != self.model:
                         logger.warning(
@@ -75,8 +76,10 @@ class GroqProvider(OpenAICompatProvider):
                         self.model = candidate
                         try:
                             return await super().generate(prompt, system_prompt=system_prompt, temperature=temperature)
-                        except RuntimeError:
-                            continue
+                        except Exception as retry_exc:
+                            if self._is_model_error(retry_exc):
+                                continue
+                            raise
             raise
 
     async def generate_stream(
@@ -89,8 +92,8 @@ class GroqProvider(OpenAICompatProvider):
             async for token in super().generate_stream(prompt, system_prompt=system_prompt, temperature=temperature):
                 yield token
             return
-        except RuntimeError as exc:
-            if self._is_model_error(str(exc)):
+        except Exception as exc:
+            if self._is_model_error(exc):
                 for candidate in FALLBACK_GROQ_MODELS:
                     if candidate != self.model:
                         logger.warning(
@@ -106,6 +109,8 @@ class GroqProvider(OpenAICompatProvider):
                             ):
                                 yield token
                             return
-                        except RuntimeError:
-                            continue
+                        except Exception as retry_exc:
+                            if self._is_model_error(retry_exc):
+                                continue
+                            raise
             raise

@@ -8,6 +8,7 @@ from collections.abc import AsyncGenerator
 
 import httpx
 
+from backend.llm.exceptions import ProviderHTTPError
 from backend.llm.provider import LLMProvider
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,10 @@ class OllamaProvider(LLMProvider):
             client = self._get_client()
             response = await client.post(url, json=payload)
             if response.status_code != 200:
-                raise RuntimeError(f"Ollama returned HTTP status code {response.status_code}: {response.text}")
+                raise ProviderHTTPError(
+                    status_code=response.status_code,
+                    message=response.text,
+                )
 
             data = response.json()
             return str(data.get("response", ""))
@@ -71,7 +75,11 @@ class OllamaProvider(LLMProvider):
             client = self._get_client()
             async with client.stream("POST", url, json=payload) as response:
                 if response.status_code != 200:
-                    raise RuntimeError(f"Ollama returned HTTP status code {response.status_code}")
+                    await response.aread()
+                    raise ProviderHTTPError(
+                        status_code=response.status_code,
+                        message=response.text,
+                    )
 
                 async for line in response.aiter_lines():
                     if not line:

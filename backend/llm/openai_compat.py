@@ -8,6 +8,7 @@ from collections.abc import AsyncGenerator
 
 import httpx
 
+from backend.llm.exceptions import ProviderHTTPError
 from backend.llm.provider import LLMProvider
 
 logger = logging.getLogger(__name__)
@@ -56,12 +57,22 @@ class OpenAICompatProvider(LLMProvider):
             client = self._get_client()
             response = await client.post(url, json=payload, headers=self._headers())
             if response.status_code != 200:
+                error_code = None
                 try:
                     err_json = response.json()
-                    parsed_msg = err_json.get("error", {}).get("message", response.text)
+                    err_obj = err_json.get("error", {})
+                    if isinstance(err_obj, dict):
+                        parsed_msg = err_obj.get("message", response.text)
+                        error_code = err_obj.get("code")
+                    else:
+                        parsed_msg = str(err_obj)
                 except Exception:
                     parsed_msg = response.text
-                raise RuntimeError(f"API Error ({response.status_code}): {parsed_msg}")
+                raise ProviderHTTPError(
+                    status_code=response.status_code,
+                    message=parsed_msg,
+                    error_code=error_code,
+                )
 
             data = response.json()
             return str(data["choices"][0]["message"]["content"])
@@ -95,12 +106,22 @@ class OpenAICompatProvider(LLMProvider):
                     await response.aread()
                     err_msg = response.text
                     logger.error("OpenAI-compatible stream error (%d): %s", response.status_code, err_msg)
+                    error_code = None
                     try:
                         err_json = json.loads(err_msg)
-                        parsed_msg = err_json.get("error", {}).get("message", err_msg)
+                        err_obj = err_json.get("error", {})
+                        if isinstance(err_obj, dict):
+                            parsed_msg = err_obj.get("message", err_msg)
+                            error_code = err_obj.get("code")
+                        else:
+                            parsed_msg = str(err_obj)
                     except Exception:
                         parsed_msg = err_msg
-                    raise RuntimeError(f"API Error ({response.status_code}): {parsed_msg}")
+                    raise ProviderHTTPError(
+                        status_code=response.status_code,
+                        message=parsed_msg,
+                        error_code=error_code,
+                    )
 
                 async for line in response.aiter_lines():
                     if not line:

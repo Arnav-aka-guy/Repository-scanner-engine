@@ -69,6 +69,20 @@ class Settings(BaseSettings):
     llm_provider: str = "auto"  # "auto" | "ollama" | "openai" | "groq" | "openrouter"
     llm_model: str = "llama3"
     llm_base_url: str = "http://localhost:11434"
+    llm_context_char_budget: int | None = None
+
+    def get_context_char_budget(self, provider: str | None = None) -> int:
+        """Return the context character budget for an LLM provider.
+
+        Defaults to 12,000 for Groq and 32,000 for OpenAI/OpenRouter/Ollama.
+        Overridable via LLM_CONTEXT_CHAR_BUDGET.
+        """
+        if self.llm_context_char_budget is not None and self.llm_context_char_budget > 0:
+            return self.llm_context_char_budget
+        target = (provider or self.llm_provider or "").lower()
+        if "groq" in target:
+            return 12_000
+        return 32_000
 
     # ── OpenAI settings ────────────────────────────────────────────────
     openai_api_key: str = ""

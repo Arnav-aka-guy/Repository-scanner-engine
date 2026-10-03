@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,6 +20,23 @@ from backend.security.rate_limiter import CHAT_RATE, limiter
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+_API_KEY_PATTERNS = [
+    re.compile(r"gsk_[a-zA-Z0-9_\-]{10,}"),
+    re.compile(r"sk-[a-zA-Z0-9_\-]{10,}"),
+    re.compile(r"Bearer\s+[a-zA-Z0-9_\-\.]{10,}", re.IGNORECASE),
+    re.compile(r"(?:api[-_]?key|secret)[=:\s]+[a-zA-Z0-9_\-]{10,}", re.IGNORECASE),
+]
+
+
+def _sanitize_error_message(msg: str, max_length: int = 300) -> str:
+    """Cap error message length (~300 chars) and redact API keys/tokens."""
+    cleaned = msg
+    for pattern in _API_KEY_PATTERNS:
+        cleaned = pattern.sub("[REDACTED]", cleaned)
+    if len(cleaned) > max_length:
+        cleaned = cleaned[: max_length - 3].rstrip() + "..."
+    return cleaned
 
 
 # ── In-memory conversation history (repo-scoped) ─────────────────────────
@@ -99,9 +117,10 @@ async def chat(
             if "All LLM providers failed" in msg:
                 bullets = [line.strip().lstrip("• ") for line in msg.splitlines() if line.strip().startswith("•")]
                 detail = bullets[0] if bullets else "Inference provider temporarily unavailable."
-                user_msg = f"LLM Error: {detail}"
+                raw_msg = f"LLM Error: {detail}"
             else:
-                user_msg = f"LLM Error: {msg}"
+                raw_msg = f"LLM Error: {msg}"
+            user_msg = _sanitize_error_message(raw_msg, max_length=300)
             error_payload = json.dumps({"type": "error", "content": user_msg})
             yield f"data: {error_payload}\n\n"
             return

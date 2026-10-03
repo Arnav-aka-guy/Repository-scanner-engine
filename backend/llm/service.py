@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -21,12 +22,63 @@ class LLMService:
         """Return status of all configured providers."""
         return self.manager.get_provider_status()
 
-    async def answer_question(self, question: str, context: str) -> str:
+    def get_context_budget(self, provider: str | None = None) -> int:
+        """Return the effective context character budget for the active provider."""
+        from backend.core.config import get_settings
+
+        settings = get_settings()
+        active = provider or getattr(self.manager, "active_provider_name", None) or settings.llm_provider
+        return settings.get_context_char_budget(active)
+
+    def _split_into_chunks(self, context: str | list[str]) -> list[str]:
+        """Split a context string or sequence into distinct chunk units."""
+        if isinstance(context, list):
+            return [str(c).strip() for c in context if str(c).strip()]
+        if not context or not context.strip():
+            return []
+        # If formatted with hybrid retriever context item headers
+        if "--- [Context Item #" in context:
+            parts = re.split(r"(?:\n\n|^)(?=--- \[Context Item #\d+\] ---)", context.strip())
+            return [p.strip() for p in parts if p.strip()]
+        # Fallback to double newline separation
+        if "\n\n" in context:
+            return [p.strip() for p in context.split("\n\n") if p.strip()]
+        return [context.strip()]
+
+    def fit_context_budget(
+        self,
+        context: str | list[str],
+        budget: int | None = None,
+    ) -> list[str]:
+        """Add whole retrieved chunks in rank order until the budget is reached.
+
+        Never splits a chunk in half. Chunks that do not fit in their entirety
+        are excluded to ensure only whole chunks are cited.
+        """
+        if budget is None:
+            budget = self.get_context_budget()
+
+        chunks = self._split_into_chunks(context)
+        included: list[str] = []
+        current_len = 0
+
+        for chunk in chunks:
+            needed = len(chunk) if not included else len(chunk) + 2  # for "\n\n"
+            if current_len + needed <= budget:
+                included.append(chunk)
+                current_len += needed
+            else:
+                # Do not slice in half — stop adding chunks
+                break
+
+        return included
+
+    async def answer_question(self, question: str, context: str | list[str]) -> str:
         """Answer a codebase question using retrieved context."""
         system_prompt, prompt = self._build_qa_prompt(question, context)
         return await self.manager.generate(prompt, system_prompt=system_prompt)
 
-    async def answer_question_stream(self, question: str, context: str) -> AsyncGenerator[str, None]:
+    async def answer_question_stream(self, question: str, context: str | list[str]) -> AsyncGenerator[str, None]:
         """Stream an answer to a codebase question using retrieved context."""
         system_prompt, prompt = self._build_qa_prompt(question, context)
         async for token in self.manager.generate_stream(prompt, system_prompt=system_prompt):
@@ -37,7 +89,7 @@ class LLMService:
         system_prompt, prompt = self._build_doc_prompt(code, entity_type)
         return await self.manager.generate(prompt, system_prompt=system_prompt)
 
-    def _build_qa_prompt(self, question: str, context: str) -> tuple[str, str]:
+    def _build_qa_prompt(self, question: str, context: str | list[str]) -> tuple[str, str]:
         """Construct prompt pair for QA."""
         system = (
             "You are Antigravity, an expert software architecture AI. "
@@ -56,13 +108,12 @@ class LLMService:
             "Only cite documents actually provided in the context."
         )
 
-        # Truncate context to stay safely within free-tier TPM limits (e.g., Groq's 7,000-8,000 ITPM ceiling)
-        max_context_chars = 12_000
-        safe_context = context
-        if len(safe_context) > max_context_chars:
-            safe_context = (
-                safe_context[:max_context_chars] + "\n\n... [Remaining context omitted to fit token limit] ..."
-            )
+        included_chunks = self.fit_context_budget(context)
+        safe_context = (
+            "\n\n".join(included_chunks)
+            if included_chunks
+            else ("No relevant code context was found in the repository.")
+        )
 
         user = (
             f"Here is the retrieved codebase context:\n\n"
