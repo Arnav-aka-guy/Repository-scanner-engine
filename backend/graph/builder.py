@@ -134,7 +134,11 @@ class GraphBuilder:
                 for base in cls.bases:
                     base_id = self._find_class_node(base, parsed_files, fpath)
                     if base_id:
-                        edge_kind = "implements" if "interface" in base.lower() or "protocol" in base.lower() or base.startswith("I") else "inherits"
+                        edge_kind = (
+                            "implements"
+                            if "interface" in base.lower() or "protocol" in base.lower() or base.startswith("I")
+                            else "inherits"
+                        )
                         g.add_edge(cid, base_id, edge_type=edge_kind)
                     else:
                         g.add_node(f"external::{base}", label=base, node_type="class", file_path="")

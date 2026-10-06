@@ -43,7 +43,7 @@ def load_scan_jobs() -> dict[str, dict[str, Any]]:
         if not os.path.exists(path):
             return {}
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
                     return data
@@ -59,13 +59,13 @@ def save_scan_job(job_id: str, job_data: dict[str, Any]) -> None:
         jobs: dict[str, Any] = {}
         if os.path.exists(path):
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     content = json.load(f)
                     if isinstance(content, dict):
                         jobs = content
             except Exception:
                 jobs = {}
-        
+
         # Serialize result if present (RepositoryInfo or dict)
         job_copy = dict(job_data)
         if "result" in job_copy and job_copy["result"] is not None:
@@ -91,7 +91,7 @@ def delete_scan_job(job_id: str) -> None:
         if not os.path.exists(path):
             return
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 jobs = json.load(f)
             if job_id in jobs:
                 jobs.pop(job_id, None)
@@ -113,7 +113,7 @@ def load_chat_data() -> dict[str, Any]:
         if not os.path.exists(path):
             return {"global": [], "by_repo": {}, "conversations": {}}
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
                     return {
@@ -134,24 +134,27 @@ def append_chat_message(
     """Append a chat message entry to persistent storage."""
     path = _get_chat_path()
     with _lock:
-        data = {"global": [], "by_repo": {}, "conversations": {}}
+        data: dict[str, Any] = {"global": [], "by_repo": {}, "conversations": {}}
         if os.path.exists(path):
             try:
-                with open(path, "r", encoding="utf-8") as f:
+                with open(path, encoding="utf-8") as f:
                     loaded = json.load(f)
                     if isinstance(loaded, dict):
                         data = loaded
             except Exception:
                 pass
 
-        data.setdefault("global", []).append(entry)
+        global_list: list[Any] = data.setdefault("global", [])
+        global_list.append(entry)
         if repo_path:
             norm_repo = repo_path.replace("\\", "/")
-            data.setdefault("by_repo", {}).setdefault(norm_repo, []).append(entry)
+            by_repo_dict: dict[str, Any] = data.setdefault("by_repo", {})
+            repo_list: list[Any] = by_repo_dict.setdefault(norm_repo, [])
+            repo_list.append(entry)
 
         if conversation_id:
-            convos = data.setdefault("conversations", {})
-            conv = convos.setdefault(
+            convos: dict[str, Any] = data.setdefault("conversations", {})
+            conv: dict[str, Any] = convos.setdefault(
                 conversation_id,
                 {
                     "id": conversation_id,
@@ -163,7 +166,8 @@ def append_chat_message(
                 },
             )
             conv["updated_at"] = time.time()
-            conv["messages"].append(entry)
+            msg_list: list[Any] = conv.setdefault("messages", [])
+            msg_list.append(entry)
 
         try:
             tmp_path = f"{path}.tmp"
@@ -181,7 +185,7 @@ def delete_chat_history(repo_path: str | None = None, conversation_id: str | Non
         if not os.path.exists(path):
             return
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
 
             if conversation_id and "conversations" in data:
@@ -189,7 +193,6 @@ def delete_chat_history(repo_path: str | None = None, conversation_id: str | Non
             elif repo_path and "by_repo" in data:
                 norm_repo = repo_path.replace("\\", "/")
                 data["by_repo"].pop(norm_repo, None)
-                # Also drop global entries for this repo if stored
             else:
                 data = {"global": [], "by_repo": {}, "conversations": {}}
 

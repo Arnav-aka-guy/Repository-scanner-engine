@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, Search, RefreshCw, Folder } from 'lucide-react';
+import { Menu, Search, RefreshCw, Folder, FolderOpen, ChevronDown } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { CommandPalette } from '../components/CommandPalette';
+import { RepositoryModal } from '../components/RepositoryModal';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { colors, radius, font } from '../design-system/tokens';
 
@@ -34,6 +35,7 @@ export const MainLayout: React.FC = () => {
   const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
   const scanStatus = useWorkspaceStore((s) => s.scanStatus);
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
+  const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -138,14 +140,29 @@ export const MainLayout: React.FC = () => {
                 <span style={{ color: colors.border.strong, fontSize: '13px' }}>/</span>
 
                 {repoName ? (
-                  <div
+                  <button
+                    onClick={() => setRepoModalOpen(true)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
                       minWidth: 0,
+                      background: 'transparent',
+                      border: `1px solid ${colors.border.subtle}`,
+                      borderRadius: radius.md,
+                      padding: '2px 8px',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.1s ease, border-color 0.1s ease',
                     }}
-                    title={activeRepository || ''}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = colors.bg.surfaceSecondary;
+                      e.currentTarget.style.borderColor = colors.border.strong;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.borderColor = colors.border.subtle;
+                    }}
+                    title={`${activeRepository} — Click to switch repository`}
                   >
                     <Folder size={13} style={{ color: colors.accent.blue, flexShrink: 0 }} />
                     <span
@@ -162,17 +179,29 @@ export const MainLayout: React.FC = () => {
                     >
                       {repoName}
                     </span>
-                  </div>
+                    <ChevronDown size={12} style={{ color: colors.text.muted, flexShrink: 0 }} />
+                  </button>
                 ) : (
-                  <span
+                  <button
+                    onClick={() => setRepoModalOpen(true)}
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '2px 8px',
+                      borderRadius: radius.md,
+                      backgroundColor: 'rgba(91, 141, 239, 0.12)',
+                      border: '1px solid rgba(91, 141, 239, 0.3)',
+                      color: colors.accent.blue,
                       fontSize: '12px',
-                      fontStyle: 'italic',
-                      color: colors.text.muted,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      fontFamily: font.sans,
                     }}
                   >
-                    No repository
-                  </span>
+                    <FolderOpen size={12} />
+                    <span>Open Repository</span>
+                  </button>
                 )}
 
                 {/* Status indicator pill */}
@@ -264,6 +293,28 @@ export const MainLayout: React.FC = () => {
                 {pageTitle}
               </span>
 
+              <button
+                onClick={() => setRepoModalOpen(true)}
+                disabled={isScanning}
+                title="Switch or open repository"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '3px 8px',
+                  backgroundColor: colors.bg.surfaceSecondary,
+                  border: `1px solid ${colors.border.default}`,
+                  borderRadius: radius.md,
+                  color: colors.text.secondary,
+                  fontSize: '11px',
+                  fontFamily: font.sans,
+                  cursor: isScanning ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <FolderOpen size={11} style={{ color: colors.accent.blue }} />
+                <span>Switch Repo</span>
+              </button>
+
               {activeRepository && (
                 <button
                   onClick={() => scanRepo(activeRepository)}
@@ -316,6 +367,9 @@ export const MainLayout: React.FC = () => {
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
       />
+
+      {/* Global Repository Switcher / Opener Modal */}
+      <RepositoryModal />
     </div>
   );
 };

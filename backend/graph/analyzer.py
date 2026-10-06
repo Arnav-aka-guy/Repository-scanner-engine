@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import networkx as nx
 
-from backend.graph.models import AnalysisResult, GraphNode
+from backend.graph.models import (
+    AnalysisResult,
+    DeadCodeConfidenceItem,
+    GraphNode,
+    ImpactAnalysisResult,
+)
 
 # Entry-point patterns that should not be flagged as dead code
 _ENTRY_POINT_NAMES: set[str] = {
@@ -63,8 +68,6 @@ class GraphAnalyzer:
 
     def find_dead_code_confidence(self, graph: nx.DiGraph) -> list[DeadCodeConfidenceItem]:
         """Identify potentially unused nodes with calibrated confidence scores and reasons."""
-        from backend.graph.models import DeadCodeConfidenceItem
-
         raw_nodes = self.find_dead_code(graph)
         items: list[DeadCodeConfidenceItem] = []
 
@@ -105,12 +108,11 @@ class GraphAnalyzer:
 
     def analyze_change_impact(self, graph: nx.DiGraph, target_file: str) -> ImpactAnalysisResult:
         """Compute direct and indirect dependents and risk level for a target file or symbol."""
-        from backend.graph.models import ImpactAnalysisResult
-
         # Normalize target file matching
         norm_target = target_file.replace("\\", "/").lower()
         matching_nodes = [
-            n for n in graph.nodes
+            n
+            for n in graph.nodes
             if n.replace("\\", "/").lower() == norm_target or n.replace("\\", "/").lower().endswith(norm_target)
         ]
 

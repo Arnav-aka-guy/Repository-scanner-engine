@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { RepositoryInfo, FileInfo, FileTreeNode } from '../types/repository';
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
-import { scanRepository, scanGitHubRepository, listFiles, getFile } from '../services/repository';
+import { scanRepository, scanGitHubRepository, browseFolder, listFiles, getFile } from '../services/repository';
 import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph';
 import { semanticSearch, SearchResponse } from '../services/search';
 import { sendChatMessageStream, getChatHistory, clearChatHistoryApi } from '../services/chat';
@@ -67,6 +67,8 @@ interface WorkspaceState {
   generateDocs: (format?: 'markdown' | 'html') => Promise<void>;
   clearWorkspace: () => void;
   selectLocalDirectory: () => Promise<void>;
+  isRepoModalOpen: boolean;
+  setRepoModalOpen: (open: boolean) => void;
 }
 
 // ── Tree builder helper ──────────────────────────────────────────────
@@ -140,6 +142,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       scanError: null,
       fileLoading: false,
       recentRepositories: [],
+      isRepoModalOpen: false,
 
       graphData: null,
       graphType: 'dependency',
@@ -426,18 +429,29 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         });
       },
 
+      setRepoModalOpen: (open: boolean) => {
+        set({ isRepoModalOpen: open });
+      },
+
       selectLocalDirectory: async () => {
         if (window.electronAPI && window.electronAPI.selectDirectory) {
           try {
             const path = await window.electronAPI.selectDirectory();
             if (path) {
-              get().scanRepo(path);
+              await get().scanRepo(path);
             }
           } catch (err: any) {
             set({ scanError: err.message || 'Failed to select directory.' });
           }
         } else {
-          set({ scanError: 'Directory selector is only available in the desktop application.' });
+          try {
+            const res = await browseFolder();
+            if (res && res.path) {
+              await get().scanRepo(res.path);
+            }
+          } catch (err: any) {
+            set({ scanError: err.message || 'Failed to select directory.' });
+          }
         }
       },
     }),

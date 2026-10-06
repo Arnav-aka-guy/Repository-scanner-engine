@@ -11,6 +11,7 @@ import {
   FileText,
   Settings,
   Folder,
+  FolderOpen,
   RefreshCw,
   X,
   type LucideIcon,
@@ -79,6 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
   const scanStatus = useWorkspaceStore((s) => s.scanStatus);
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
+  const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
 
   const repoName = activeRepository ? getRepoBasename(activeRepository) : null;
   const isScanning = scanStatus === 'scanning';
@@ -198,11 +200,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
 
         {/* ── 2. Active Repository Identity Card ── */}
         <div
+          onClick={() => setRepoModalOpen(true)}
           style={{
             padding: '12px 14px',
             borderBottom: `1px solid ${colors.border.subtle}`,
             backgroundColor: colors.bg.surfaceSecondary,
+            cursor: 'pointer',
+            transition: 'background-color 0.12s ease',
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bg.elevated)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = colors.bg.surfaceSecondary)}
+          title={activeRepository ? `${activeRepository} — Click to switch repository` : 'Click to open or switch repository'}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
@@ -239,38 +247,61 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
                       fontFamily: font.sans,
                     }}
                   >
-                    {activeRepository ? statusBadge.text : 'Select folder to begin'}
+                    {activeRepository ? statusBadge.text : 'Click to open repo'}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Quick Rescan icon button */}
-            {activeRepository && (
+            {/* Quick Action buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <button
-                onClick={handleRescan}
-                disabled={isScanning}
-                title="Rescan repository"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRepoModalOpen(true);
+                }}
+                title="Switch repository"
                 style={{
                   background: 'transparent',
                   border: 'none',
                   padding: '4px',
                   borderRadius: radius.sm,
-                  cursor: isScanning ? 'not-allowed' : 'pointer',
-                  color: isScanning ? colors.accent.blue : colors.text.muted,
+                  cursor: 'pointer',
+                  color: colors.text.muted,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <RefreshCw
-                  size={12}
-                  style={{
-                    animation: isScanning ? 'ds-spin 1s linear infinite' : 'none',
-                  }}
-                />
+                <FolderOpen size={12} style={{ color: colors.accent.blue }} />
               </button>
-            )}
+
+              {activeRepository && (
+                <button
+                  onClick={handleRescan}
+                  disabled={isScanning}
+                  title="Rescan repository"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '4px',
+                    borderRadius: radius.sm,
+                    cursor: isScanning ? 'not-allowed' : 'pointer',
+                    color: isScanning ? colors.accent.blue : colors.text.muted,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <RefreshCw
+                    size={12}
+                    style={{
+                      animation: isScanning ? 'ds-spin 1s linear infinite' : 'none',
+                    }}
+                  />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

@@ -42,6 +42,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
   const selectLocalDirectory = useWorkspaceStore((s) => s.selectLocalDirectory);
+  const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
   const clearChatHistory = useWorkspaceStore((s) => s.clearChatHistory);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
 
@@ -149,18 +150,25 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       },
     },
     {
-      id: 'act-open-local',
-      title: 'Open Local Repository...',
-      subtitle: 'Select a repository folder from your computer',
+      id: 'act-switch-repo',
+      title: 'Switch or Open Repository...',
+      subtitle: 'Open repository switcher (local PC folder or public GitHub URL)',
       category: 'Actions',
       icon: <FolderOpen size={16} />,
       shortcut: 'O',
       run: () => {
-        if (window.electronAPI) {
-          selectLocalDirectory();
-        } else {
-          navigate('/');
-        }
+        setRepoModalOpen(true);
+      },
+    },
+    {
+      id: 'act-browse-local',
+      title: 'Browse Local Folder from PC...',
+      subtitle: 'Trigger native OS folder picker to choose local directory',
+      category: 'Actions',
+      icon: <FolderOpen size={16} />,
+      shortcut: 'B',
+      run: () => {
+        selectLocalDirectory();
       },
     },
     {

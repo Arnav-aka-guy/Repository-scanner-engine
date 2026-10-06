@@ -120,6 +120,7 @@ async def root(request: Request) -> Any:
 
 
 @app.get("/health", tags=["health"])
+@app.get("/api/health", tags=["health"])
 async def health_check() -> dict[str, str]:
     """Detailed health check with provider and model info."""
     settings = get_settings()

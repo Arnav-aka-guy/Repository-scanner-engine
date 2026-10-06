@@ -26,7 +26,10 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
     const checkHealth = async () => {
       try {
-        const healthRes = await fetch('/health');
+        let healthRes = await fetch('/api/health');
+        if (!healthRes.ok) {
+          healthRes = await fetch('/health');
+        }
         if (healthRes.ok) {
           const data = await healthRes.json();
           if (isMounted) {

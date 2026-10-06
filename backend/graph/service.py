@@ -6,7 +6,7 @@ import networkx as nx
 
 from backend.graph.analyzer import GraphAnalyzer
 from backend.graph.builder import GraphBuilder
-from backend.graph.models import AnalysisResult, GraphData
+from backend.graph.models import AnalysisResult, GraphData, ImpactAnalysisResult
 from backend.parser.models import ParsedFile
 
 
@@ -88,8 +88,6 @@ class GraphService:
         target_file: str,
     ) -> ImpactAnalysisResult:
         """Compute change impact analysis for a specific file or module."""
-        from backend.graph.models import ImpactAnalysisResult
-
         graphs = await self.build_graphs(parsed_files)
         # Use full graph or dependency graph to trace cascading impacts
         return self._analyzer.analyze_change_impact(graphs["full"], target_file)

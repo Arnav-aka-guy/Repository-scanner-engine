@@ -16,7 +16,6 @@ from backend.retrieval.service import RetrievalService
 from backend.security.input_sanitizer import SanitizedChatInput, SanitizedRepoPath
 from backend.security.path_validator import validate_repository_path
 from backend.security.rate_limiter import CHAT_RATE, limiter
-
 from backend.storage.persistence import (
     append_chat_message,
     delete_chat_history,

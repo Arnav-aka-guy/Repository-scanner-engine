@@ -163,4 +163,3 @@ async def change_impact(
             status_code=500,
             detail="Change impact analysis failed.",
         ) from exc
-

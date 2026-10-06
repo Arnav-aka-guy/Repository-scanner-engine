@@ -83,6 +83,7 @@ export const Overview: React.FC = () => {
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
   const selectLocalDirectory = useWorkspaceStore((s) => s.selectLocalDirectory);
   const recentRepositories = useWorkspaceStore((s) => s.recentRepositories);
+  const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
 
   const [inputPath, setInputPath] = useState('');
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
@@ -260,17 +261,15 @@ export const Overview: React.FC = () => {
                   }}
                 />
 
-                {window.electronAPI && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={selectLocalDirectory}
-                    icon={<FolderOpen size={14} />}
-                    title="Browse Directory"
-                  >
-                    Browse
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={selectLocalDirectory}
+                  icon={<FolderOpen size={14} />}
+                  title="Browse local directory from your PC"
+                >
+                  Browse
+                </Button>
 
                 <Button
                   type="submit"
@@ -499,6 +498,17 @@ export const Overview: React.FC = () => {
               onClick={handleToggleWalkthrough}
             >
               {showWalkthrough ? 'Close Guide' : 'Understand Repository'}
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="md"
+              icon={<FolderOpen size={14} />}
+              onClick={() => setRepoModalOpen(true)}
+              disabled={isScanning}
+              title="Open or switch repository"
+            >
+              Switch Repository
             </Button>
 
             <Button

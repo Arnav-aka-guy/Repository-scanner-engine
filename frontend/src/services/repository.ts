@@ -9,6 +9,10 @@ export async function scanGitHubRepository(url: string): Promise<RepositoryInfo>
   return apiPost<RepositoryInfo>('/repository/scan-github', { url });
 }
 
+export async function browseFolder(): Promise<{ path: string }> {
+  return apiPost<{ path: string }>('/repository/browse-folder', {});
+}
+
 export async function listFiles(repoPath: string): Promise<FileInfo[]> {
   return apiGet<FileInfo[]>('/repository/files', { repo_path: repoPath });
 }

@@ -201,6 +201,29 @@ async def scan_github_repository(
     return repo_info
 
 
+@router.post("/browse-folder")
+async def browse_folder() -> dict[str, str]:
+    """Open a native OS directory selection dialog and return the selected path."""
+
+    def _open_dialog() -> str:
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            folder_path = filedialog.askdirectory(title="Select Repository Folder")
+            root.destroy()
+            return str(folder_path or "")
+        except Exception as exc:
+            logger.warning("Native folder dialog unavailable: %s", exc)
+            return ""
+
+    folder = await asyncio.to_thread(_open_dialog)
+    return {"path": folder}
+
+
 async def _run_scan_job(
     job_id: str,
     path_str: str,
@@ -443,12 +466,12 @@ async def get_onboarding_guide(
 
     # Identify entry points
     entry_patterns = {"main.py", "app.py", "index.ts", "index.js", "main.ts", "server.py", "App.tsx", "main.tsx"}
+
     def _get_path(item) -> str:
         return str(getattr(item, "path", getattr(item, "file_path", "")))
 
     entry_points = [
-        _get_path(f) for f in files
-        if any(_get_path(f).replace("\\", "/").endswith(ep) for ep in entry_patterns)
+        _get_path(f) for f in files if any(_get_path(f).replace("\\", "/").endswith(ep) for ep in entry_patterns)
     ][:6]
 
     # Identify important files (files with most functions or lines)
@@ -456,7 +479,7 @@ async def get_onboarding_guide(
     important_files = [_get_path(f) for f in sorted_files[:8]]
 
     # Detect top languages and dependencies
-    languages = set(f.language for f in files if f.language)
+    languages = {f.language for f in files if f.language}
     lang_str = ", ".join(sorted(languages)) if languages else "Multi-language"
 
     purpose = f"A {lang_str} codebase containing {len(files)} source files and approximately {sum(f.line_count for f in files):,} lines of code."
