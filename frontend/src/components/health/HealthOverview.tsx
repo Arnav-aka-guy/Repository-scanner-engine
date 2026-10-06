@@ -134,6 +134,16 @@ export const HealthOverview: React.FC<{ healthScore: HealthScore }> = ({ healthS
             GRADE {healthScore.grade}
           </span>
         </div>
+        <p
+          style={{
+            fontSize: '0.8rem',
+            color: 'var(--text-muted)',
+            lineHeight: 1.5,
+            margin: 0,
+          }}
+        >
+          An overall estimate of how easy this repository is to understand, maintain, and modify.
+        </p>
         <span
           style={{
             fontSize: '0.8rem',

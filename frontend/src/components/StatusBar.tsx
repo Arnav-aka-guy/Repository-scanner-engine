@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Terminal, Cpu, AlertCircle } from 'lucide-react';
-
-/* ─── Props ─────────────────────────────────────────────────── */
+import { Cpu } from 'lucide-react';
+import { useWorkspaceStore } from '../stores/workspaceStore';
+import { colors, font } from '../design-system/tokens';
 
 interface StatusBarProps {
   repoPath?: string;
@@ -10,8 +9,6 @@ interface StatusBarProps {
   totalFiles?: number;
   totalLines?: number;
 }
-
-/* ─── Status Bar ────────────────────────────────────────────── */
 
 export const StatusBar: React.FC<StatusBarProps> = ({
   repoPath,
@@ -21,147 +18,156 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   const [isConnected, setIsConnected] = useState(false);
   const [activeModel, setActiveModel] = useState('—');
 
+  const scanStatus = useWorkspaceStore((s) => s.scanStatus);
+  const scanError = useWorkspaceStore((s) => s.scanError);
+
   useEffect(() => {
+    let isMounted = true;
+
     const checkHealth = async () => {
       try {
         const healthRes = await fetch('/health');
         if (healthRes.ok) {
           const data = await healthRes.json();
-          setIsConnected(true);
-          setActiveModel(data.embedding_model || '—');
+          if (isMounted) {
+            setIsConnected(true);
+            setActiveModel(data.embedding_model || '—');
+          }
         } else {
-          setIsConnected(false);
+          if (isMounted) setIsConnected(false);
         }
       } catch {
-        setIsConnected(false);
+        if (isMounted) setIsConnected(false);
       }
     };
+
     checkHealth();
-    const interval = setInterval(checkHealth, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(checkHealth, 25000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
+
+  const getRepoStatusText = () => {
+    if (!repoPath) return { text: 'No repository selected', color: colors.text.muted };
+    if (scanStatus === 'scanning') return { text: 'Scanning & indexing...', color: colors.accent.blue };
+    if (scanStatus === 'indexed') return { text: 'Repository indexed', color: colors.status.success };
+    if (scanStatus === 'error') return { text: scanError ? `Scan error: ${scanError}` : 'Scan failed', color: colors.status.danger };
+    return { text: 'Repository loaded', color: colors.text.secondary };
+  };
+
+  const repoStatus = getRepoStatusText();
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] as const, delay: 0.2 }}
-      className="w-full select-none relative"
-      style={{ height: '28px' }}
+    <footer
+      style={{
+        height: '26px',
+        minHeight: '26px',
+        width: '100%',
+        borderTop: `1px solid ${colors.border.default}`,
+        backgroundColor: colors.bg.surface,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 16px',
+        userSelect: 'none',
+        flexShrink: 0,
+        fontSize: '11px',
+        fontFamily: font.sans,
+      }}
     >
-      {/* Gradient top border line — 1px */}
-      <div
-        className="absolute top-0 left-0 right-0"
-        style={{
-          height: '1px',
-          background:
-            'linear-gradient(90deg, var(--accent-primary), var(--accent-purple), var(--accent-cyan), transparent)',
-          opacity: 0.35,
-        }}
-      />
-
-      {/* Bar body */}
-      <div
-        className="w-full h-full flex items-center justify-between px-4 font-mono"
-        style={{
-          fontSize: '10px',
-          backgroundColor: 'var(--bg-secondary)',
-          color: 'var(--text-muted)',
-        }}
-      >
-        {/* ── Left section ── */}
-        <div className="flex items-center gap-4">
-          {/* Connection status */}
-          <div className="flex items-center gap-1.5">
-            {isConnected ? (
-              <>
-                {/* Animated green pulse dot */}
-                <span className="relative flex items-center justify-center" style={{ width: 10, height: 10 }}>
-                  {/* Outer glow ring */}
-                  <span
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      backgroundColor: 'var(--accent-green)',
-                      opacity: 0.3,
-                      animation: 'statusPulse 2s ease-in-out infinite',
-                    }}
-                  />
-                  {/* Inner solid dot */}
-                  <span
-                    className="relative rounded-full"
-                    style={{
-                      width: 6,
-                      height: 6,
-                      backgroundColor: 'var(--accent-green)',
-                      boxShadow: '0 0 6px var(--accent-green)',
-                    }}
-                  />
-                </span>
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  Localhost (Ready)
-                </span>
-              </>
-            ) : (
-              <>
-                <AlertCircle size={10} style={{ color: 'var(--accent-rose)' }} />
-                <span style={{ color: 'var(--accent-rose)' }}>Disconnected</span>
-              </>
-            )}
-          </div>
-
-          {/* Repo path */}
-          {repoPath ? (
-            <div className="flex items-center gap-1.5 truncate" style={{ maxWidth: 400 }}>
-              <Terminal size={10} />
-              <span className="truncate">{repoPath}</span>
-            </div>
-          ) : (
-            <span className="italic">No repository selected</span>
-          )}
-        </div>
-
-        {/* ── Right section ── */}
-        <div className="flex items-center gap-4">
-          {repoPath && (
-            <>
-              <span>
-                Files:{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {totalFiles.toLocaleString()}
-                </span>
-              </span>
-              <span>
-                Lines:{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {totalLines.toLocaleString()}
-                </span>
-              </span>
-            </>
-          )}
-
-          {/* Model badge */}
-          <div
-            className="flex items-center gap-1 px-1.5 rounded"
+      {/* ── Left section: Meaningful status disclosures ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', overflow: 'hidden' }}>
+        {/* Backend Connectivity Status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          <span
             style={{
-              background: 'rgba(96, 165, 250, 0.06)',
-              border: '1px solid rgba(96, 165, 250, 0.1)',
-              lineHeight: '18px',
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: isConnected ? colors.status.success : colors.status.danger,
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              color: isConnected ? colors.text.secondary : colors.status.danger,
+              fontFamily: font.sans,
             }}
           >
-            <Cpu size={9} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
-            <span style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>
-              {activeModel}
-            </span>
-          </div>
+            {isConnected ? 'Backend connected' : 'Backend unavailable — reconnecting...'}
+          </span>
+        </div>
+
+        {/* Vertical divider */}
+        <span style={{ color: colors.border.strong }}>|</span>
+
+        {/* Repository State Status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+          {repoPath && (
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: repoStatus.color,
+                flexShrink: 0,
+              }}
+            />
+          )}
+          <span
+            style={{
+              color: repoStatus.color,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {repoStatus.text}
+          </span>
         </div>
       </div>
 
-      {/* Keyframe injected via style tag — scoped to this component */}
-      <style>{`
-        @keyframes statusPulse {
-          0%, 100% { transform: scale(1); opacity: 0.3; }
-          50% { transform: scale(1.8); opacity: 0; }
-        }
-      `}</style>
-    </motion.div>
+      {/* ── Right section: Metrics & Model context ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
+        {repoPath && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: colors.text.muted, fontFamily: font.mono }}>
+            <span>
+              <strong style={{ color: colors.text.primary, fontWeight: 500 }}>
+                {totalFiles.toLocaleString()}
+              </strong>{' '}
+              files
+            </span>
+            <span>
+              <strong style={{ color: colors.text.primary, fontWeight: 500 }}>
+                {totalLines.toLocaleString()}
+              </strong>{' '}
+              lines
+            </span>
+          </div>
+        )}
+
+        {/* Embedding Model Badge */}
+        <div
+          title={`Active Embedding Model: ${activeModel}`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '1px 6px',
+            backgroundColor: colors.bg.surfaceSecondary,
+            border: `1px solid ${colors.border.subtle}`,
+            borderRadius: '3px',
+            color: colors.text.secondary,
+            fontSize: '10px',
+            fontFamily: font.mono,
+          }}
+        >
+          <Cpu size={10} style={{ color: colors.accent.blue, flexShrink: 0 }} />
+          <span>{activeModel}</span>
+        </div>
+      </div>
+    </footer>
   );
 };

@@ -172,3 +172,38 @@ export async function apiPostStream(
     reader.releaseLock();
   }
 }
+
+export async function apiDelete<T = any>(path: string, params?: Record<string, string>): Promise<T> {
+  const url = new URL(`${API_BASE}${path}`, window.location.origin);
+  if (params) {
+    Object.entries(params).forEach(([key, val]) => url.searchParams.append(key, val));
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url.toString(), {
+      method: 'DELETE',
+      headers: {
+        ...getAuthHeaders(),
+      },
+    });
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
+      throw new Error(
+        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.'
+      );
+    }
+    throw err;
+  }
+
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(formatApiError(response.status, text, response.statusText));
+  }
+
+  return response.json() as Promise<T>;
+}

@@ -9,50 +9,48 @@ interface ScanProgressProps {
 
 export const ScanProgress: React.FC<ScanProgressProps> = ({
   progress = -1,
-  label = 'Indexing repository ...',
+  label = 'Indexing repository...',
 }) => {
   const isIndeterminate = progress < 0;
 
   return (
     <div className="flex flex-col gap-2 w-full max-w-xs mx-auto">
-      {/* Label */}
-      <div className="flex items-center justify-between text-[10px] font-mono text-[var(--text-muted)]">
+      {/* Label & Percentage */}
+      <div className="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)]">
         <span>{label}</span>
         {!isIndeterminate && <span>{Math.round(progress)}%</span>}
       </div>
 
-      {/* Track */}
+      {/* Progress Track */}
       <div
         className="w-full h-1.5 rounded-full overflow-hidden"
         style={{ backgroundColor: 'var(--bg-tertiary)' }}
       >
         {isIndeterminate ? (
-          /* Shimmer animation for indeterminate */
+          /* Restrained blue slide animation for indeterminate state */
           <motion.div
             className="h-full rounded-full"
             style={{
-              width: '40%',
-              background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-purple), var(--accent-primary))',
-              backgroundSize: '200% 100%',
+              width: '35%',
+              backgroundColor: 'var(--accent-primary)',
             }}
-            animate={{ x: ['0%', '150%'] }}
+            animate={{ x: ['-20%', '280%'] }}
             transition={{
-              duration: 1.5,
+              duration: 1.4,
               repeat: Infinity,
               ease: 'easeInOut',
             }}
           />
         ) : (
-          /* Determinate bar */
+          /* Determinate progress fill */
           <motion.div
             className="h-full rounded-full"
             style={{
-              background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-purple))',
-              boxShadow: '0 0 8px var(--accent-primary)',
+              backgroundColor: 'var(--accent-primary)',
             }}
             initial={{ width: 0 }}
-            animate={{ width: `${Math.min(100, progress)}%` }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
+            animate={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
           />
         )}
       </div>

@@ -9,19 +9,36 @@ export const TechnicalDebtPanel: React.FC<{ techDebt: TechDebt }> = ({ techDebt 
 
   return (
     <div>
-      <span
-        style={{
-          fontSize: '0.65rem',
-          fontWeight: 700,
-          letterSpacing: '0.12em',
-          color: 'var(--text-muted)',
-          textTransform: 'uppercase',
-          marginBottom: '12px',
-          display: 'block',
-        }}
-      >
-        Technical Debt
-      </span>
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            style={{
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+            }}
+          >
+            Code Quality Issues
+          </span>
+          <span
+            style={{
+              fontSize: '10px',
+              fontFamily: 'monospace',
+              color: 'var(--text-muted)',
+              backgroundColor: 'var(--bg-tertiary)',
+              padding: '1px 5px',
+              borderRadius: '4px',
+            }}
+          >
+            Technical Debt
+          </span>
+        </div>
+        <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', display: 'block' }}>
+          Identifies complexity hotspots, missing documentation, and code smells that make software harder to maintain.
+        </span>
+      </div>
       <div className="flex gap-4 flex-wrap">
         {/* Debt Overview */}
         <div

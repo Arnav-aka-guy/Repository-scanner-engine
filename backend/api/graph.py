@@ -106,3 +106,61 @@ async def analysis(
             status_code=500,
             detail="Graph analysis failed.",
         ) from exc
+
+
+@router.get("/symbol")
+async def symbol_graph(
+    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    parser: ParserService = Depends(get_parser),
+    graph_svc: GraphService = Depends(get_graph),
+) -> dict:
+    """Build and return symbol-level graph (DEFINES, IMPORTS, CALLS, INHERITS, USES) in Cytoscape format."""
+    path = validate_repository_path(repo_path)
+
+    try:
+        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
+    except Exception as exc:
+        logger.error("Failed to parse repository %s: %s", path.name, exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to parse repository.",
+        ) from exc
+
+    try:
+        return await graph_svc.get_symbol_graph(parsed_files)
+    except Exception as exc:
+        logger.error("Failed to build symbol graph for %s: %s", path.name, exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to build symbol graph.",
+        ) from exc
+
+
+@router.get("/impact")
+async def change_impact(
+    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    target_file: str = Query(..., description="Target file path to analyze change impact for"),
+    parser: ParserService = Depends(get_parser),
+    graph_svc: GraphService = Depends(get_graph),
+):
+    """Analyze change impact for a specific file or symbol: direct/indirect dependents and risk level."""
+    path = validate_repository_path(repo_path)
+
+    try:
+        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
+    except Exception as exc:
+        logger.error("Failed to parse repository %s: %s", path.name, exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to parse repository.",
+        ) from exc
+
+    try:
+        return await graph_svc.get_change_impact(parsed_files, target_file)
+    except Exception as exc:
+        logger.error("Change impact analysis failed for %s: %s", target_file, exc, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Change impact analysis failed.",
+        ) from exc
+

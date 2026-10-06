@@ -1,17 +1,7 @@
 import React from 'react';
 
 /**
- * AnimatedBackground — Full-screen ambient gradient mesh.
- * Pure CSS animation, no JS runtime cost. Renders floating gradient
- * orbs and a subtle dot-grid overlay behind all page content.
+ * AnimatedBackground — disabled in the new design system.
+ * Floating orbs and dot-grid are removed for a cleaner developer-tool look.
  */
-export const AnimatedBackground: React.FC = () => {
-  return (
-    <>
-      <div className="animated-bg" aria-hidden="true">
-        <div className="animated-bg-orb3" />
-      </div>
-      <div className="dot-grid" aria-hidden="true" />
-    </>
-  );
-};
+export const AnimatedBackground: React.FC = () => null;

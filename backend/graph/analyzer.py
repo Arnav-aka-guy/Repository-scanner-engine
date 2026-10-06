@@ -61,7 +61,112 @@ class GraphAnalyzer:
             )
         return dead
 
-    # ── Circular dependencies ───────────────────────────────────────────
+    def find_dead_code_confidence(self, graph: nx.DiGraph) -> list[DeadCodeConfidenceItem]:
+        """Identify potentially unused nodes with calibrated confidence scores and reasons."""
+        from backend.graph.models import DeadCodeConfidenceItem
+
+        raw_nodes = self.find_dead_code(graph)
+        items: list[DeadCodeConfidenceItem] = []
+
+        for node in raw_nodes:
+            in_deg = graph.in_degree(node.id)
+            out_deg = graph.out_degree(node.id)
+            label = node.label.lower()
+
+            # Calibrate confidence based on references and naming patterns
+            confidence = 96
+            reason = "No references or calls found across indexed repository."
+
+            if "test" in label or "mock" in label or "fixture" in label:
+                confidence = 65
+                reason = "Symbol name suggests test helper or mock fixture."
+            elif label.startswith("_"):
+                confidence = 92
+                reason = "Private/internal symbol with 0 incoming calls or references."
+            elif out_deg > 0:
+                confidence = 88
+                reason = "Symbol invokes other functions but is never invoked externally."
+            else:
+                confidence = 96
+                reason = "No references found across indexed repository."
+
+            items.append(
+                DeadCodeConfidenceItem(
+                    node=node,
+                    confidence=confidence,
+                    reason=reason,
+                    references_count=in_deg,
+                    status="Potentially unused",
+                )
+            )
+
+        items.sort(key=lambda x: x.confidence, reverse=True)
+        return items
+
+    def analyze_change_impact(self, graph: nx.DiGraph, target_file: str) -> ImpactAnalysisResult:
+        """Compute direct and indirect dependents and risk level for a target file or symbol."""
+        from backend.graph.models import ImpactAnalysisResult
+
+        # Normalize target file matching
+        norm_target = target_file.replace("\\", "/").lower()
+        matching_nodes = [
+            n for n in graph.nodes
+            if n.replace("\\", "/").lower() == norm_target or n.replace("\\", "/").lower().endswith(norm_target)
+        ]
+
+        if not matching_nodes:
+            # Fallback by basename
+            base = norm_target.rsplit("/", 1)[-1]
+            matching_nodes = [n for n in graph.nodes if base in n.replace("\\", "/").lower()]
+
+        if not matching_nodes:
+            return ImpactAnalysisResult(
+                target_file=target_file,
+                risk_level="Low",
+                direct_dependents_count=0,
+                indirect_dependents_count=0,
+                direct_dependents=[],
+                indirect_dependents=[],
+                most_affected=[],
+                explanation="No dependent relationships found in graph.",
+            )
+
+        target_node = matching_nodes[0]
+        # Direct dependents: nodes that have an edge pointing TO target_node
+        direct = list(graph.predecessors(target_node))
+
+        # Indirect dependents: ancestors in reverse graph
+        try:
+            reversed_g = graph.reverse()
+            descendants = nx.descendants(reversed_g, target_node)
+            indirect = [d for d in descendants if d not in direct and d != target_node]
+        except Exception:
+            indirect = []
+
+        total_affected = len(direct) + len(indirect)
+        if total_affected >= 10:
+            risk = "High"
+            explanation = f"Heavily coupled module ({len(direct)} direct, {len(indirect)} indirect dependents). Changes may trigger cascading regressions."
+        elif total_affected >= 3:
+            risk = "Medium"
+            explanation = f"Moderately coupled module ({len(direct)} direct, {len(indirect)} indirect dependents)."
+        else:
+            risk = "Low"
+            explanation = f"Isolated or leaf module ({len(direct)} direct dependents). Safe to refactor."
+
+        # Compute most affected files/nodes
+        most_affected = direct[:5] + indirect[:5]
+
+        return ImpactAnalysisResult(
+            target_file=target_file,
+            risk_level=risk,
+            direct_dependents_count=len(direct),
+            indirect_dependents_count=len(indirect),
+            direct_dependents=direct,
+            indirect_dependents=indirect,
+            most_affected=most_affected,
+            explanation=explanation,
+        )
 
     @staticmethod
     def find_circular_dependencies(graph: nx.DiGraph) -> list[list[str]]:
@@ -122,6 +227,7 @@ class GraphAnalyzer:
         """Run every analysis pass and return a combined result."""
         return AnalysisResult(
             dead_code=self.find_dead_code(graph),
+            dead_code_confidence=self.find_dead_code_confidence(graph),
             circular_dependencies=self.find_circular_dependencies(graph),
             complexity_metrics=self.get_complexity_metrics(graph),
         )

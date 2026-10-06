@@ -74,8 +74,6 @@ class GraphService:
         graph = graphs.get(graph_type, graphs["full"])
         return self._builder.to_cytoscape(graph)
 
-    # ── Analysis ────────────────────────────────────────────────────────
-
     async def analyze(
         self,
         parsed_files: dict[str, ParsedFile],
@@ -83,6 +81,26 @@ class GraphService:
         """Run the full analysis suite on the combined graph."""
         graphs = await self.build_graphs(parsed_files)
         return self._analyzer.full_analysis(graphs["full"])
+
+    async def get_change_impact(
+        self,
+        parsed_files: dict[str, ParsedFile],
+        target_file: str,
+    ) -> ImpactAnalysisResult:
+        """Compute change impact analysis for a specific file or module."""
+        from backend.graph.models import ImpactAnalysisResult
+
+        graphs = await self.build_graphs(parsed_files)
+        # Use full graph or dependency graph to trace cascading impacts
+        return self._analyzer.analyze_change_impact(graphs["full"], target_file)
+
+    async def get_symbol_graph(
+        self,
+        parsed_files: dict[str, ParsedFile],
+    ) -> dict:
+        """Return symbol-level graph (defines, imports, calls, inherits, uses) in Cytoscape JSON."""
+        graphs = await self.build_graphs(parsed_files)
+        return self._builder.to_cytoscape(graphs["full"])
 
     # ── Helpers ─────────────────────────────────────────────────────────
 

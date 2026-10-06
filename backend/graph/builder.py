@@ -108,38 +108,45 @@ class GraphBuilder:
             # File node
             g.add_node(fpath, label=Path(fpath).name, node_type="file", file_path=fpath)
 
-            # Import edges
+            # Import edges (File imports File, File imports imported symbols)
             for imp in pf.imports:
                 target = self._resolve_import(imp.module, fpath, module_index)
                 if target and target in parsed_files:
                     g.add_edge(fpath, target, edge_type="imports")
+                for name in imp.names:
+                    g.add_edge(fpath, f"{fpath}::import::{name}", edge_type="imports", label=name)
+                    g.add_node(f"{fpath}::import::{name}", label=name, node_type="import", file_path=fpath)
 
-            # Top-level functions
+            # Top-level functions (File DEFINES function)
             for func in pf.functions:
                 fid = f"{fpath}::{func.name}"
                 g.add_node(fid, label=func.name, node_type="function", file_path=fpath)
-                g.add_edge(fpath, fid, edge_type="contains")
+                g.add_edge(fpath, fid, edge_type="defines")
                 func_index.setdefault(func.name, fid)
 
-            # Classes + methods
+            # Classes + methods (File DEFINES class, class DEFINES/CONTAINS method)
             for cls in pf.classes:
                 cid = f"{fpath}::{cls.name}"
                 g.add_node(cid, label=cls.name, node_type="class", file_path=fpath)
-                g.add_edge(fpath, cid, edge_type="contains")
+                g.add_edge(fpath, cid, edge_type="defines")
 
-                # Inheritance
+                # Inheritance & Implementation
                 for base in cls.bases:
                     base_id = self._find_class_node(base, parsed_files, fpath)
                     if base_id:
-                        g.add_edge(cid, base_id, edge_type="inherits")
+                        edge_kind = "implements" if "interface" in base.lower() or "protocol" in base.lower() or base.startswith("I") else "inherits"
+                        g.add_edge(cid, base_id, edge_type=edge_kind)
+                    else:
+                        g.add_node(f"external::{base}", label=base, node_type="class", file_path="")
+                        g.add_edge(cid, f"external::{base}", edge_type="inherits")
 
                 for method in cls.methods:
                     mid = f"{fpath}::{cls.name}.{method.name}"
                     g.add_node(mid, label=f"{cls.name}.{method.name}", node_type="method", file_path=fpath)
-                    g.add_edge(cid, mid, edge_type="contains")
+                    g.add_edge(cid, mid, edge_type="defines")
                     func_index.setdefault(method.name, mid)
 
-        # Call edges
+        # Call & Reference/Uses edges
         for fpath, pf in parsed_files.items():
             for func in pf.functions:
                 caller = f"{fpath}::{func.name}"
@@ -147,6 +154,10 @@ class GraphBuilder:
                     callee = func_index.get(call_name)
                     if callee and callee != caller:
                         g.add_edge(caller, callee, edge_type="calls")
+                    else:
+                        # USES symbol
+                        g.add_edge(caller, f"ref::{call_name}", edge_type="uses")
+                        g.add_node(f"ref::{call_name}", label=call_name, node_type="reference", file_path="")
             for cls in pf.classes:
                 for method in cls.methods:
                     caller = f"{fpath}::{cls.name}.{method.name}"
@@ -154,6 +165,9 @@ class GraphBuilder:
                         callee = func_index.get(call_name)
                         if callee and callee != caller:
                             g.add_edge(caller, callee, edge_type="calls")
+                        else:
+                            g.add_edge(caller, f"ref::{call_name}", edge_type="uses")
+                            g.add_node(f"ref::{call_name}", label=call_name, node_type="reference", file_path="")
 
         return g
 

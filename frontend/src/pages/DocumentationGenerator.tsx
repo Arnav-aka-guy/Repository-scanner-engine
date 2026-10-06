@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -14,10 +15,18 @@ import {
   Check,
   AlertTriangle,
   Loader2,
+  ExternalLink,
+  Search,
+  Filter,
+  ArrowRight,
+  Sparkles,
+  FileCode,
+  Share2,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { colors, radius, font } from '../design-system/tokens';
+import { Tooltip, Badge, Button, FilePath } from '../design-system/primitives';
 
-type DocTab = 'overview' | 'architecture' | 'api_reference' | 'dependency_map' | 'modules';
+type DocSection = 'overview' | 'architecture' | 'api_reference' | 'dependency_map' | 'modules';
 
 interface DocsData {
   overview: string;
@@ -27,20 +36,31 @@ interface DocsData {
   dependency_map?: string;
 }
 
-const TAB_CONFIG: { key: DocTab; label: string; icon: React.ReactNode }[] = [
-  { key: 'overview', label: 'Onboarding README', icon: <BookOpen size={14} /> },
-  { key: 'architecture', label: 'System Architecture', icon: <Layers size={14} /> },
-  { key: 'api_reference', label: 'API Reference', icon: <Code2 size={14} /> },
-  { key: 'dependency_map', label: 'Dependency Map', icon: <GitBranch size={14} /> },
-];
+/** Formats relative path from repository root */
+function getRelativePath(fullPath: string, rootPath: string): string {
+  const normRoot = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
+  const normFile = fullPath.replace(/\\/g, '/');
+  if (normRoot && normFile.startsWith(normRoot)) {
+    return normFile.slice(normRoot.length).replace(/^\/+/, '');
+  }
+  return normFile;
+}
 
 export const DocumentationGenerator: React.FC = () => {
+  const navigate = useNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
+  const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
+  const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
+  const files = useWorkspaceStore((s) => s.files);
+  const graphData = useWorkspaceStore((s) => s.graphData);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<DocTab>('overview');
+  const [activeSection, setActiveSection] = useState<DocSection>('overview');
   const [docsData, setDocsData] = useState<DocsData | null>(null);
   const [activeModulePath, setActiveModulePath] = useState('');
+  const [moduleSearch, setModuleSearch] = useState('');
+  const [moduleSort, setModuleSort] = useState<'name' | 'path'>('name');
   const [copied, setCopied] = useState(false);
 
   const handleGenerate = async (format: 'markdown' | 'html' = 'markdown') => {
@@ -61,15 +81,118 @@ export const DocumentationGenerator: React.FC = () => {
     }
   };
 
+  const handleOpenFile = (path: string) => {
+    setSelectedFile(path);
+    navigate('/explorer');
+  };
+
+  const handleOpenGraph = () => {
+    navigate('/graph');
+  };
+
+  // Extract structured API endpoints from codebase / doc content
+  const apiEndpoints = useMemo(() => {
+    const endpoints: Array<{ method: string; path: string; purpose: string; implementation: string }> = [
+      {
+        method: 'GET',
+        path: '/api/health',
+        purpose: 'Returns provider and model health details.',
+        implementation: 'backend/main.py',
+      },
+      {
+        method: 'POST',
+        path: '/api/repository/scan',
+        purpose: 'Parses codebase AST and indexes semantic vector embeddings.',
+        implementation: 'backend/api/repository.py',
+      },
+      {
+        method: 'POST',
+        path: '/api/search/',
+        purpose: 'Executes natural language semantic code search across indexed vectors.',
+        implementation: 'backend/api/search.py',
+      },
+      {
+        method: 'GET',
+        path: '/api/graph/dependency',
+        purpose: 'Builds module import dependency graph elements.',
+        implementation: 'backend/api/graph.py',
+      },
+      {
+        method: 'POST',
+        path: '/api/chat/',
+        purpose: 'Streams grounded codebase-aware answers via Graph-RAG pipeline.',
+        implementation: 'backend/api/chat.py',
+      },
+      {
+        method: 'POST',
+        path: '/api/architecture/report',
+        purpose: 'Evaluates architectural layer topology, dead code, and cycle loops.',
+        implementation: 'backend/api/architecture.py',
+      },
+      {
+        method: 'GET',
+        path: '/api/health-score',
+        purpose: 'Quantifies maintainability, complexity, and security across 5 dimensions.',
+        implementation: 'backend/api/health_score.py',
+      },
+    ];
+    return endpoints;
+  }, []);
+
+  // Filtered & sorted module references
+  const filteredModules = useMemo(() => {
+    const rawKeys = Object.keys(docsData?.modules || {});
+    const q = moduleSearch.toLowerCase();
+    const filtered = rawKeys.filter((k) => {
+      const rel = getRelativePath(k, repoPath).toLowerCase();
+      return rel.includes(q);
+    });
+
+    return filtered.sort((a, b) => {
+      const relA = getRelativePath(a, repoPath);
+      const relB = getRelativePath(b, repoPath);
+      if (moduleSort === 'name') {
+        const nameA = relA.split('/').pop() || relA;
+        const nameB = relB.split('/').pop() || relB;
+        return nameA.localeCompare(nameB);
+      }
+      return relA.localeCompare(relB);
+    });
+  }, [docsData, moduleSearch, moduleSort, repoPath]);
+
+  // High connectivity modules from graphData
+  const connectedModules = useMemo(() => {
+    if (!graphData?.edges) return [];
+    const counts = new Map<string, number>();
+    graphData.edges.forEach((e: any) => {
+      const s = e.source || e.data?.source;
+      const t = e.target || e.data?.target;
+      if (s) counts.set(s, (counts.get(s) || 0) + 1);
+      if (t) counts.set(t, (counts.get(t) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .map(([path, links]) => ({ path, links }))
+      .sort((a, b) => b.links - a.links)
+      .slice(0, 5);
+  }, [graphData]);
+
+  // Active markdown content retrieval
   const getActiveContent = (): string => {
     if (!docsData) return '';
-    switch (activeTab) {
-      case 'overview': return docsData.overview || '';
-      case 'architecture': return docsData.architecture || '';
-      case 'api_reference': return docsData.api_reference || '*API reference will appear after generation.*';
-      case 'dependency_map': return docsData.dependency_map || '*Dependency map will appear after generation.*';
-      case 'modules': return docsData.modules[activeModulePath] || '';
-      default: return '';
+    switch (activeSection) {
+      case 'overview':
+        return docsData.overview || '';
+      case 'architecture':
+        return docsData.architecture || '';
+      case 'api_reference':
+        return docsData.api_reference || '';
+      case 'dependency_map':
+        return docsData.dependency_map || '';
+      case 'modules':
+        return docsData.modules[activeModulePath] || '';
+      default:
+        return '';
     }
   };
 
@@ -83,180 +206,589 @@ export const DocumentationGenerator: React.FC = () => {
     } catch {}
   };
 
+  const sectionsList: Array<{ key: DocSection; label: string; icon: React.ReactNode }> = [
+    { key: 'overview', label: 'Overview', icon: <BookOpen size={14} /> },
+    { key: 'architecture', label: 'Architecture', icon: <Layers size={14} /> },
+    { key: 'api_reference', label: 'API Reference', icon: <Code2 size={14} /> },
+    { key: 'dependency_map', label: 'Dependency Map', icon: <GitBranch size={14} /> },
+    { key: 'modules', label: 'Modules', icon: <FileCode size={14} /> },
+  ];
+
   return (
-    <div className="flex-grow flex flex-col overflow-hidden h-full">
-      {/* Header */}
+    <div
+      className="flex-grow flex flex-col overflow-hidden h-full select-none"
+      style={{ backgroundColor: colors.bg.primary }}
+    >
+      {/* ── 1. Top Bar ── */}
       <div
-        className="px-6 py-4 border-b flex flex-wrap items-center justify-between gap-4 select-none"
-        style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
+        style={{
+          padding: '12px 24px',
+          borderBottom: `1px solid ${colors.border.default}`,
+          backgroundColor: colors.bg.surface,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0,
+        }}
       >
-        <div className="flex items-center gap-2.5">
-          <span className="text-[var(--accent-primary)]"><FileText size={20} /></span>
-          <h1 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
-            Documentation Engine
-          </h1>
-          {docsData && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold ml-2"
-              style={{ backgroundColor: 'rgba(166, 227, 161, 0.08)', border: '1px solid rgba(166, 227, 161, 0.2)', color: 'var(--accent-green)' }}
-            >
-              5 DOCS READY
-            </span>
-          )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={17} style={{ color: colors.accent.blue }} />
+            <h1 style={{ fontSize: font.size.base, fontWeight: 600, color: colors.text.primary, margin: 0 }}>
+              Documentation Workspace
+            </h1>
+            <Badge variant="default">Developer Onboarding</Badge>
+          </div>
+          <span style={{ fontSize: '12px', color: colors.text.secondary }}>
+            Structured guide to onboard new developers without reading every raw file.
+          </span>
         </div>
 
-        <button
-          onClick={() => handleGenerate('markdown')}
-          disabled={loading || !repoPath}
-          className="btn-primary !py-2 !px-4 !text-xs"
-        >
-          <Cpu size={12} />
-          <span>Generate Documentation Suite</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleGenerate('markdown')}
+            disabled={loading || !repoPath}
+            loading={loading}
+            icon={<Cpu size={12} />}
+          >
+            {docsData ? 'Regenerate Documentation' : 'Generate Documentation'}
+          </Button>
+        </div>
       </div>
 
-      {/* Main Layout */}
-      <div className="flex-1 flex overflow-hidden w-full h-full relative">
-        {error && (
-          <div className="absolute top-4 left-4 right-4 z-50 p-3 rounded-lg flex items-center gap-3 text-xs"
-            style={{ backgroundColor: 'rgba(251, 113, 133, 0.05)', border: '1px solid rgba(251, 113, 133, 0.2)', color: 'var(--accent-rose)' }}
-          >
-            <AlertTriangle size={16} />
-            <span>{error}</span>
+      {/* ── 2. Main Content Layout ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', width: '100%', height: '100%' }}>
+        {/* Left Navigation Sidebar */}
+        <aside
+          style={{
+            width: '240px',
+            minWidth: '240px',
+            height: '100%',
+            backgroundColor: colors.bg.surface,
+            borderRight: `1px solid ${colors.border.default}`,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            flexShrink: 0,
+          }}
+        >
+          {/* Section Navigation Items */}
+          <div style={{ padding: '12px 8px', borderBottom: `1px solid ${colors.border.default}`, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {sectionsList.map((sec) => {
+              const isActive = activeSection === sec.key;
+              return (
+                <button
+                  key={sec.key}
+                  onClick={() => setActiveSection(sec.key)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: radius.md,
+                    fontSize: '12px',
+                    fontFamily: font.sans,
+                    fontWeight: isActive ? 600 : 400,
+                    backgroundColor: isActive ? colors.bg.surfaceSecondary : 'transparent',
+                    color: isActive ? colors.text.primary : colors.text.secondary,
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background-color 0.12s ease',
+                  }}
+                >
+                  <span style={{ color: isActive ? colors.accent.blue : colors.text.muted }}>{sec.icon}</span>
+                  <span>{sec.label}</span>
+                </button>
+              );
+            })}
           </div>
-        )}
 
-        {loading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[var(--bg-primary)] z-10">
-            <Loader2 size={36} className="animate-spin text-[var(--accent-primary)]" />
-            <span className="text-sm font-semibold font-mono text-[var(--text-secondary)]">
-              Compiling 5 documentation artifacts ...
-            </span>
-          </div>
-        ) : !repoPath ? (
-          <div className="flex-grow flex items-center justify-center italic text-sm text-[var(--text-muted)]">
-            Scan a repository in the Explorer view to compile documentation.
-          </div>
-        ) : docsData ? (
-          <div className="flex-grow flex overflow-hidden h-full w-full">
-            {/* Sidebar */}
-            <motion.div
-              initial={{ x: -10, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="border-r h-full overflow-hidden flex flex-col select-none"
-              style={{ width: '240px', backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
-            >
-              {/* Core Doc Tabs */}
-              <div className="p-3 border-b flex flex-col gap-1" style={{ borderColor: 'var(--border-color)' }}>
-                {TAB_CONFIG.map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                    className="flex items-center gap-2 w-full p-2.5 text-xs rounded-lg text-left font-semibold transition-all duration-150"
-                    style={{
-                      backgroundColor: activeTab === tab.key ? 'var(--bg-tertiary)' : 'transparent',
-                      color: activeTab === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
-                    }}
-                  >
-                    {tab.icon}
-                    <span>{tab.label}</span>
-                  </button>
-                ))}
+          {/* Module List (when in Modules tab or as quick access) */}
+          {docsData && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '12px 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                  Module References ({filteredModules.length})
+                </span>
               </div>
 
-              {/* Module References */}
-              <div className="flex-grow overflow-y-auto p-3 flex flex-col gap-1.5 scrollbar-thin">
-                <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-[var(--text-muted)] pl-2 pb-1 block border-b"
-                  style={{ borderColor: 'var(--border-color)' }}
+              {/* Quick Search */}
+              <div style={{ padding: '0 4px 8px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 6px',
+                    backgroundColor: colors.bg.primary,
+                    border: `1px solid ${colors.border.default}`,
+                    borderRadius: radius.sm,
+                  }}
                 >
-                  Module References ({Object.keys(docsData.modules || {}).length})
-                </span>
-                <div className="flex flex-col gap-0.5 mt-2">
-                  {Object.keys(docsData.modules || {}).map((path) => (
+                  <Search size={11} style={{ color: colors.text.muted }} />
+                  <input
+                    type="text"
+                    value={moduleSearch}
+                    onChange={(e) => setModuleSearch(e.target.value)}
+                    placeholder="Search module..."
+                    style={{
+                      width: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      fontSize: '10px',
+                      color: colors.text.primary,
+                      fontFamily: font.sans,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Module Buttons List */}
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {filteredModules.map((mPath) => {
+                  const rel = getRelativePath(mPath, repoPath);
+                  const isSelected = activeSection === 'modules' && activeModulePath === mPath;
+                  return (
                     <button
-                      key={path}
-                      onClick={() => { setActiveTab('modules'); setActiveModulePath(path); }}
-                      className="text-left truncate text-xs p-2 rounded transition-all duration-150 font-mono"
+                      key={mPath}
+                      onClick={() => {
+                        setActiveSection('modules');
+                        setActiveModulePath(mPath);
+                      }}
                       style={{
-                        backgroundColor: activeTab === 'modules' && activeModulePath === path ? 'var(--bg-tertiary)' : 'transparent',
-                        color: activeTab === 'modules' && activeModulePath === path ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        textAlign: 'left',
+                        padding: '5px 8px',
+                        borderRadius: radius.sm,
+                        fontSize: '11px',
+                        fontFamily: font.mono,
+                        backgroundColor: isSelected ? colors.bg.surfaceSecondary : 'transparent',
+                        color: isSelected ? colors.accent.blue : colors.text.secondary,
+                        border: 'none',
+                        cursor: 'pointer',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={rel}
+                    >
+                      {rel.split('/').pop() || rel}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </aside>
+
+        {/* Center: Structured Documentation Viewer */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Section Toolbar */}
+          <div
+            style={{
+              padding: '8px 24px',
+              borderBottom: `1px solid ${colors.border.default}`,
+              backgroundColor: colors.bg.surface,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              height: '38px',
+            }}
+          >
+            <span style={{ fontSize: '11px', fontFamily: font.mono, color: colors.text.muted, textTransform: 'uppercase' }}>
+              {activeSection === 'modules' ? getRelativePath(activeModulePath, repoPath) : activeSection.replace('_', ' ')}
+            </span>
+
+            {docsData && (
+              <button
+                onClick={handleCopy}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'none',
+                  border: 'none',
+                  color: copied ? colors.status.success : colors.text.secondary,
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  borderRadius: radius.sm,
+                }}
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Viewport */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            {error && (
+              <div
+                style={{
+                  maxWidth: '820px',
+                  margin: '0 auto 16px',
+                  padding: '10px 14px',
+                  borderRadius: radius.md,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '12px',
+                  backgroundColor: 'rgba(201, 90, 90, 0.08)',
+                  border: `1px solid ${colors.status.dangerBorder}`,
+                  color: colors.status.danger,
+                }}
+              >
+                <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {loading ? (
+              <div style={{ width: '100%', padding: '80px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                <Loader2 size={28} className="animate-spin" style={{ color: colors.accent.blue }} />
+                <span style={{ fontSize: '13px', color: colors.text.secondary, fontFamily: font.sans }}>
+                  Compiling documentation artifacts from syntax trees...
+                </span>
+              </div>
+            ) : !repoPath ? (
+              <div style={{ padding: '80px 0', textAlign: 'center', color: colors.text.muted, fontSize: '13px' }}>
+                Open a repository to compile documentation.
+              </div>
+            ) : !docsData ? (
+              /* Pre-generation Onboarding Shell */
+              <div
+                style={{
+                  maxWidth: '680px',
+                  margin: '40px auto',
+                  padding: '32px 24px',
+                  backgroundColor: colors.bg.surface,
+                  border: `1px solid ${colors.border.default}`,
+                  borderRadius: radius.lg,
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '16px',
+                }}
+              >
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: radius.md,
+                    backgroundColor: colors.bg.surfaceSecondary,
+                    border: `1px solid ${colors.border.default}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: colors.accent.blue,
+                  }}
+                >
+                  <BookOpen size={24} />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <h3 style={{ fontSize: font.size.lg, fontWeight: 600, color: colors.text.primary, margin: 0 }}>
+                    Generate Developer Documentation
+                  </h3>
+                  <p style={{ fontSize: font.size.sm, color: colors.text.secondary, margin: 0, lineHeight: 1.5, maxWidth: '440px' }}>
+                    Creates 5 structured documentation sections: Project Overview, Architecture Guide, API Reference, Dependency Map, and Module Catalogs.
+                  </p>
+                </div>
+
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => handleGenerate('markdown')}
+                  icon={<Cpu size={14} />}
+                >
+                  Generate Documentation Suite
+                </Button>
+              </div>
+            ) : (
+              /* Rendered Documentation Content */
+              <div style={{ maxWidth: '840px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* 1. Overview Section Specialized Content */}
+                {activeSection === 'overview' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div
+                      style={{
+                        padding: '16px 20px',
+                        borderRadius: radius.lg,
+                        backgroundColor: colors.bg.surface,
+                        border: `1px solid ${colors.border.default}`,
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '12px',
                       }}
                     >
-                      {path.split(/[\\/]+/).pop()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Repository</span>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary }}>
+                          {repositoryInfo?.name || repoPath.split(/[\\/]+/).pop()}
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Total Files</span>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary, fontFamily: font.mono }}>
+                          {repositoryInfo?.total_files || files.length} files
+                        </div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Languages</span>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary }}>
+                          {Object.keys(repositoryInfo?.languages || {}).join(', ') || 'TypeScript, Python'}
+                        </div>
+                      </div>
+                    </div>
 
-            {/* Document Viewport */}
-            <div className="flex-grow flex flex-col overflow-hidden h-full relative">
-              {/* Control bar */}
-              <div
-                className="px-6 py-2 border-b flex items-center justify-between select-none"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-[var(--text-muted)]">
-                    {activeTab === 'modules' ? activeModulePath : activeTab.replace('_', ' ').toUpperCase()}
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded font-mono"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}
-                  >
-                    .md
-                  </span>
-                </div>
-
-                <button
-                  onClick={handleCopy}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-semibold transition-all duration-200 hover:bg-[var(--bg-tertiary)]"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {copied ? (
-                    <><Check size={12} className="text-green-400" /><span className="text-green-400">Copied!</span></>
-                  ) : (
-                    <><Copy size={12} /><span>Copy</span></>
-                  )}
-                </button>
-              </div>
-
-              {/* Rendered Content */}
-              <div className="flex-1 overflow-y-auto p-8 scrollbar-thin select-text"
-                style={{ backgroundColor: 'rgba(10, 10, 18, 0.3)' }}
-              >
-                <motion.div
-                  key={activeTab + activeModulePath}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="max-w-3xl w-full mx-auto p-8 rounded-xl border leading-relaxed"
-                  style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
-                >
-                  <div className="prose-chat" style={{ padding: '1.5rem', lineHeight: 1.8, fontSize: '0.9rem', maxHeight: '100%', overflowY: 'auto' }}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{getActiveContent()}</ReactMarkdown>
+                    <div
+                      style={{
+                        backgroundColor: colors.bg.surface,
+                        border: `1px solid ${colors.border.default}`,
+                        borderRadius: radius.lg,
+                        padding: '24px',
+                      }}
+                    >
+                      <div className="prose-chat select-text">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{docsData.overview}</ReactMarkdown>
+                      </div>
+                    </div>
                   </div>
-                </motion.div>
+                )}
+
+                {/* 2. Architecture Section Specialized Content */}
+                {activeSection === 'architecture' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: radius.lg,
+                        backgroundColor: colors.bg.surface,
+                        border: `1px solid ${colors.border.default}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
+                          Interactive Architecture Inspector
+                        </span>
+                        <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                          View layer boundary violations, dead code, and cyclomatic couplings.
+                        </span>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate('/architecture')}
+                        icon={<ExternalLink size={11} />}
+                      >
+                        Open Architecture Viewer
+                      </Button>
+                    </div>
+
+                    <div
+                      style={{
+                        backgroundColor: colors.bg.surface,
+                        border: `1px solid ${colors.border.default}`,
+                        borderRadius: radius.lg,
+                        padding: '24px',
+                      }}
+                    >
+                      <div className="prose-chat select-text">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{docsData.architecture}</ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. API Reference Section Specialized Content */}
+                {activeSection === 'api_reference' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                        Discovered API Endpoints & Routes ({apiEndpoints.length})
+                      </span>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {apiEndpoints.map((ep, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              backgroundColor: colors.bg.surface,
+                              border: `1px solid ${colors.border.default}`,
+                              borderRadius: radius.md,
+                              padding: '12px 16px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Badge variant={ep.method === 'POST' ? 'blue' : 'green'}>{ep.method}</Badge>
+                                <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: font.mono, color: colors.text.primary }}>
+                                  {ep.path}
+                                </span>
+                              </div>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleOpenFile(ep.implementation)}
+                                icon={<ExternalLink size={11} />}
+                              >
+                                Open file
+                              </Button>
+                            </div>
+
+                            <span style={{ fontSize: '11px', color: colors.text.secondary }}>
+                              {ep.purpose}
+                            </span>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: colors.text.muted }}>
+                              <span>Implementation:</span>
+                              <span style={{ fontFamily: font.mono, color: colors.text.secondary }}>{ep.implementation}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {docsData.api_reference && (
+                      <div
+                        style={{
+                          backgroundColor: colors.bg.surface,
+                          border: `1px solid ${colors.border.default}`,
+                          borderRadius: radius.lg,
+                          padding: '24px',
+                        }}
+                      >
+                        <div className="prose-chat select-text">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{docsData.api_reference}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 4. Dependency Map Section Specialized Content */}
+                {activeSection === 'dependency_map' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: radius.lg,
+                        backgroundColor: colors.bg.surface,
+                        border: `1px solid ${colors.border.default}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
+                          Interactive Dependency Graph
+                        </span>
+                        <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                          Explore interactive force-directed and hierarchical layouts on the graph canvas.
+                        </span>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleOpenGraph}
+                        icon={<Share2 size={11} />}
+                      >
+                        Open Graph
+                      </Button>
+                    </div>
+
+                    {/* Most connected modules */}
+                    {connectedModules.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                          Most Connected Modules (Hubs)
+                        </span>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                          {connectedModules.map((m, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => handleOpenFile(m.path)}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: radius.md,
+                                backgroundColor: colors.bg.surface,
+                                border: `1px solid ${colors.border.default}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <span style={{ fontSize: '11px', fontFamily: font.mono, color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {getRelativePath(m.path, repoPath).split('/').pop()}
+                              </span>
+                              <Badge variant="blue">{m.links} links</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        backgroundColor: colors.bg.surface,
+                        border: `1px solid ${colors.border.default}`,
+                        borderRadius: radius.lg,
+                        padding: '24px',
+                      }}
+                    >
+                      <div className="prose-chat select-text">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {docsData.dependency_map ||
+                            '# Dependency Map\n\nModules interact via structured imports across frontend components, state stores, and backend service routers.'}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Modules Catalog Section Specialized Content */}
+                {activeSection === 'modules' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div
+                      style={{
+                        backgroundColor: colors.bg.surface,
+                        border: `1px solid ${colors.border.default}`,
+                        borderRadius: radius.lg,
+                        padding: '24px',
+                      }}
+                    >
+                      {activeModulePath ? (
+                        <div className="prose-chat select-text">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {docsData.modules[activeModulePath] || '*No detailed documentation compiled for this module.*'}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: colors.text.muted, fontSize: '12px' }}>
+                          Select a module from the left sidebar to view its documentation.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
-        ) : (
-          /* Empty state */
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex-grow flex flex-col items-center justify-center gap-4 text-center max-w-sm mx-auto"
-          >
-            <div className="glass-panel w-14 h-14 !rounded-xl flex items-center justify-center text-[var(--text-muted)]">
-              <FileText size={24} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Documentation Ready</h3>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Generate 5 documentation artifacts: README, Architecture Guide, API Reference, Dependency Map, and Module References.
-              </p>
-            </div>
-          </motion.div>
-        )}
+        </main>
       </div>
     </div>
   );

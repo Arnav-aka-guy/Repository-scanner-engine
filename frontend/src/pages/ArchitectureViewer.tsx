@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { apiPost } from '../services/api';
 import {
@@ -6,7 +7,7 @@ import {
   Loader2,
   AlertTriangle,
   AlertCircle,
-  CheckCircle,
+  CheckCircle2,
   Shield,
   Layers,
   GitBranch,
@@ -14,61 +15,53 @@ import {
   FileCode,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
+  MessageSquare,
+  HelpCircle,
+  Share2,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { colors, radius, font } from '../design-system/tokens';
+import { Tooltip, Badge, Button, FilePath } from '../design-system/primitives';
+import { ErrorCard } from '../components/ErrorCard';
+
+interface ArchitectureViolation {
+  source_file: string;
+  target_file: string;
+  source_layer: string;
+  target_layer: string;
+  description: string;
+  severity?: 'critical' | 'high' | 'medium' | 'low';
+}
 
 interface ArchitectureReport {
   score: number;
   layers: Record<string, string[]>;
   circular_dependencies: string[][];
   dead_code: { id: string; label: string; node_type: string; file_path: string }[];
-  violations: { source_file: string; target_file: string; source_layer: string; target_layer: string; description: string }[];
+  violations: ArchitectureViolation[];
   strengths: string[];
   problems: string[];
   summary: string;
   stats: Record<string, number>;
 }
 
-const ScoreGauge: React.FC<{ score: number }> = ({ score }) => {
-  const circumference = 2 * Math.PI * 54;
-  const offset = circumference - (score / 100) * circumference;
-  const color = score >= 80 ? 'var(--accent-green)' : score >= 60 ? 'var(--accent-yellow)' : 'var(--accent-rose)';
-  const label = score >= 80 ? 'EXCELLENT' : score >= 60 ? 'GOOD' : score >= 40 ? 'FAIR' : 'NEEDS WORK';
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="relative w-32 h-32">
-        <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-          <circle cx="60" cy="60" r="54" fill="none" stroke="var(--border-color)" strokeWidth="6" />
-          <motion.circle
-            cx="60" cy="60" r="54" fill="none" stroke={color} strokeWidth="6"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: offset }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-            style={{ filter: `drop-shadow(0 0 8px ${color})` }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <motion.span
-            className="text-3xl font-extrabold font-mono"
-            style={{ color }}
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3, type: 'spring', stiffness: 300, damping: 20 }}
-          >
-            {score}
-          </motion.span>
-          <span className="text-[9px] font-bold tracking-widest uppercase text-[var(--text-muted)]">{label}</span>
-        </div>
-      </div>
-    </div>
-  );
-};
+/** Formats relative path from repository root */
+function getRelativePath(fullPath: string, rootPath: string): string {
+  const normRoot = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
+  const normFile = fullPath.replace(/\\/g, '/');
+  if (normRoot && normFile.startsWith(normRoot)) {
+    return normFile.slice(normRoot.length).replace(/^\/+/, '');
+  }
+  return normFile;
+}
 
 export const ArchitectureViewer: React.FC = () => {
+  const navigate = useNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
+  const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<ArchitectureReport | null>(null);
@@ -81,7 +74,6 @@ export const ArchitectureViewer: React.FC = () => {
     try {
       const res = await apiPost<ArchitectureReport>('/architecture/report', { repo_path: repoPath });
       setReport(res);
-      // Expand all layers by default
       setExpandedLayers(new Set(Object.keys(res.layers)));
     } catch (err: any) {
       setError(err.message || 'Architecture analysis failed.');
@@ -91,304 +83,469 @@ export const ArchitectureViewer: React.FC = () => {
   };
 
   useEffect(() => {
-    if (repoPath) runAnalysis();
+    if (repoPath) {
+      runAnalysis();
+    }
   }, [repoPath]);
 
-  const toggleLayer = (name: string) => {
+  const toggleLayer = (layer: string) => {
     setExpandedLayers((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
+      if (next.has(layer)) next.delete(layer);
+      else next.add(layer);
       return next;
     });
   };
 
+  const handleOpenFile = (path: string) => {
+    setSelectedFile(path);
+    navigate('/explorer');
+  };
+
+  const handleAskAI = (context: string) => {
+    navigate('/chat');
+    setTimeout(() => {
+      useWorkspaceStore.getState().sendChatMessage(`Explain architecture issue: ${context}`);
+    }, 100);
+  };
+
+  // Human-readable rating label & color
+  const rating = useMemo(() => {
+    if (!report) return { label: 'Unknown', color: colors.text.muted, description: '' };
+    if (report.score >= 80) {
+      return {
+        label: 'Good',
+        color: colors.status.success,
+        description: 'Clear layer separation, modular boundaries, and minimal circular couplings.',
+      };
+    }
+    if (report.score >= 60) {
+      return {
+        label: 'Moderate',
+        color: colors.status.warning,
+        description: 'Noticeable architectural couplings or layer boundary violations present.',
+      };
+    }
+    return {
+      label: 'Needs Attention',
+      color: colors.status.danger,
+      description: 'Multiple architectural layer leaks or circular dependencies detected.',
+    };
+  }, [report]);
+
+  // Standard Layer groups for presentation
+  const standardLayers = ['Presentation', 'API', 'Services', 'Infrastructure', 'Unclassified'];
+
   return (
-    <div className="flex-1 flex flex-col overflow-hidden h-full">
-      {/* Page Header */}
+    <div
+      className="flex-1 flex flex-col overflow-hidden w-full h-full select-none"
+      style={{ backgroundColor: colors.bg.primary }}
+    >
+      {/* ── 1. Header ── */}
       <div
-        className="px-6 py-4 border-b flex items-center justify-between select-none"
-        style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
+        style={{
+          padding: '12px 24px',
+          borderBottom: `1px solid ${colors.border.default}`,
+          backgroundColor: colors.bg.surface,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0,
+        }}
       >
-        <div className="flex items-center gap-2.5">
-          <span className="text-[var(--accent-primary)]"><Shield size={20} /></span>
-          <h1 className="text-sm font-bold uppercase tracking-wider text-[var(--text-primary)]">
-            Architecture Intelligence
-          </h1>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: colors.accent.blue, display: 'flex', alignItems: 'center' }}>
+              <Tv size={17} />
+            </span>
+            <h1
+              style={{
+                fontSize: font.size.base,
+                fontWeight: 600,
+                color: colors.text.primary,
+                fontFamily: font.sans,
+                margin: 0,
+              }}
+            >
+              Architecture Health
+            </h1>
+            <Tooltip content="Verifies system topology against standard separation-of-concerns layers to detect boundary violations and dependency cycles.">
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <Badge variant="default">Layer Boundaries</Badge>
+              </span>
+            </Tooltip>
+          </div>
+          <span style={{ fontSize: '12px', color: colors.text.secondary }}>
+            Checks how the major parts of your project are organized and connected.
+          </span>
         </div>
-        <button
+
+        <Button
+          variant="primary"
+          size="sm"
           onClick={runAnalysis}
           disabled={loading || !repoPath}
-          className="btn-primary !py-2 !px-4 !text-xs"
+          loading={loading}
+          icon={<Tv size={12} />}
         >
-          <Tv size={12} />
-          <span>Analyze Architecture</span>
-        </button>
+          Analyze Architecture
+        </Button>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-grow overflow-y-auto p-6 scrollbar-thin">
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="mb-5 p-3 rounded-lg flex items-center gap-3 text-xs"
-              style={{ backgroundColor: 'rgba(251, 113, 133, 0.05)', border: '1px solid rgba(251, 113, 133, 0.2)', color: 'var(--accent-rose)' }}
-            >
-              <AlertTriangle size={16} />
-              <span>{error}</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+      {/* ── 2. Content ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        {error && (
+          <div style={{ maxWidth: '960px', margin: '0 auto 16px', width: '100%' }}>
+            <ErrorCard
+              title="Architecture Analysis Error"
+              whatHappened={error}
+              why="The backend could not analyze the architectural layers or dependency cycles."
+              whatCanIDo={[
+                'Verify that the repository has been fully scanned and indexed.',
+                'Check that the backend analysis server is healthy.',
+                'Retry architectural analysis.',
+              ]}
+              onRetry={runAnalysis}
+              retrying={loading}
+            />
+          </div>
+        )}
 
         {loading ? (
-          <div className="w-full h-64 flex flex-col items-center justify-center gap-3">
-            <Loader2 size={32} className="animate-spin text-[var(--accent-primary)]" />
-            <span className="text-sm font-semibold font-mono text-[var(--text-secondary)]">
-              Analyzing architecture layers, cycles, and violations ...
+          <div style={{ width: '100%', padding: '80px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+            <Loader2 size={28} className="animate-spin" style={{ color: colors.accent.blue }} />
+            <span style={{ fontSize: '13px', color: colors.text.secondary, fontFamily: font.sans }}>
+              Analyzing architecture layers, cycle topology, and boundary violations...
             </span>
           </div>
         ) : !repoPath ? (
-          <div className="w-full h-64 flex items-center justify-center italic text-sm text-[var(--text-muted)]">
-            Scan a repository in the Explorer view to analyze its architecture.
+          <div style={{ padding: '80px 0', textAlign: 'center', color: colors.text.muted, fontSize: '13px' }}>
+            Open or scan a repository to analyze its architectural health.
           </div>
         ) : report ? (
-          <div className="max-w-5xl mx-auto flex flex-col gap-8">
-            {/* ── Score + Stats Row ── */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* ── Summary & Score Breakdown ── */}
+            <div
+              style={{
+                backgroundColor: colors.bg.surface,
+                border: `1px solid ${colors.border.default}`,
+                borderRadius: radius.lg,
+                padding: '20px 24px',
+                display: 'grid',
+                gridTemplateColumns: 'auto 1fr',
+                gap: '24px',
+                alignItems: 'center',
+              }}
             >
-              {/* Score Gauge */}
-              <div className="rounded-xl border p-6 flex items-center justify-center"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
+              {/* Score Display */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  paddingRight: '24px',
+                  borderRight: `1px solid ${colors.border.subtle}`,
+                  minWidth: '140px',
+                }}
               >
-                <ScoreGauge score={report.score} />
-              </div>
-
-              {/* Quick Stats */}
-              <div className="col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                  { label: 'Layers', value: report.stats.total_layers, icon: Layers, color: 'var(--accent-primary)' },
-                  { label: 'Cycles', value: report.stats.total_circular_deps, icon: GitBranch, color: report.stats.total_circular_deps > 0 ? 'var(--accent-rose)' : 'var(--accent-green)' },
-                  { label: 'Dead Code', value: report.stats.total_dead_code, icon: Code2, color: report.stats.total_dead_code > 5 ? 'var(--accent-yellow)' : 'var(--accent-green)' },
-                  { label: 'Violations', value: report.stats.total_violations, icon: AlertCircle, color: report.stats.total_violations > 0 ? 'var(--accent-rose)' : 'var(--accent-green)' },
-                ].map(({ label, value, icon: Icon, color }, i) => (
-                  <motion.div
-                    key={label}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + i * 0.05, type: 'spring', stiffness: 300, damping: 24 }}
-                    className="stat-card flex flex-col gap-1 items-center text-center"
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span
+                    style={{
+                      fontSize: '36px',
+                      fontWeight: 700,
+                      fontFamily: font.mono,
+                      color: rating.color,
+                      lineHeight: 1,
+                    }}
                   >
-                    <Icon size={16} style={{ color }} />
-                    <span className="text-2xl font-extrabold font-mono" style={{ color }}>{value}</span>
-                    <span className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">{label}</span>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* ── Strengths & Problems ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Strengths */}
-              <div className="rounded-xl border p-5 flex flex-col gap-3"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={16} className="text-[var(--accent-green)]" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--accent-green)]">Strengths</h3>
+                    {report.score}
+                  </span>
+                  <span style={{ fontSize: '13px', color: colors.text.muted, fontFamily: font.mono }}>
+                    / 100
+                  </span>
                 </div>
-                <div className="flex flex-col gap-2">
-                  {report.strengths.map((s, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-[var(--text-secondary)] leading-relaxed">
-                      <span className="text-[var(--accent-green)] mt-0.5 flex-shrink-0">✓</span>
-                      <span>{s}</span>
-                    </div>
-                  ))}
-                  {report.strengths.length === 0 && (
-                    <span className="text-xs text-[var(--text-muted)] italic">No strengths identified.</span>
-                  )}
-                </div>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: rating.color,
+                    marginTop: '6px',
+                  }}
+                >
+                  {rating.label}
+                </span>
               </div>
 
-              {/* Problems */}
-              <div className="rounded-xl border p-5 flex flex-col gap-3"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={16} className="text-[var(--accent-rose)]" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--accent-rose)]">Areas for Improvement</h3>
+              {/* "Why this score?" Breakdown */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles size={14} style={{ color: colors.accent.blue }} />
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Why this score?
+                  </span>
                 </div>
-                <div className="flex flex-col gap-2">
-                  {report.problems.map((p, i) => (
-                    <div key={i} className="flex items-start gap-2 text-xs text-[var(--text-secondary)] leading-relaxed">
-                      <span className="text-[var(--accent-rose)] mt-0.5 flex-shrink-0">✗</span>
-                      <span>{p}</span>
-                    </div>
-                  ))}
-                  {report.problems.length === 0 && (
-                    <span className="text-xs text-[var(--text-muted)] italic">No issues found. Excellent!</span>
-                  )}
-                </div>
-              </div>
-            </div>
 
-            {/* ── Architecture Layers ── */}
-            <div className="rounded-xl border p-5 flex flex-col gap-4"
-              style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
-            >
-              <div className="flex items-center gap-2">
-                <Layers size={16} className="text-[var(--accent-primary)]" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                  Detected Architecture Layers ({Object.keys(report.layers).length})
-                </h3>
-              </div>
+                <p style={{ fontSize: '12px', color: colors.text.secondary, margin: 0, lineHeight: 1.5 }}>
+                  {rating.description} {report.summary}
+                </p>
 
-              <div className="flex flex-col gap-2">
-                {Object.entries(report.layers).map(([name, files]) => (
-                  <div key={name} className="rounded-lg border overflow-hidden"
-                    style={{ borderColor: 'var(--border-color)' }}
-                  >
-                    <button
-                      onClick={() => toggleLayer(name)}
-                      className="w-full flex items-center justify-between p-3 text-left transition-all"
-                      style={{ backgroundColor: 'var(--bg-primary)' }}
-                    >
-                      <div className="flex items-center gap-2">
-                        {expandedLayers.has(name) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        <span className="text-sm font-bold font-mono text-[var(--text-primary)]">{name}</span>
-                      </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold"
-                        style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
-                      >
-                        {files.length} files
-                      </span>
-                    </button>
-
-                    <AnimatePresence>
-                      {expandedLayers.has(name) && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="border-t overflow-hidden"
-                          style={{ borderColor: 'var(--border-color)' }}
-                        >
-                          <div className="p-3 flex flex-col gap-1 max-h-[160px] overflow-y-auto scrollbar-thin">
-                            {files.map((f) => (
-                              <div key={f} className="flex items-center gap-2 text-xs font-mono text-[var(--text-secondary)] truncate">
-                                <FileCode size={12} className="text-[var(--text-muted)] flex-shrink-0" />
-                                <span className="truncate">{f}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                {/* Dimensions pills */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '4px' }}>
+                  <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Layers</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>{report.stats.total_layers || Object.keys(report.layers).length}</div>
                   </div>
-                ))}
+                  <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Cycles</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: (report.circular_dependencies?.length || 0) > 0 ? colors.status.danger : colors.status.success, fontFamily: font.mono }}>{report.circular_dependencies?.length || 0}</div>
+                  </div>
+                  <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Violations</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: (report.violations?.length || 0) > 0 ? colors.status.warning : colors.status.success, fontFamily: font.mono }}>{report.violations?.length || 0}</div>
+                  </div>
+                  <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
+                    <div style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Unclassified</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text.secondary, fontFamily: font.mono }}>{report.layers['Unclassified']?.length || 0}</div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* ── Circular Dependencies ── */}
-            {report.circular_dependencies.length > 0 && (
-              <div className="rounded-xl border p-5 flex flex-col gap-3"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'rgba(251, 113, 133, 0.15)' }}
+            {/* ── Circular Dependency Loops Warning (if any) ── */}
+            {report.circular_dependencies && report.circular_dependencies.length > 0 && (
+              <div
+                style={{
+                  backgroundColor: 'rgba(201, 90, 90, 0.05)',
+                  border: `1px solid ${colors.status.dangerBorder}`,
+                  borderRadius: radius.lg,
+                  padding: '16px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
               >
-                <div className="flex items-center gap-2">
-                  <GitBranch size={16} className="text-[var(--accent-rose)]" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--accent-rose)]">
-                    Circular Dependencies ({report.circular_dependencies.length})
-                  </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <GitBranch size={15} style={{ color: colors.status.danger }} />
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.status.danger }}>
+                    Circular Dependencies Detected ({report.circular_dependencies.length})
+                  </span>
                 </div>
-                <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto scrollbar-thin">
-                  {report.circular_dependencies.map((cycle, i) => (
-                    <div key={i} className="p-3 rounded-lg text-xs font-mono leading-relaxed"
-                      style={{ backgroundColor: 'rgba(251, 113, 133, 0.04)', border: '1px solid rgba(251, 113, 133, 0.12)', color: 'var(--accent-rose)' }}
+                <p style={{ fontSize: '12px', color: colors.text.secondary, margin: 0, lineHeight: 1.5 }}>
+                  Circular import loops cause tight coupling between modules, complicating testing and refactoring.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                  {report.circular_dependencies.map((cycle, cIdx) => (
+                    <div
+                      key={cIdx}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: radius.sm,
+                        backgroundColor: colors.bg.primary,
+                        border: `1px solid ${colors.border.subtle}`,
+                        fontSize: '11px',
+                        fontFamily: font.mono,
+                        color: colors.text.primary,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        flexWrap: 'wrap',
+                      }}
                     >
-                      {cycle.join(' → ')}
+                      {cycle.map((p, pIdx) => (
+                        <React.Fragment key={pIdx}>
+                          <span style={{ color: colors.accent.blue }}>{getRelativePath(p, repoPath)}</span>
+                          {pIdx < cycle.length - 1 && <span style={{ color: colors.text.muted }}>→</span>}
+                        </React.Fragment>
+                      ))}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* ── Dead Code ── */}
-            {report.dead_code.length > 0 && (
-              <div className="rounded-xl border p-5 flex flex-col gap-3"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'rgba(250, 204, 21, 0.15)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <Code2 size={16} className="text-[var(--accent-yellow)]" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--accent-yellow)]">
-                    Unreferenced Entities ({report.dead_code.length})
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[200px] overflow-y-auto scrollbar-thin">
-                  {report.dead_code.map((dc, i) => (
-                    <div key={i} className="flex items-center justify-between p-2.5 rounded-lg text-xs font-mono"
-                      style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}
-                    >
-                      <span className="truncate text-[var(--text-secondary)]">{dc.label}</span>
-                      <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase"
-                        style={{ backgroundColor: 'rgba(250, 204, 21, 0.08)', border: '1px solid rgba(250, 204, 21, 0.2)', color: 'var(--accent-yellow)' }}
+            {/* ── Violations & Concerns ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                  Boundary Violations & Architectural Concerns ({report.violations?.length || 0})
+                </span>
+              </div>
+
+              {report.violations && report.violations.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {report.violations.map((v, vIdx) => {
+                    const srcRel = getRelativePath(v.source_file, repoPath);
+                    const tgtRel = getRelativePath(v.target_file, repoPath);
+                    return (
+                      <div
+                        key={vIdx}
+                        style={{
+                          backgroundColor: colors.bg.surface,
+                          border: `1px solid ${colors.border.default}`,
+                          borderRadius: radius.lg,
+                          padding: '14px 16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                        }}
                       >
-                        {dc.node_type}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Badge variant="red">{v.severity || 'High Coupling'}</Badge>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary, fontFamily: font.mono }}>
+                              {srcRel}
+                            </span>
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleOpenFile(v.source_file)}
+                            icon={<ExternalLink size={11} />}
+                          >
+                            Open file
+                          </Button>
+                        </div>
 
-            {/* ── Violations ── */}
-            {report.violations.length > 0 && (
-              <div className="rounded-xl border p-5 flex flex-col gap-3"
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'rgba(251, 113, 133, 0.15)' }}
-              >
-                <div className="flex items-center gap-2">
-                  <AlertCircle size={16} className="text-[var(--accent-rose)]" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--accent-rose)]">
-                    Architectural Violations ({report.violations.length})
-                  </h3>
-                </div>
-                <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto scrollbar-thin">
-                  {report.violations.map((v, i) => (
-                    <div key={i} className="p-3 rounded-lg text-xs leading-relaxed"
-                      style={{ backgroundColor: 'rgba(251, 113, 133, 0.04)', border: '1px solid rgba(251, 113, 133, 0.12)' }}
-                    >
-                      <div className="text-[var(--accent-rose)] font-semibold mb-1">
-                        {v.source_layer} → {v.target_layer}
+                        <div style={{ fontSize: '12px', color: colors.text.secondary }}>
+                          {v.description || `Module in ${v.source_layer} directly depends on ${tgtRel} in ${v.target_layer}.`}
+                        </div>
+
+                        <div
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: radius.md,
+                            backgroundColor: colors.bg.surfaceSecondary,
+                            border: `1px solid ${colors.border.subtle}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '3px',
+                          }}
+                        >
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted }}>
+                            Why it matters:
+                          </span>
+                          <span style={{ fontSize: '11px', color: colors.text.secondary, lineHeight: 1.4 }}>
+                            Changes to {tgtRel.split('/').pop()} may unexpectedly break consumers in higher-level layers, violating unidirectional architectural boundaries.
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-[var(--text-secondary)]">{v.description}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              ) : (
+                <div
+                  style={{
+                    backgroundColor: colors.bg.surface,
+                    border: `1px solid ${colors.border.default}`,
+                    borderRadius: radius.md,
+                    padding: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '12px',
+                    color: colors.status.success,
+                  }}
+                >
+                  <CheckCircle2 size={16} />
+                  <span>No architectural layer boundary violations detected. Components respect modular boundaries.</span>
+                </div>
+              )}
+            </div>
+
+            {/* ── Architectural Layers ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                Architectural Layers ({Object.keys(report.layers).length})
+              </span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {Object.entries(report.layers).map(([layerName, fileList]) => {
+                  const isExpanded = expandedLayers.has(layerName);
+                  return (
+                    <div
+                      key={layerName}
+                      style={{
+                        backgroundColor: colors.bg.surface,
+                        border: `1px solid ${colors.border.default}`,
+                        borderRadius: radius.md,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        onClick={() => toggleLayer(layerName)}
+                        style={{
+                          padding: '10px 14px',
+                          backgroundColor: isExpanded ? colors.bg.surfaceSecondary : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {isExpanded ? <ChevronDown size={14} style={{ color: colors.text.muted }} /> : <ChevronRight size={14} style={{ color: colors.text.muted }} />}
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
+                            {layerName}
+                          </span>
+                          <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                            ({fileList.length} {fileList.length === 1 ? 'file' : 'files'})
+                          </span>
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div
+                          style={{
+                            padding: '10px 14px',
+                            borderTop: `1px solid ${colors.border.subtle}`,
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '6px',
+                          }}
+                        >
+                          {fileList.map((f) => {
+                            const rel = getRelativePath(f, repoPath);
+                            return (
+                              <div
+                                key={f}
+                                onClick={() => handleOpenFile(f)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '3px 8px',
+                                  borderRadius: radius.sm,
+                                  backgroundColor: colors.bg.primary,
+                                  border: `1px solid ${colors.border.default}`,
+                                  fontSize: '11px',
+                                  fontFamily: font.mono,
+                                  color: colors.text.secondary,
+                                  cursor: 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.borderColor = colors.accent.blue;
+                                  e.currentTarget.style.color = colors.text.primary;
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.borderColor = colors.border.default;
+                                  e.currentTarget.style.color = colors.text.secondary;
+                                }}
+                                title="Click to view file in Explorer"
+                              >
+                                <FileCode size={11} style={{ color: colors.accent.blue }} />
+                                <span>{rel}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full h-64 flex flex-col items-center justify-center gap-4 text-center"
-          >
-            <div className="glass-panel w-14 h-14 !rounded-xl flex items-center justify-center text-[var(--text-muted)]">
-              <Shield size={24} />
-            </div>
-            <div className="max-w-xs flex flex-col gap-1.5">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">Architecture Ready</h3>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Click Analyze to detect layers, find cycles, and compute a health score.
-              </p>
-            </div>
-          </motion.div>
-        )}
+        ) : null}
       </div>
     </div>
   );

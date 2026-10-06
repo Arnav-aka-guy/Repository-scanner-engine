@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { FlowGraphView } from '../components/graph/FlowGraphView';
 import {
@@ -6,28 +7,57 @@ import {
   Share2,
   Loader2,
   AlertTriangle,
-  AlertCircle,
-  Sparkles,
   X,
   LayoutGrid,
+  Search,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  RotateCcw,
+  SlidersHorizontal,
+  ExternalLink,
+  MessageSquare,
+  ArrowRight,
+  ArrowLeft,
+  Layers,
+  FileCode,
+  Info,
+  CheckCircle2,
+  ChevronRight,
 } from 'lucide-react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
+import { colors, radius, font } from '../design-system/tokens';
+import { Tooltip, Badge, Button, FilePath } from '../design-system/primitives';
+import { ErrorCard } from '../components/ErrorCard';
+
+type GraphFilterType = 'all' | 'high_connectivity' | 'circular' | 'selected_deps' | 'direct_deps';
 
 const drawerVariants: Variants = {
-  hidden: { x: 320, opacity: 0 },
+  hidden: { x: 340, opacity: 0 },
   visible: {
     x: 0,
     opacity: 1,
     transition: { type: 'spring', stiffness: 300, damping: 30 },
   },
   exit: {
-    x: 320,
+    x: 340,
     opacity: 0,
-    transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const },
+    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] as const },
   },
 };
 
+/** Formats relative path from repository root */
+function getRelativePath(fullPath: string, rootPath: string): string {
+  const normRoot = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
+  const normFile = fullPath.replace(/\\/g, '/');
+  if (normRoot && normFile.startsWith(normRoot)) {
+    return normFile.slice(normRoot.length).replace(/^\/+/, '');
+  }
+  return normFile;
+}
+
 export const DependencyGraph: React.FC = () => {
+  const navigate = useNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
   const loading = useWorkspaceStore((s) => s.graphLoading);
   const error = useWorkspaceStore((s) => s.graphError);
@@ -35,10 +65,18 @@ export const DependencyGraph: React.FC = () => {
   const analysisResult = useWorkspaceStore((s) => s.analysisResult);
   const fetchGraph = useWorkspaceStore((s) => s.fetchGraph);
   const runAnalysis = useWorkspaceStore((s) => s.runAnalysis);
+  const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
 
-  const [activeType, setActiveType] = useState<'dependency' | 'call'>('dependency');
+  // View state
+  const [activeType, setActiveType] = useState<'dependency' | 'call' | 'symbol'>('dependency');
   const [layoutName, setLayoutName] = useState<'cose' | 'dagre' | 'circle'>('cose');
+  const [graphFilter, setGraphFilter] = useState<GraphFilterType>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
+
+  // Change Impact Analysis State (Feature 2)
+  const [impactResult, setImpactResult] = useState<any | null>(null);
+  const [impactLoading, setImpactLoading] = useState(false);
 
   useEffect(() => {
     if (repoPath) {
@@ -46,143 +84,448 @@ export const DependencyGraph: React.FC = () => {
     }
   }, [repoPath, activeType]);
 
+  // Fetch change impact when a node is selected
+  useEffect(() => {
+    let isCurrent = true;
+    if (selectedNode && repoPath) {
+      const targetPath = selectedNode.file_path || selectedNode.id;
+      setImpactLoading(true);
+      import('../services/graph')
+        .then((svc) => svc.getChangeImpact(repoPath, targetPath))
+        .then((res) => {
+          if (isCurrent) setImpactResult(res);
+        })
+        .catch(() => {
+          if (isCurrent) setImpactResult(null);
+        })
+        .finally(() => {
+          if (isCurrent) setImpactLoading(false);
+        });
+    } else {
+      setImpactResult(null);
+    }
+    return () => {
+      isCurrent = false;
+    };
+  }, [selectedNode, repoPath]);
+
   const handleRunAnalysis = () => {
     runAnalysis();
   };
 
+  // Inspect relationships of selected node
+  const nodeRelationships = useMemo(() => {
+    if (!selectedNode || !graphData) {
+      return { dependsOn: [], usedBy: [], totalIn: 0, totalOut: 0 };
+    }
+
+    const nodeId = selectedNode.id;
+    const rawEdges: any[] = [];
+
+    if (Array.isArray(graphData)) {
+      graphData.forEach((el: any) => {
+        if (el.data?.source && el.data?.target) rawEdges.push(el.data);
+      });
+    } else if (graphData.edges) {
+      rawEdges.push(...(Array.isArray(graphData.edges) ? graphData.edges.map((e: any) => e.data || e) : []));
+    } else if (graphData.elements) {
+      graphData.elements.forEach((el: any) => {
+        if (el.data?.source && el.data?.target) rawEdges.push(el.data);
+      });
+    }
+
+    // Depends on (outgoing from nodeId)
+    const dependsOn = rawEdges
+      .filter((e) => e.source === nodeId)
+      .map((e) => ({
+        target: e.target,
+        type: e.edge_type || 'imports',
+      }));
+
+    // Used by (incoming to nodeId)
+    const usedBy = rawEdges
+      .filter((e) => e.target === nodeId)
+      .map((e) => ({
+        source: e.source,
+        type: e.edge_type || 'imported by',
+      }));
+
+    return {
+      dependsOn,
+      usedBy,
+      totalOut: dependsOn.length,
+      totalIn: usedBy.length,
+    };
+  }, [selectedNode, graphData]);
+
+  // Actions
+  const handleOpenFile = (path: string) => {
+    setSelectedFile(path);
+    navigate('/explorer');
+  };
+
+  const handleAskAI = (nodeLabel: string, filePath: string) => {
+    navigate('/chat');
+    setTimeout(() => {
+      const store = useWorkspaceStore.getState();
+      const rel = getRelativePath(filePath || nodeLabel, repoPath);
+      store.sendChatMessage(
+        `Explain how ${nodeLabel} is used in ${rel} and detail its incoming and outgoing relationships.`
+      );
+    }, 100);
+  };
+
+  const handleReset = () => {
+    setSearchQuery('');
+    setGraphFilter('all');
+    setSelectedNode(null);
+    setLayoutName('cose');
+  };
+
   const isDrawerOpen = selectedNode || analysisResult;
 
+  const currentTitle =
+    activeType === 'dependency'
+      ? 'How Files Connect'
+      : activeType === 'call'
+      ? 'Who Calls What?'
+      : 'Symbol Relationships';
+  const currentTechBadge =
+    activeType === 'dependency'
+      ? 'Dependency Graph'
+      : activeType === 'call'
+      ? 'Call Graph'
+      : 'Symbol Graph';
+  const currentExplanation =
+    activeType === 'dependency'
+      ? 'This map shows which parts of your project depend on one another.'
+      : activeType === 'call'
+      ? 'Visualizes execution flow and function-to-function invocation paths.'
+      : 'Traces DEFINES, IMPORTS, CALLS, INHERITS, and USES relationships across codebase symbols.';
+
   return (
-    <div className="flex-1 flex overflow-hidden w-full h-full relative">
-      {/* ── Main Viewport & Toolbar ── */}
+    <div
+      className="flex-1 flex overflow-hidden w-full h-full relative select-none"
+      style={{ backgroundColor: colors.bg.primary }}
+    >
+      {/* ── Main Viewport & Controls ── */}
       <div className="flex-grow flex flex-col overflow-hidden h-full relative">
-        {/* Toolbar Header */}
-        <div className="page-header flex-wrap gap-4">
-          {/* Left: Graph Type Segmented Control + Layout */}
-          <div className="flex items-center gap-3">
-            {/* Segmented Control */}
-            <div
-              className="glass-panel-subtle flex p-0.5 !rounded-lg"
-            >
-              <button
-                onClick={() => setActiveType('dependency')}
-                className="text-xs px-3.5 py-1.5 rounded-md font-semibold transition-all duration-200 relative"
+        {/* Top Control Bar */}
+        <div
+          style={{
+            padding: '10px 16px',
+            borderBottom: `1px solid ${colors.border.default}`,
+            backgroundColor: colors.bg.surface,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            flexShrink: 0,
+          }}
+        >
+          {/* Row 1: Title & Mode Tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: colors.accent.blue, display: 'flex', alignItems: 'center' }}>
+                <Share2 size={16} />
+              </span>
+              <h1
                 style={{
-                  backgroundColor: activeType === 'dependency' ? 'var(--bg-surface)' : 'transparent',
-                  color: activeType === 'dependency' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  boxShadow: activeType === 'dependency' ? '0 0 12px rgba(96, 165, 250, 0.1)' : 'none',
+                  fontSize: font.size.sm,
+                  fontWeight: 600,
+                  color: colors.text.primary,
+                  fontFamily: font.sans,
+                  margin: 0,
                 }}
               >
-                Dependency Map
-              </button>
-              <button
-                onClick={() => setActiveType('call')}
-                className="text-xs px-3.5 py-1.5 rounded-md font-semibold transition-all duration-200 relative"
-                style={{
-                  backgroundColor: activeType === 'call' ? 'var(--bg-surface)' : 'transparent',
-                  color: activeType === 'call' ? 'var(--text-primary)' : 'var(--text-muted)',
-                  boxShadow: activeType === 'call' ? '0 0 12px rgba(96, 165, 250, 0.1)' : 'none',
-                }}
-              >
-                Call Graph
-              </button>
+                {currentTitle}
+              </h1>
+              <Tooltip content="Graph representation of module imports and function invocation edges extracted from AST.">
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <Badge variant="default">{currentTechBadge}</Badge>
+                </span>
+              </Tooltip>
+              <span style={{ fontSize: '11px', color: colors.text.muted, marginLeft: '4px' }}>
+                {currentExplanation}
+              </span>
             </div>
 
-            {/* Layout Selector */}
-            <div className="flex items-center gap-1.5">
-              <LayoutGrid size={12} className="text-[var(--text-muted)]" />
-              <select
-                value={layoutName}
-                onChange={(e: any) => setLayoutName(e.target.value)}
-                className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer outline-none"
+            {/* Segmented Mode Switcher */}
+            <div
+              style={{
+                display: 'flex',
+                padding: '2px',
+                borderRadius: radius.md,
+                backgroundColor: colors.bg.primary,
+                border: `1px solid ${colors.border.default}`,
+              }}
+            >
+              <button
+                onClick={() => {
+                  setActiveType('dependency');
+                  setSelectedNode(null);
+                }}
                 style={{
-                  backgroundColor: 'var(--bg-primary)',
-                  borderColor: 'var(--border-color)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border-color)',
+                  fontSize: '11px',
+                  fontWeight: activeType === 'dependency' ? 600 : 400,
+                  fontFamily: font.sans,
+                  padding: '4px 10px',
+                  borderRadius: radius.sm,
+                  backgroundColor: activeType === 'dependency' ? colors.bg.surfaceSecondary : 'transparent',
+                  color: activeType === 'dependency' ? colors.text.primary : colors.text.muted,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.1s ease',
                 }}
               >
-                <option value="cose">Force Directed (Cose)</option>
-                <option value="dagre">Hierarchical (Dagre)</option>
-                <option value="circle">Radial (Circle)</option>
-              </select>
+                How Files Connect
+              </button>
+              <button
+                onClick={() => {
+                  setActiveType('call');
+                  setSelectedNode(null);
+                }}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: activeType === 'call' ? 600 : 400,
+                  fontFamily: font.sans,
+                  padding: '4px 10px',
+                  borderRadius: radius.sm,
+                  backgroundColor: activeType === 'call' ? colors.bg.surfaceSecondary : 'transparent',
+                  color: activeType === 'call' ? colors.text.primary : colors.text.muted,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.1s ease',
+                }}
+              >
+                Who Calls What?
+              </button>
+              <button
+                onClick={() => {
+                  setActiveType('symbol');
+                  setSelectedNode(null);
+                }}
+                style={{
+                  fontSize: '11px',
+                  fontWeight: activeType === 'symbol' ? 600 : 400,
+                  fontFamily: font.sans,
+                  padding: '4px 10px',
+                  borderRadius: radius.sm,
+                  backgroundColor: activeType === 'symbol' ? colors.bg.surfaceSecondary : 'transparent',
+                  color: activeType === 'symbol' ? colors.text.primary : colors.text.muted,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.1s ease',
+                }}
+              >
+                Symbol Graph
+              </button>
             </div>
           </div>
 
-          {/* Right: Compute Analytics */}
-          <button
-            onClick={handleRunAnalysis}
-            disabled={loading || !repoPath}
-            className="btn-primary !py-2 !px-4 !text-xs"
-          >
-            <Play size={12} />
-            <span>Compute Analytics</span>
-          </button>
+          {/* Row 2: Search, Filters, Layout & Reset Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, maxWidth: '640px' }}>
+              {/* Search in Graph */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 8px',
+                  backgroundColor: colors.bg.primary,
+                  border: `1px solid ${colors.border.default}`,
+                  borderRadius: radius.md,
+                  flex: 1,
+                  maxWidth: '260px',
+                }}
+              >
+                <Search size={12} style={{ color: colors.text.muted }} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search nodes in graph..."
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: '11px',
+                    color: colors.text.primary,
+                    fontFamily: font.sans,
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    style={{ background: 'none', border: 'none', color: colors.text.muted, cursor: 'pointer', padding: 0 }}
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+
+              {/* Filtering dropdown */}
+              <Tooltip content="Filter which nodes and edges are visible in the graph view.">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <SlidersHorizontal size={12} style={{ color: colors.text.muted }} />
+                  <select
+                    value={graphFilter}
+                    onChange={(e: any) => setGraphFilter(e.target.value)}
+                    style={{
+                      fontSize: '11px',
+                      fontFamily: font.sans,
+                      padding: '4px 8px',
+                      borderRadius: radius.md,
+                      backgroundColor: colors.bg.primary,
+                      border: `1px solid ${colors.border.default}`,
+                      color: colors.text.primary,
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="all">Filter: All Nodes</option>
+                    <option value="high_connectivity">High Connectivity (3+ links)</option>
+                    <option value="direct_deps">Direct Dependencies Only</option>
+                  </select>
+                </div>
+              </Tooltip>
+
+              {/* Layout Selector */}
+              <Tooltip content="Graph layout: Force-directed simulates organic springs, Hierarchical arranges layers, Radial arranges in a circle.">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <LayoutGrid size={12} style={{ color: colors.text.muted }} />
+                  <select
+                    value={layoutName}
+                    onChange={(e: any) => setLayoutName(e.target.value)}
+                    style={{
+                      fontSize: '11px',
+                      fontFamily: font.sans,
+                      padding: '4px 8px',
+                      borderRadius: radius.md,
+                      backgroundColor: colors.bg.primary,
+                      border: `1px solid ${colors.border.default}`,
+                      color: colors.text.primary,
+                      outline: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="cose">Force-Directed</option>
+                    <option value="dagre">Hierarchical</option>
+                    <option value="circle">Radial</option>
+                  </select>
+                </div>
+              </Tooltip>
+
+              {/* Reset view */}
+              <Tooltip content="Reset search query, filters, and layout settings.">
+                <button
+                  onClick={handleReset}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    fontFamily: font.sans,
+                    padding: '4px 8px',
+                    borderRadius: radius.md,
+                    backgroundColor: colors.bg.primary,
+                    border: `1px solid ${colors.border.default}`,
+                    color: colors.text.secondary,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <RotateCcw size={11} />
+                  Reset
+                </button>
+              </Tooltip>
+            </div>
+
+            {/* Run Analysis Action */}
+            <Tooltip content="Detects unreferenced dead code, circular dependencies, and risk hotspots.">
+              <span>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleRunAnalysis}
+                  disabled={loading || !repoPath}
+                  icon={<Play size={11} />}
+                >
+                  Analyze Structure
+                </Button>
+              </span>
+            </Tooltip>
+          </div>
         </div>
 
         {/* Viewport Canvas */}
-        <div className="flex-1 w-full overflow-hidden relative">
-          {/* Error overlay */}
+        <div className="flex-1 w-full overflow-hidden relative" style={{ backgroundColor: colors.bg.primary }}>
           <AnimatePresence>
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-4 left-4 right-4 z-50 glass-panel-subtle p-3 flex items-center gap-3 text-xs"
-                style={{
-                  borderColor: 'rgba(251, 113, 133, 0.2)',
-                  background: 'rgba(251, 113, 133, 0.05)',
-                  color: 'var(--accent-rose)',
-                }}
-              >
-                <AlertTriangle size={16} />
-                <span>{error}</span>
-              </motion.div>
+              <div className="absolute top-4 left-4 right-4 z-50 max-w-xl">
+                <ErrorCard
+                  title="Graph Construction Failed"
+                  whatHappened={error}
+                  why="Failed to build topological dependency and call graphs for the codebase."
+                  whatCanIDo={[
+                    'Verify the repository files are valid syntax and parseable.',
+                    'Check backend service connectivity.',
+                    'Retry building the graph.',
+                  ]}
+                  onRetry={() => fetchGraph(activeType)}
+                  retrying={loading}
+                />
+              </div>
             )}
           </AnimatePresence>
 
           {loading ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[var(--bg-primary)] z-10">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              >
-                <Loader2 size={36} className="text-[var(--accent-primary)]" />
-              </motion.div>
-              <span className="text-sm font-semibold font-mono text-[var(--text-secondary)]">
-                Plotting vector-linked code nodes ...
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10" style={{ backgroundColor: colors.bg.primary }}>
+              <Loader2 size={32} className="animate-spin" style={{ color: colors.accent.blue }} />
+              <span style={{ fontSize: font.size.sm, color: colors.text.secondary, fontFamily: font.sans }}>
+                Building graph relationships from syntax tree...
               </span>
             </div>
           ) : graphData && (graphData.elements?.length > 0 || graphData.nodes?.length > 0 || graphData.length > 0) ? (
             <FlowGraphView
               graphData={graphData}
               onNodeClick={setSelectedNode}
+              selectedNodeId={selectedNode?.id || null}
+              searchFilter={searchQuery}
+              graphFilter={graphFilter}
+              layoutType={layoutName}
             />
           ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center p-8"
-            >
-              <div className="glass-panel w-14 h-14 !rounded-xl flex items-center justify-center text-[var(--text-muted)]">
-                <Share2 size={24} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-center p-8">
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: radius.lg,
+                  backgroundColor: colors.bg.surfaceSecondary,
+                  border: `1px solid ${colors.border.default}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: colors.text.muted,
+                }}
+              >
+                <Share2 size={20} />
               </div>
-              <div className="max-w-xs flex flex-col gap-1.5">
-                <h3 className="text-sm font-bold text-[var(--text-primary)]">
-                  No Active Graph
+              <div className="max-w-xs flex flex-col gap-1">
+                <h3 style={{ fontSize: font.size.sm, fontWeight: 600, color: colors.text.primary }}>
+                  No Active Graph Data
                 </h3>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  Scan a repository in the Explorer view to visualize dependency and call graphs here.
+                <p style={{ fontSize: '12px', color: colors.text.muted }}>
+                  Select or scan a repository in the Explorer view to trace dependencies.
                 </p>
               </div>
-            </motion.div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* ── Right Slide-out Drawer ── */}
+      {/* ── Right Slide-out Drawer: Node Inspector & Analysis Results ── */}
       <AnimatePresence>
         {isDrawerOpen && (
           <motion.div
@@ -193,214 +536,535 @@ export const DependencyGraph: React.FC = () => {
             exit="exit"
             className="flex flex-col border-l h-full overflow-hidden shadow-2xl relative select-none"
             style={{
-              width: '320px',
-              minWidth: '320px',
-              backgroundColor: 'var(--bg-secondary)',
-              borderColor: 'var(--border-color)',
+              width: '340px',
+              minWidth: '340px',
+              backgroundColor: colors.bg.surface,
+              borderColor: colors.border.default,
             }}
           >
-            <div className="flex-1 flex flex-col overflow-y-auto p-4 gap-5 scrollbar-thin">
-              {/* Option A: Node Inspector */}
+            <div className="flex-1 flex flex-col overflow-y-auto p-4 gap-4 scrollbar-thin">
+              {/* Option A: Selected Node Inspector */}
               {selectedNode ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="flex flex-col gap-4"
-                >
+                <div className="flex flex-col gap-4">
                   <div
-                    className="flex items-center justify-between border-b pb-3"
-                    style={{ borderColor: 'var(--border-color)' }}
+                    className="flex items-center justify-between border-b pb-2"
+                    style={{ borderColor: colors.border.default }}
                   >
-                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                      Node Inspector
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.06em',
+                        color: colors.text.muted,
+                      }}
+                    >
+                      Selected Node Inspector
                     </span>
                     <button
                       onClick={() => setSelectedNode(null)}
-                      className="btn-ghost !p-1"
+                      style={{ background: 'none', border: 'none', color: colors.text.muted, cursor: 'pointer', padding: '2px' }}
+                      title="Close inspector"
                     >
                       <X size={14} />
                     </button>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <h2 className="text-base font-bold font-mono truncate text-[var(--text-primary)]">
-                      {selectedNode.label}
-                    </h2>
-                    <span
-                      className={`badge ${
-                        selectedNode.node_type === 'file'
-                          ? 'badge-blue'
-                          : selectedNode.node_type === 'class'
-                          ? 'badge-purple'
-                          : 'badge-green'
-                      } w-fit`}
-                    >
-                      {selectedNode.node_type}
-                    </span>
-                  </div>
-
-                  <div
-                    className="flex flex-col gap-3 font-mono text-xs text-[var(--text-secondary)] border-t pt-4"
-                    style={{ borderColor: 'var(--border-color)' }}
-                  >
-                    <div>
-                      <span className="text-[var(--text-muted)] block mb-1">File Path:</span>
+                  {/* Node Identity */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FileCode size={14} style={{ color: colors.accent.blue }} />
                       <span
-                        className="break-all p-2 rounded-lg block select-text"
-                        style={{ background: 'var(--bg-primary)' }}
+                        style={{
+                          fontSize: font.size.sm,
+                          fontWeight: 600,
+                          fontFamily: font.mono,
+                          color: colors.text.primary,
+                        }}
                       >
-                        {selectedNode.file_path || 'unknown'}
+                        {selectedNode.label || selectedNode.id}
                       </span>
                     </div>
 
-                    {selectedNode.metadata && (
-                      <div className="flex flex-col gap-2">
-                        <span className="text-[var(--text-muted)] block">AST Context:</span>
-                        <div
-                          className="flex flex-col gap-1.5 p-2.5 rounded-lg text-[11px] leading-relaxed"
-                          style={{ background: 'var(--bg-primary)' }}
-                        >
-                          {selectedNode.metadata.start_line && (
-                            <div>Lines: {selectedNode.metadata.start_line} – {selectedNode.metadata.end_line}</div>
-                          )}
-                          {selectedNode.metadata.docstring && (
-                            <div
-                              className="italic border-t mt-1.5 pt-1.5 select-text"
-                              style={{ borderColor: 'var(--border-color)' }}
-                            >
-                              "{selectedNode.metadata.docstring}"
-                            </div>
-                          )}
-                        </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                      <Badge variant="default">{selectedNode.node_type || 'file'}</Badge>
+                      <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: font.mono }}>
+                        {nodeRelationships.totalIn} callers • {nodeRelationships.totalOut} imports
+                      </span>
+                    </div>
+
+                    {selectedNode.file_path && (
+                      <div style={{ marginTop: '4px' }}>
+                        <FilePath path={getRelativePath(selectedNode.file_path, repoPath)} />
                       </div>
                     )}
                   </div>
-                </motion.div>
-              ) : (
-                /* Option B: Graph Intelligence */
-                analysisResult && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                    className="flex flex-col gap-5"
-                  >
+
+                  {/* Summary Metric Pills */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <div
-                      className="flex items-center justify-between border-b pb-3"
-                      style={{ borderColor: 'var(--border-color)' }}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: radius.md,
+                        backgroundColor: colors.bg.surfaceSecondary,
+                        border: `1px solid ${colors.border.subtle}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                      }}
                     >
-                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                        <Sparkles size={14} className="text-[var(--accent-purple)]" />
-                        <span>Graph Intelligence</span>
+                      <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>
+                        Imports
                       </span>
-                      <button
-                        onClick={handleRunAnalysis}
-                        className="text-[10px] text-[var(--accent-primary)] hover:underline font-semibold"
-                      >
-                        Recalculate
-                      </button>
+                      <span style={{ fontSize: font.size.lg, fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>
+                        {nodeRelationships.totalOut}
+                      </span>
+                      <span style={{ fontSize: '10px', color: colors.text.secondary }}>
+                        outgoing deps
+                      </span>
                     </div>
 
-                    {/* Stat Cards */}
-                    <div className="grid grid-cols-2 gap-3 text-center">
-                      <div className="stat-card !p-3">
-                        <span className="text-[10px] text-[var(--text-muted)] block mb-0.5 uppercase tracking-wider font-bold">
-                          Circular Deps
-                        </span>
-                        <span className="text-lg font-bold font-mono text-[var(--accent-rose)]">
-                          {analysisResult.circular_dependencies?.length || 0}
-                        </span>
-                      </div>
-                      <div className="stat-card !p-3">
-                        <span className="text-[10px] text-[var(--text-muted)] block mb-0.5 uppercase tracking-wider font-bold">
-                          Dead Entities
-                        </span>
-                        <span className="text-lg font-bold font-mono text-[var(--accent-yellow)]">
-                          {analysisResult.dead_code?.length || 0}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Circular Dependencies */}
-                    <div className="flex flex-col gap-2.5">
-                      <h3 className="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5">
-                        <AlertCircle size={14} className="text-[var(--accent-rose)]" />
-                        <span>Circular Dependencies</span>
-                      </h3>
-                      {analysisResult.circular_dependencies && analysisResult.circular_dependencies.length > 0 ? (
-                        <div className="flex flex-col gap-2 max-h-[140px] overflow-y-auto scrollbar-thin">
-                          {analysisResult.circular_dependencies.map((cycle, idx) => (
-                            <motion.div
-                              key={idx}
-                              initial={{ opacity: 0, x: 10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: idx * 0.05 }}
-                              className="p-2 rounded-lg text-[10px] font-mono leading-relaxed"
-                              style={{
-                                background: 'rgba(251, 113, 133, 0.05)',
-                                border: '1px solid rgba(251, 113, 133, 0.15)',
-                                color: 'var(--accent-rose)',
-                              }}
-                            >
-                              {cycle.join(' → ')}
-                            </motion.div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-[11px] text-[var(--text-muted)] italic leading-relaxed pl-1.5">
-                          No circular imports found. Great code quality!
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Dead Code */}
                     <div
-                      className="flex flex-col gap-2.5 border-t pt-4"
-                      style={{ borderColor: 'var(--border-color)' }}
+                      style={{
+                        padding: '8px 10px',
+                        borderRadius: radius.md,
+                        backgroundColor: colors.bg.surfaceSecondary,
+                        border: `1px solid ${colors.border.subtle}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                      }}
                     >
-                      <h3 className="text-xs font-semibold text-[var(--text-secondary)] flex items-center gap-1.5">
-                        <AlertTriangle size={14} className="text-[var(--accent-yellow)]" />
-                        <span>Dead Code Entities</span>
-                      </h3>
-                      {analysisResult.dead_code && analysisResult.dead_code.length > 0 ? (
-                        <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto scrollbar-thin font-mono text-[10px]">
-                          {analysisResult.dead_code.map((node, idx) => (
-                            <motion.div
-                              key={idx}
-                              initial={{ opacity: 0, x: 10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: idx * 0.03 }}
-                              className="flex items-center justify-between p-2 rounded-lg cursor-pointer truncate transition-all duration-200"
-                              style={{
-                                background: 'var(--bg-primary)',
-                                border: '1px solid var(--border-color)',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = 'var(--accent-yellow)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = 'var(--border-color)';
-                              }}
-                              onClick={() => setSelectedNode(node)}
-                            >
-                              <span className="truncate flex-1 text-[var(--text-secondary)]">
-                                {node.label}
-                              </span>
-                              <span className="badge badge-yellow !text-[8px] ml-1.5">
-                                {node.node_type}
-                              </span>
-                            </motion.div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-[11px] text-[var(--text-muted)] italic leading-relaxed pl-1.5">
-                          No dead entities computed.
-                        </div>
-                      )}
+                      <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>
+                        Imported by
+                      </span>
+                      <span style={{ fontSize: font.size.lg, fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>
+                        {nodeRelationships.totalIn}
+                      </span>
+                      <span style={{ fontSize: '10px', color: colors.text.secondary }}>
+                        inbound callers
+                      </span>
                     </div>
-                  </motion.div>
-                )
+                  </div>
+
+                  {/* Depends on (Outgoing dependencies) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Depends on ({nodeRelationships.totalOut})
+                    </span>
+                    {nodeRelationships.dependsOn.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '120px', overflowY: 'auto' }}>
+                        {nodeRelationships.dependsOn.map((dep, dIdx) => (
+                          <div
+                            key={dIdx}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: radius.sm,
+                              backgroundColor: colors.bg.surfaceSecondary,
+                              border: `1px solid ${colors.border.subtle}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              fontSize: '11px',
+                              fontFamily: font.mono,
+                            }}
+                          >
+                            <span style={{ color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {getRelativePath(dep.target, repoPath)}
+                            </span>
+                            <span style={{ color: colors.text.muted, fontSize: '9px' }}>
+                              {dep.type}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                        No outgoing dependencies.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Used by (Inbound callers) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Used by ({nodeRelationships.totalIn})
+                    </span>
+                    {nodeRelationships.usedBy.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '120px', overflowY: 'auto' }}>
+                        {nodeRelationships.usedBy.map((caller, cIdx) => (
+                          <div
+                            key={cIdx}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: radius.sm,
+                              backgroundColor: colors.bg.surfaceSecondary,
+                              border: `1px solid ${colors.border.subtle}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              fontSize: '11px',
+                              fontFamily: font.mono,
+                            }}
+                          >
+                            <span style={{ color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {getRelativePath(caller.source, repoPath)}
+                            </span>
+                            <span style={{ color: colors.text.muted, fontSize: '9px' }}>
+                              {caller.type}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                        No known incoming callers.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Change Impact Analysis (Feature 2) */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      padding: '10px 12px',
+                      borderRadius: radius.md,
+                      backgroundColor: colors.bg.surfaceSecondary,
+                      border: `1px solid ${colors.border.subtle}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Layers size={13} style={{ color: colors.accent.blue }} />
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: colors.text.secondary,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          Change Impact Analysis
+                        </span>
+                      </div>
+                      {impactLoading ? (
+                        <Loader2 size={12} style={{ animation: 'ds-spin 1s linear infinite', color: colors.text.muted }} />
+                      ) : impactResult ? (
+                        <Badge
+                          variant={
+                            impactResult.risk_level === 'High'
+                              ? 'red'
+                              : impactResult.risk_level === 'Medium'
+                              ? 'yellow'
+                              : 'green'
+                          }
+                        >
+                          {impactResult.risk_level} Risk
+                        </Badge>
+                      ) : null}
+                    </div>
+
+                    {impactLoading ? (
+                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                        Calculating dependency blast radius...
+                      </span>
+                    ) : impactResult ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              padding: '4px 6px',
+                              background: colors.bg.primary,
+                              borderRadius: radius.sm,
+                            }}
+                          >
+                            <span style={{ fontSize: '10px', color: colors.text.muted }}>Direct Dependents</span>
+                            <span
+                              style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                fontFamily: font.mono,
+                                color: colors.text.primary,
+                              }}
+                            >
+                              {impactResult.direct_dependents_count}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              padding: '4px 6px',
+                              background: colors.bg.primary,
+                              borderRadius: radius.sm,
+                            }}
+                          >
+                            <span style={{ fontSize: '10px', color: colors.text.muted }}>Indirect Dependents</span>
+                            <span
+                              style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                fontFamily: font.mono,
+                                color: colors.text.primary,
+                              }}
+                            >
+                              {impactResult.indirect_dependents_count}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p style={{ fontSize: '11px', color: colors.text.secondary, margin: 0, lineHeight: 1.4 }}>
+                          {impactResult.explanation}
+                        </p>
+
+                        {impactResult.most_affected && impactResult.most_affected.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                color: colors.text.muted,
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              Most Affected Files
+                            </span>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                maxHeight: '100px',
+                                overflowY: 'auto',
+                              }}
+                            >
+                              {impactResult.most_affected.map((affFile: string, afIdx: number) => (
+                                <div
+                                  key={afIdx}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '3px 6px',
+                                    borderRadius: radius.sm,
+                                    background: colors.bg.primary,
+                                    fontSize: '11px',
+                                    fontFamily: font.mono,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      maxWidth: '170px',
+                                      color: colors.text.primary,
+                                    }}
+                                    title={affFile}
+                                  >
+                                    {getRelativePath(affFile, repoPath)}
+                                  </span>
+                                  <button
+                                    onClick={() => handleOpenFile(affFile)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: colors.accent.blue,
+                                      cursor: 'pointer',
+                                      fontSize: '10px',
+                                      padding: '1px 4px',
+                                    }}
+                                  >
+                                    Inspect
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                        Select a file or symbol to analyze change impact.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: `1px solid ${colors.border.subtle}` }}>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleOpenFile(selectedNode.file_path || selectedNode.id)}
+                      icon={<ExternalLink size={12} />}
+                    >
+                      Open file in Explorer
+                    </Button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setGraphFilter('direct_deps')}
+                        icon={<ArrowRight size={11} />}
+                      >
+                        View dependencies
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleAskAI(selectedNode.label, selectedNode.file_path || selectedNode.id)}
+                        icon={<MessageSquare size={11} />}
+                      >
+                        Ask AI
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Option B: Structural Analysis Report */}
+              {analysisResult && (
+                <div className="flex flex-col gap-3" style={{ marginTop: selectedNode ? '16px' : '0' }}>
+                  <div
+                    className="flex items-center justify-between border-b pb-2"
+                    style={{ borderColor: colors.border.default }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.06em',
+                        color: colors.text.muted,
+                      }}
+                    >
+                      Architecture Analysis
+                    </span>
+                    {!selectedNode && (
+                      <button
+                        onClick={() => useWorkspaceStore.setState({ analysisResult: null })}
+                        style={{ background: 'none', border: 'none', color: colors.text.muted, cursor: 'pointer', padding: '2px' }}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Circular Dependencies */}
+                  <div className="flex flex-col gap-1">
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: colors.text.primary }}>
+                      Circular Dependencies
+                    </span>
+                    {analysisResult.circular_dependencies && analysisResult.circular_dependencies.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {analysisResult.circular_dependencies.map((cycle: string[], cIdx: number) => (
+                          <div
+                            key={cIdx}
+                            style={{
+                              padding: '6px 8px',
+                              borderRadius: radius.sm,
+                              backgroundColor: 'rgba(201, 90, 90, 0.08)',
+                              border: `1px solid ${colors.status.dangerBorder}`,
+                              color: colors.status.danger,
+                              fontSize: '11px',
+                              fontFamily: font.mono,
+                            }}
+                          >
+                            {cycle.map((p) => getRelativePath(p, repoPath)).join(' → ')}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: colors.status.success, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckCircle2 size={12} /> No circular dependency loops detected.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Dead Code with calibrated confidence (Feature 3) */}
+                  <div className="flex flex-col gap-1 mt-2">
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: colors.text.primary }}>
+                      Potentially Unreferenced Code
+                    </span>
+                    {analysisResult.dead_code_confidence && analysisResult.dead_code_confidence.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        {analysisResult.dead_code_confidence.slice(0, 8).map((dcItem: any, dIdx: number) => (
+                          <div
+                            key={dIdx}
+                            style={{
+                              padding: '6px 8px',
+                              borderRadius: radius.sm,
+                              backgroundColor: colors.bg.surfaceSecondary,
+                              border: `1px solid ${colors.border.subtle}`,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '4px',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: '11px', fontWeight: 600, fontFamily: font.mono, color: colors.text.primary }}>
+                                {dcItem.node?.label || dcItem.node?.id}
+                              </span>
+                              <Badge variant={dcItem.confidence >= 90 ? 'yellow' : 'default'}>
+                                {dcItem.confidence}% confidence
+                              </Badge>
+                            </div>
+                            <span style={{ fontSize: '10px', color: colors.text.muted }}>
+                              {dcItem.reason || 'No references found across indexed repository.'}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                              <span style={{ fontSize: '10px', color: colors.text.muted, fontStyle: 'italic' }}>
+                                {dcItem.status || 'Potentially unused'}
+                              </span>
+                              {dcItem.node?.file_path && (
+                                <button
+                                  onClick={() => handleOpenFile(dcItem.node.file_path)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: colors.accent.blue,
+                                    cursor: 'pointer',
+                                    fontSize: '10px',
+                                    padding: 0,
+                                  }}
+                                >
+                                  Inspect file
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : analysisResult.dead_code && analysisResult.dead_code.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {analysisResult.dead_code.slice(0, 8).map((dc: any, dIdx: number) => (
+                          <span
+                            key={dIdx}
+                            style={{
+                              padding: '3px 6px',
+                              borderRadius: radius.sm,
+                              backgroundColor: colors.bg.surfaceSecondary,
+                              color: colors.text.secondary,
+                              fontSize: '11px',
+                              fontFamily: font.mono,
+                            }}
+                          >
+                            {dc.label || dc.id}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: colors.status.success, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <CheckCircle2 size={12} /> All identified symbols have active references.
+                      </span>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </motion.div>

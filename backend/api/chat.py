@@ -17,6 +17,12 @@ from backend.security.input_sanitizer import SanitizedChatInput, SanitizedRepoPa
 from backend.security.path_validator import validate_repository_path
 from backend.security.rate_limiter import CHAT_RATE, limiter
 
+from backend.storage.persistence import (
+    append_chat_message,
+    delete_chat_history,
+    load_chat_data,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -39,10 +45,11 @@ def _sanitize_error_message(msg: str, max_length: int = 300) -> str:
     return cleaned
 
 
-# ── In-memory conversation history (repo-scoped) ─────────────────────────
+# ── File-backed conversation history (repo-scoped) ─────────────────────────
 
-_conversation_history: list[dict[str, str]] = []
-_repo_conversation_history: dict[str, list[dict[str, str]]] = {}
+_chat_state = load_chat_data()
+_conversation_history: list[dict[str, str]] = _chat_state.get("global", [])
+_repo_conversation_history: dict[str, list[dict[str, str]]] = _chat_state.get("by_repo", {})
 
 
 # ── Request / Response schemas ──────────────────────────────────────────
@@ -53,6 +60,7 @@ class ChatRequest(BaseModel):
 
     question: str = Field(..., min_length=1, description="User question about the codebase")
     repo_path: str = Field(..., description="Absolute path to the repository root")
+    conversation_id: str | None = Field(default=None, description="Optional conversation session ID")
 
 
 class ChatHistoryEntry(BaseModel):
@@ -61,6 +69,7 @@ class ChatHistoryEntry(BaseModel):
     timestamp: str
     question: str
     answer: str
+    conversation_id: str | None = None
 
 
 # ── Route handlers ──────────────────────────────────────────────────────
@@ -131,11 +140,19 @@ async def chat(
             "timestamp": datetime.now(tz=UTC).isoformat(),
             "question": sanitized.question,
             "answer": full_answer,
+            "conversation_id": body.conversation_id,
         }
         _conversation_history.append(entry)
         if repo_key not in _repo_conversation_history:
             _repo_conversation_history[repo_key] = []
         _repo_conversation_history[repo_key].append(entry)
+
+        # Persist message to disk
+        append_chat_message(
+            repo_path=repo_key,
+            entry=entry,
+            conversation_id=body.conversation_id,
+        )
 
         done_payload = json.dumps({"type": "done", "content": full_answer})
         yield f"data: {done_payload}\n\n"
@@ -152,20 +169,67 @@ async def chat(
 
 
 @router.get("/history", response_model=list[ChatHistoryEntry])
-async def get_history(repo_path: str | None = None) -> list[ChatHistoryEntry]:
-    """Return conversation history, optionally filtered by repository."""
-    if repo_path:
+async def get_history(
+    repo_path: str | None = None,
+    conversation_id: str | None = None,
+) -> list[ChatHistoryEntry]:
+    """Return conversation history, optionally filtered by repository or conversation."""
+    data = load_chat_data()
+    if conversation_id:
+        conv = data.get("conversations", {}).get(conversation_id, {})
+        entries = conv.get("messages", [])
+    elif repo_path:
         sanitized = SanitizedRepoPath(path=repo_path)
         path = validate_repository_path(sanitized.path)
-        entries = _repo_conversation_history.get(str(path), [])
+        entries = data.get("by_repo", {}).get(str(path), [])
     else:
-        entries = _conversation_history
+        entries = data.get("global", [])
 
     return [
         ChatHistoryEntry(
             timestamp=entry["timestamp"],
             question=entry["question"],
             answer=entry["answer"],
+            conversation_id=entry.get("conversation_id"),
         )
         for entry in entries
     ]
+
+
+@router.delete("/history")
+async def clear_chat_history(
+    repo_path: str | None = None,
+    conversation_id: str | None = None,
+) -> dict[str, str]:
+    """Clear chat conversation history from persistent storage."""
+    global _conversation_history, _repo_conversation_history
+    delete_chat_history(repo_path=repo_path, conversation_id=conversation_id)
+
+    if conversation_id:
+        # Filter in-memory
+        _conversation_history = [e for e in _conversation_history if e.get("conversation_id") != conversation_id]
+        for rk in _repo_conversation_history:
+            _repo_conversation_history[rk] = [
+                e for e in _repo_conversation_history[rk] if e.get("conversation_id") != conversation_id
+            ]
+    elif repo_path:
+        sanitized = SanitizedRepoPath(path=repo_path)
+        path = validate_repository_path(sanitized.path)
+        _repo_conversation_history.pop(str(path), None)
+    else:
+        _conversation_history.clear()
+        _repo_conversation_history.clear()
+
+    return {"status": "cleared", "message": "Chat history cleared successfully"}
+
+
+@router.get("/conversations")
+async def list_conversations(repo_path: str | None = None) -> list[dict]:
+    """List persistent chat conversations."""
+    data = load_chat_data()
+    convs = list(data.get("conversations", {}).values())
+    if repo_path:
+        norm = repo_path.replace("\\", "/").rstrip("/")
+        convs = [c for c in convs if (c.get("repo_path") or "").replace("\\", "/").rstrip("/") == norm]
+    convs.sort(key=lambda c: c.get("updated_at", 0), reverse=True)
+    return convs

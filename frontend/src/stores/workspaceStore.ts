@@ -6,7 +6,7 @@ import { AnalysisResult } from '../types/graph';
 import { scanRepository, scanGitHubRepository, listFiles, getFile } from '../services/repository';
 import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph';
 import { semanticSearch, SearchResponse } from '../services/search';
-import { sendChatMessageStream } from '../services/chat';
+import { sendChatMessageStream, getChatHistory, clearChatHistoryApi } from '../services/chat';
 import { generateDocumentation, GenerateDocsResponse } from '../services/documentation';
 import { useToastStore } from './toastStore';
 
@@ -31,7 +31,7 @@ interface WorkspaceState {
 
   // ── Graph ──────────────────────────────────────────────────────────
   graphData: any;
-  graphType: 'dependency' | 'call';
+  graphType: 'dependency' | 'call' | 'symbol';
   graphLoading: boolean;
   graphError: string | null;
   analysisResult: AnalysisResult | null;
@@ -47,6 +47,7 @@ interface WorkspaceState {
   chatMessages: ChatMessage[];
   chatLoading: boolean;
   chatError: string | null;
+  activeConversationId: string | null;
 
   // ── Documentation ──────────────────────────────────────────────────
   generatedDocs: GenerateDocsResponse | null;
@@ -57,10 +58,11 @@ interface WorkspaceState {
   scanRepo: (path: string) => Promise<void>;
   setSelectedFile: (path: string | null) => void;
   loadFileDetail: (path: string) => Promise<void>;
-  fetchGraph: (type: 'dependency' | 'call') => Promise<void>;
+  fetchGraph: (type: 'dependency' | 'call' | 'symbol') => Promise<void>;
   runAnalysis: () => Promise<void>;
   searchCode: (query: string, topK?: number) => Promise<void>;
   sendChatMessage: (question: string) => Promise<void>;
+  loadPersistentChatHistory: () => Promise<void>;
   clearChatHistory: () => void;
   generateDocs: (format?: 'markdown' | 'html') => Promise<void>;
   clearWorkspace: () => void;
@@ -154,6 +156,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       chatMessages: [],
       chatLoading: false,
       chatError: null,
+      activeConversationId: null,
 
       generatedDocs: null,
       docsLoading: false,
@@ -236,14 +239,20 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
       },
 
-      fetchGraph: async (type: 'dependency' | 'call') => {
+      fetchGraph: async (type: 'dependency' | 'call' | 'symbol') => {
         const repoPath = get().activeRepository;
         if (!repoPath) return;
         set({ graphLoading: true, graphError: null, graphType: type });
         try {
-          const data = type === 'dependency'
-            ? await getDependencyGraph(repoPath)
-            : await getCallGraph(repoPath);
+          const { getSymbolGraph } = await import('../services/graph');
+          let data;
+          if (type === 'dependency') {
+            data = await getDependencyGraph(repoPath);
+          } else if (type === 'call') {
+            data = await getCallGraph(repoPath);
+          } else {
+            data = await getSymbolGraph(repoPath);
+          }
           set({ graphData: data, graphLoading: false });
         } catch (err: any) {
           set({ graphError: err.message || `Failed to fetch ${type} graph.`, graphLoading: false });
@@ -305,6 +314,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }));
 
         try {
+          const convId = get().activeConversationId || undefined;
           await sendChatMessageStream(
             question,
             repoPath,
@@ -319,7 +329,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             },
             () => {
               set({ chatLoading: false });
-            }
+            },
+            convId
           );
         } catch (err: any) {
           set((state) => ({
@@ -334,7 +345,39 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
       },
 
+      loadPersistentChatHistory: async () => {
+        const repoPath = get().activeRepository;
+        if (!repoPath) return;
+        try {
+          const history = await getChatHistory(repoPath, get().activeConversationId || undefined);
+          if (history && history.length > 0) {
+            const msgs: ChatMessage[] = [];
+            history.forEach((h, idx) => {
+              msgs.push({
+                id: `hist-q-${idx}-${h.timestamp}`,
+                role: 'user',
+                content: h.question,
+                timestamp: new Date(h.timestamp).toLocaleTimeString(),
+              });
+              msgs.push({
+                id: `hist-a-${idx}-${h.timestamp}`,
+                role: 'assistant',
+                content: h.answer,
+                timestamp: new Date(h.timestamp).toLocaleTimeString(),
+              });
+            });
+            set({ chatMessages: msgs });
+          }
+        } catch (err) {
+          console.warn('Could not load persistent chat history:', err);
+        }
+      },
+
       clearChatHistory: () => {
+        const repoPath = get().activeRepository;
+        if (repoPath) {
+          clearChatHistoryApi(repoPath, get().activeConversationId || undefined).catch(() => {});
+        }
         set({ chatMessages: [], chatError: null });
       },
 

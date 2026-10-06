@@ -25,6 +25,16 @@ export interface TopOffender {
   smell_count: number;
 }
 
+export interface SmellItem {
+  category: string;
+  severity: string;
+  file_path: string;
+  entity_name?: string | null;
+  line?: number | null;
+  message: string;
+  suggestion: string;
+}
+
 export interface TechDebt {
   total_debt_score: number;
   debt_rating: string;
@@ -33,6 +43,7 @@ export interface TechDebt {
   smells_by_severity: Record<string, number>;
   suggestions: string[];
   top_offenders: TopOffender[];
+  all_smells?: SmellItem[];
 }
 
 export interface DependencyRisk {
