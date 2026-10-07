@@ -9,6 +9,7 @@ import {
   FileCode2,
   Layers,
   ArrowRight,
+  ArrowLeft,
   Terminal,
   CheckCircle2,
   ShieldCheck,
@@ -17,10 +18,12 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { useWorkspaceStore } from '../stores/workspaceStore';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuthStore();
+  const activeRepository = useWorkspaceStore((s) => s.activeRepository);
   const isAuthenticated = Boolean(token);
 
   const capabilities = [
@@ -100,15 +103,21 @@ export const LandingPage: React.FC = () => {
     },
   ];
 
+  const scrollToSection = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div
       style={{
         backgroundColor: '#0F1115',
         color: '#E6EAF0',
         minHeight: '100vh',
-        width: '100vw',
-        overflowX: 'hidden',
-        overflowY: 'auto',
+        width: '100%',
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
       }}
     >
@@ -127,7 +136,33 @@ export const LandingPage: React.FC = () => {
           justifyContent: 'space-between',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          {/* Back Navigation Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (activeRepository) {
+                navigate('/explorer');
+              } else if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/app');
+              }
+            }}
+            className="btn-secondary"
+            style={{
+              padding: '4px 10px',
+              fontSize: '12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+            }}
+            title={activeRepository ? 'Back to repository' : 'Go back'}
+          >
+            <ArrowLeft size={13} />
+            <span>{activeRepository ? 'Back to Code' : 'Back'}</span>
+          </button>
+
           <Link
             to="/"
             style={{
@@ -162,7 +197,8 @@ export const LandingPage: React.FC = () => {
           <nav style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <a
               href="#features"
-              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none' }}
+              onClick={(e) => scrollToSection(e, 'features')}
+              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none', cursor: 'pointer' }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#E6EAF0')}
               onMouseLeave={(e) => (e.currentTarget.style.color = '#A0A8B5')}
             >
@@ -170,7 +206,8 @@ export const LandingPage: React.FC = () => {
             </a>
             <a
               href="#how-it-works"
-              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none' }}
+              onClick={(e) => scrollToSection(e, 'how-it-works')}
+              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none', cursor: 'pointer' }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#E6EAF0')}
               onMouseLeave={(e) => (e.currentTarget.style.color = '#A0A8B5')}
             >
@@ -178,7 +215,8 @@ export const LandingPage: React.FC = () => {
             </a>
             <a
               href="#preview"
-              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none' }}
+              onClick={(e) => scrollToSection(e, 'preview')}
+              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none', cursor: 'pointer' }}
               onMouseEnter={(e) => (e.currentTarget.style.color = '#E6EAF0')}
               onMouseLeave={(e) => (e.currentTarget.style.color = '#A0A8B5')}
             >
@@ -309,7 +347,7 @@ export const LandingPage: React.FC = () => {
           }}
         >
           <button
-            onClick={() => navigate(isAuthenticated ? '/app' : '/signup')}
+            onClick={() => navigate(activeRepository ? '/explorer' : '/app')}
             className="btn-primary"
             style={{
               padding: '10px 22px',
@@ -318,25 +356,27 @@ export const LandingPage: React.FC = () => {
               gap: '8px',
             }}
           >
-            <span>{isAuthenticated ? 'Open Workspace' : 'Get Started Free'}</span>
+            <span>{activeRepository ? 'Resume Analysis' : isAuthenticated ? 'Open Workspace' : 'Get Started Free'}</span>
             <ArrowRight size={16} />
           </button>
 
-          <a
-            href="#how-it-works"
+          <button
+            type="button"
+            onClick={(e) => scrollToSection(e, 'how-it-works')}
             className="btn-secondary"
             style={{
               padding: '9px 18px',
               fontSize: '13px',
-              textDecoration: 'none',
+              cursor: 'pointer',
             }}
           >
             See how it works
-          </a>
+          </button>
         </div>
 
         {/* ── Realistic Hero Visual (Developer Tool Workspace) ────────── */}
         <div
+          id="preview"
           style={{
             backgroundColor: '#151922',
             border: '1px solid #292F38',

@@ -59,7 +59,7 @@ export const Signup: React.FC = () => {
     <div
       style={{
         minHeight: '100vh',
-        width: '100vw',
+        width: '100%',
         backgroundColor: '#0F1115',
         display: 'flex',
         flexDirection: 'column',

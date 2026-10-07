@@ -108,9 +108,7 @@ export const MyRepositories: React.FC = () => {
         backgroundColor: '#0F1115',
         color: '#E6EAF0',
         minHeight: '100vh',
-        width: '100vw',
-        overflowX: 'hidden',
-        overflowY: 'auto',
+        width: '100%',
         fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
       }}
     >
