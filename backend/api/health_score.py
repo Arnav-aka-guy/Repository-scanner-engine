@@ -1,8 +1,9 @@
-"""Health score endpoint — computes a 0–100 code quality score."""
+"""Health score endpoint — computes a 0–100 transparent and explainable code quality score."""
 
 from __future__ import annotations
 
 import logging
+from dataclasses import asdict
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/api/health-score", tags=["portfolio"])
 
 
 class HealthScoreResponse(BaseModel):
-    """Repository health score response."""
+    """Repository health score response with complete explainability."""
 
     total_score: float
     grade: str
@@ -28,6 +29,10 @@ class HealthScoreResponse(BaseModel):
     file_count: int
     total_lines: int
     dimensions: list[dict[str, Any]] = Field(default_factory=list)
+    weights: dict[str, float] = Field(default_factory=dict)
+    scoring_formula: str = ""
+    statistics: dict[str, Any] = Field(default_factory=dict)
+    issue_counts: dict[str, Any] = Field(default_factory=dict)
 
 
 @router.get("", response_model=HealthScoreResponse)
@@ -64,11 +69,24 @@ async def get_health_score(
         summary=report.summary,
         file_count=report.file_count,
         total_lines=report.total_lines,
+        weights=report.weights,
+        scoring_formula=report.scoring_formula,
+        statistics=asdict(report.statistics) if report.statistics else {},
+        issue_counts=asdict(report.issue_counts) if report.issue_counts else {},
         dimensions=[
             {
                 "name": d.name,
+                "key": d.key,
                 "score": d.score,
                 "max_score": d.max_score,
+                "weight": d.weight,
+                "status": d.status,
+                "starting_score": d.starting_score,
+                "total_penalties": d.total_penalties,
+                "formula": d.formula,
+                "metrics": [asdict(m) for m in d.metrics],
+                "penalties": [asdict(p) for p in d.penalties],
+                "top_contributors": [asdict(tc) for tc in d.top_contributors],
                 "deductions": d.deductions,
             }
             for d in report.dimensions

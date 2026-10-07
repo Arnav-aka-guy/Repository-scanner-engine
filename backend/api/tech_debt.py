@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/tech-debt", tags=["portfolio"])
 
 
 class SmellItem(BaseModel):
-    """A single code smell."""
+    """A single code smell with transparent explainability metadata."""
 
     category: str
     severity: str
@@ -28,6 +28,10 @@ class SmellItem(BaseModel):
     line: int | None = None
     message: str
     suggestion: str
+    threshold: str = ""
+    observed: str = ""
+    confidence: str = "high"
+    why_it_matters: str = ""
 
 
 class TechDebtResponse(BaseModel):
@@ -41,6 +45,7 @@ class TechDebtResponse(BaseModel):
     suggestions: list[str] = Field(default_factory=list)
     top_offenders: list[dict[str, Any]] = Field(default_factory=list)
     all_smells: list[SmellItem] = Field(default_factory=list)
+    grouped_by_symbol: list[dict[str, Any]] = Field(default_factory=list)
 
 
 @router.get("", response_model=TechDebtResponse)
@@ -62,6 +67,35 @@ async def get_tech_debt(
         raise HTTPException(status_code=500, detail="Failed to parse repository for technical debt analysis.") from exc
 
     report = analyse_tech_debt(parsed)
+
+    # Convert grouped_by_symbol smells to dict format
+    grouped: list[dict[str, Any]] = []
+    for g in report.grouped_by_symbol:
+        grouped.append(
+            {
+                "file_path": g["file_path"],
+                "entity_name": g["entity_name"],
+                "line": g["line"],
+                "smell_count": g["smell_count"],
+                "highest_severity": g["highest_severity"],
+                "smells": [
+                    {
+                        "category": s.category,
+                        "severity": s.severity,
+                        "file_path": s.file_path,
+                        "entity_name": s.entity_name,
+                        "line": s.line,
+                        "message": s.message,
+                        "suggestion": s.suggestion,
+                        "threshold": s.threshold,
+                        "observed": s.observed,
+                        "confidence": s.confidence,
+                        "why_it_matters": s.why_it_matters,
+                    }
+                    for s in g["smells"]
+                ],
+            }
+        )
 
     return TechDebtResponse(
         total_debt_score=report.total_debt_score,
@@ -87,7 +121,12 @@ async def get_tech_debt(
                 line=s.line,
                 message=s.message,
                 suggestion=s.suggestion,
+                threshold=s.threshold,
+                observed=s.observed,
+                confidence=s.confidence,
+                why_it_matters=s.why_it_matters,
             )
             for s in report.all_smells
         ],
+        grouped_by_symbol=grouped,
     )

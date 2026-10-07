@@ -19,7 +19,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from backend.parser.models import ParsedFile
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CodeSmell:
-    """A single detected code quality issue."""
+    """A single detected code quality issue with full explainability metadata."""
 
     category: str  # "long_function", "god_class", "large_file", etc.
     severity: str  # "high", "medium", "low"
@@ -39,6 +39,10 @@ class CodeSmell:
     line: int | None = None
     message: str = ""
     suggestion: str = ""
+    threshold: str = ""
+    observed: str = ""
+    confidence: str = "high"  # "high" | "medium" | "low"
+    why_it_matters: str = ""
 
 
 @dataclass
@@ -63,6 +67,7 @@ class TechDebtReport:
     top_offenders: list[FileDebtSummary] = field(default_factory=list)
     all_smells: list[CodeSmell] = field(default_factory=list)
     suggestions: list[str] = field(default_factory=list)
+    grouped_by_symbol: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ── Thresholds ──────────────────────────────────────────────────────────
@@ -140,6 +145,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                     file_path=path,
                     message=f"File has ~{est_lines} lines (threshold: {VERY_LARGE_FILE_LINES})",
                     suggestion="Split into smaller, focused modules",
+                    threshold=f"≤ {VERY_LARGE_FILE_LINES} lines",
+                    observed=f"~{est_lines} lines",
+                    confidence="high",
+                    why_it_matters="Oversized files blur module boundaries and increase merge conflict risk.",
                 )
             )
         elif est_lines > LARGE_FILE_LINES:
@@ -150,6 +159,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                     file_path=path,
                     message=f"File has ~{est_lines} lines (threshold: {LARGE_FILE_LINES})",
                     suggestion="Consider extracting helper functions or classes",
+                    threshold=f"≤ {LARGE_FILE_LINES} lines",
+                    observed=f"~{est_lines} lines",
+                    confidence="high",
+                    why_it_matters="Growing module size signals accumulating responsibilities.",
                 )
             )
 
@@ -162,6 +175,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                     file_path=path,
                     message=f"{len(pf.imports)} imports (threshold: {HIGH_COUPLING_IMPORTS})",
                     suggestion="Reduce dependencies; use dependency injection",
+                    threshold=f"≤ {HIGH_COUPLING_IMPORTS} imports",
+                    observed=f"{len(pf.imports)} imports",
+                    confidence="high",
+                    why_it_matters="Tight coupling makes files fragile when upstream dependencies change.",
                 )
             )
 
@@ -178,6 +195,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                         line=func.start_line,
                         message=f"{func.name}() is {length} lines (threshold: {VERY_LONG_FUNCTION_LINES})",
                         suggestion="Extract helper functions to reduce complexity",
+                        threshold=f"≤ {VERY_LONG_FUNCTION_LINES} lines",
+                        observed=f"{length} lines",
+                        confidence="high",
+                        why_it_matters="Very long functions are hard to understand, test, and maintain.",
                     )
                 )
             elif length > LONG_FUNCTION_LINES:
@@ -190,6 +211,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                         line=func.start_line,
                         message=f"{func.name}() is {length} lines (threshold: {LONG_FUNCTION_LINES})",
                         suggestion="Consider splitting into smaller functions",
+                        threshold=f"≤ {LONG_FUNCTION_LINES} lines",
+                        observed=f"{length} lines",
+                        confidence="high",
+                        why_it_matters="Functions exceeding 50 lines often contain multiple distinct tasks.",
                     )
                 )
 
@@ -206,6 +231,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                             line=func.start_line,
                             message=f"{func.name}() has nesting depth {depth} (max: {MAX_NESTING_DEPTH})",
                             suggestion="Use guard clauses or extract methods",
+                            threshold=f"≤ {MAX_NESTING_DEPTH} levels",
+                            observed=f"{depth} levels",
+                            confidence="medium",
+                            why_it_matters="High nesting increases cyclomatic complexity and risk of logic errors.",
                         )
                     )
 
@@ -220,6 +249,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                         line=func.start_line,
                         message=f"{func.name}() lacks a docstring",
                         suggestion="Add a docstring explaining purpose and parameters",
+                        threshold="Documented symbol",
+                        observed="Missing docstring",
+                        confidence="high",
+                        why_it_matters="Undocumented functions increase cognitive overhead when navigating unfamiliar code.",
                     )
                 )
 
@@ -235,6 +268,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                         line=cls.start_line,
                         message=f"class {cls.name} has {len(cls.methods)} methods (threshold: {GOD_CLASS_METHODS})",
                         suggestion="Apply Single Responsibility Principle; split into focused classes",
+                        threshold=f"≤ {GOD_CLASS_METHODS} methods",
+                        observed=f"{len(cls.methods)} methods",
+                        confidence="high",
+                        why_it_matters="God classes gather excessive responsibilities, causing tight coupling and brittle changes.",
                     )
                 )
 
@@ -248,6 +285,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                         line=cls.start_line,
                         message=f"class {cls.name} lacks a docstring",
                         suggestion="Add a class docstring explaining its responsibility",
+                        threshold="Documented symbol",
+                        observed="Missing docstring",
+                        confidence="high",
+                        why_it_matters="Undocumented classes obscure component contracts and domain models.",
                     )
                 )
 
@@ -263,6 +304,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                             line=method.start_line,
                             message=f"{cls.name}.{method.name}() is {length} lines",
                             suggestion="Extract helper methods",
+                            threshold=f"≤ {VERY_LONG_FUNCTION_LINES} lines",
+                            observed=f"{length} lines",
+                            confidence="high",
+                            why_it_matters="Methods exceeding 80 lines are hard to test and maintain.",
                         )
                     )
                 elif length > LONG_FUNCTION_LINES:
@@ -275,6 +320,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                             line=method.start_line,
                             message=f"{cls.name}.{method.name}() is {length} lines",
                             suggestion="Consider splitting into smaller methods",
+                            threshold=f"≤ {LONG_FUNCTION_LINES} lines",
+                            observed=f"{length} lines",
+                            confidence="high",
+                            why_it_matters="Methods exceeding 50 lines often contain multiple distinct tasks.",
                         )
                     )
 
@@ -294,6 +343,10 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                             line=line_no,
                             message=f"{tag} found on line {line_no}: {line_content.strip()[:60]}",
                             suggestion="Resolve or create a tracking issue",
+                            threshold="Resolved backlog",
+                            observed=f"{tag} marker",
+                            confidence="high",
+                            why_it_matters="Unresolved TODO markers reflect deferred maintenance or known technical debt.",
                         )
                     )
         except OSError:
@@ -311,6 +364,27 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
             )
             all_smells.extend(file_smells)
 
+    # ── Group findings by symbol / entity ──
+    symbols_map: dict[str, dict[str, Any]] = {}
+    for smell in all_smells:
+        key = f"{smell.file_path}::{smell.entity_name or '<module>'}"
+        if key not in symbols_map:
+            symbols_map[key] = {
+                "file_path": smell.file_path,
+                "entity_name": smell.entity_name,
+                "line": smell.line,
+                "smell_count": 0,
+                "highest_severity": smell.severity,
+                "smells": [],
+            }
+        symbols_map[key]["smell_count"] += 1
+        symbols_map[key]["smells"].append(smell)
+        order = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+        if order.get(smell.severity, 0) > order.get(symbols_map[key]["highest_severity"], 0):
+            symbols_map[key]["highest_severity"] = smell.severity
+
+    grouped_symbols = sorted(symbols_map.values(), key=lambda x: x["smell_count"], reverse=True)
+
     # ── Build report ────────────────────────────────────────────────
     smells_by_cat: dict[str, int] = {}
     smells_by_sev: dict[str, int] = {}
@@ -320,7 +394,6 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
 
     # Score: normalize to 0-100 based on total smells and severity
     raw_score = sum(fs.debt_score for fs in file_summaries.values())
-    # Cap at 100
     total_debt = min(100, round(raw_score, 1))
 
     # Top offenders sorted by debt score
@@ -350,6 +423,7 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
         top_offenders=top,
         all_smells=all_smells,
         suggestions=suggestions,
+        grouped_by_symbol=grouped_symbols,
     )
 
     logger.info(

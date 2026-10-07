@@ -144,28 +144,34 @@ export const HealthCategoryBreakdown: React.FC<{ dimensions: Dimension[] }> = ({
                 <MiniBar value={dim.score} max={dim.max_score} color={color} />
                 {dim.deductions.length > 0 && (
                   <div className="flex flex-col gap-1" style={{ marginTop: '4px' }}>
-                    {dim.deductions.slice(0, 3).map((d, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-1.5"
-                        style={{
-                          fontSize: '0.6rem',
-                          color: 'var(--text-muted)',
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        <TrendingDown
-                          size={10}
-                          style={{ marginTop: 1, flexShrink: 0, color: '#ef4444' }}
-                        />
-                        <span>
-                          {d.reason}{' '}
-                          <span style={{ color: '#ef4444', fontWeight: 600 }}>
-                            −{d.amount}
+                    {dim.deductions.slice(0, 3).map((d, idx) => {
+                      const reason = typeof d === 'string' ? d : d.reason;
+                      const amount = typeof d === 'object' && d !== null ? d.amount : null;
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-1.5"
+                          style={{
+                            fontSize: '0.6rem',
+                            color: 'var(--text-muted)',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          <TrendingDown
+                            size={10}
+                            style={{ marginTop: 1, flexShrink: 0, color: '#ef4444' }}
+                          />
+                          <span>
+                            {reason}{' '}
+                            {amount !== null && (
+                              <span style={{ color: '#ef4444', fontWeight: 600 }}>
+                                −{amount}
+                              </span>
+                            )}
                           </span>
-                        </span>
-                      </div>
-                    ))}
+                        </div>
+                      );
+                    })}
                     {dim.deductions.length > 3 && (
                       <span
                         style={{
