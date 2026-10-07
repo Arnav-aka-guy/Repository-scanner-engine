@@ -8,12 +8,18 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend.api.dependencies import get_embeddings, get_parser
 from backend.core.models import CodeEntity, FileInfo, RepositoryInfo
+from backend.db.database import get_db
+from backend.db.models import Repository
 from backend.embeddings.service import EmbeddingsService
 from backend.parser.models import ParsedFile
 from backend.parser.scanner import ScanLimitError
 from backend.parser.service import ParserService
+from backend.security.auth import get_current_user
 from backend.security.input_sanitizer import SanitizedRepoPath
 from backend.security.path_validator import validate_file_path, validate_repository_path
 from backend.security.rate_limiter import FILE_RATE, SCAN_RATE, limiter
@@ -344,10 +350,27 @@ async def list_files(
     request: Request,
     repo_path: str = Query(..., description="Absolute path to the repository root"),
     parser: ParserService = Depends(get_parser),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> list[FileInfo]:
     """Return a flat list of all source files discovered in the repository."""
     sanitized = SanitizedRepoPath(path=repo_path)
     path = validate_repository_path(sanitized.path)
+
+    # Strict user isolation check
+    if current_user.get("auth") and current_user.get("user_id"):
+        user_id = int(current_user["user_id"])
+        norm_path = str(path).replace("\\", "/").rstrip("/")
+        stmt = select(Repository).where(
+            (Repository.path == norm_path) | (Repository.source_path == norm_path)
+        )
+        res = await db.execute(stmt)
+        repo = res.scalar_one_or_none()
+        if repo and repo.user_id is not None and repo.user_id != user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: You do not have permission to access this repository.",
+            )
 
     if not is_repo_scanned(path):
         raise HTTPException(
@@ -374,6 +397,8 @@ async def get_file(
     file_path: str,
     repo_path: str = Query(..., description="Absolute path to the repository root"),
     parser: ParserService = Depends(get_parser),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> FileDetail:
     """Return the raw content of a single file together with its parsed entities.
 
@@ -383,6 +408,21 @@ async def get_file(
     # Validate repo root first
     sanitized_repo = SanitizedRepoPath(path=repo_path)
     root = validate_repository_path(sanitized_repo.path)
+
+    # Strict user isolation check
+    if current_user.get("auth") and current_user.get("user_id"):
+        user_id = int(current_user["user_id"])
+        norm_path = str(root).replace("\\", "/").rstrip("/")
+        stmt = select(Repository).where(
+            (Repository.path == norm_path) | (Repository.source_path == norm_path)
+        )
+        res = await db.execute(stmt)
+        repo = res.scalar_one_or_none()
+        if repo and repo.user_id is not None and repo.user_id != user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: You do not have permission to access this repository.",
+            )
 
     if not is_repo_scanned(root):
         raise HTTPException(

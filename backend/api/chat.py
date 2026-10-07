@@ -9,11 +9,16 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_llm, get_parser, get_retrieval
+from backend.db.database import get_db
+from backend.db.models import Repository
 from backend.llm.service import LLMService
 from backend.parser.service import ParserService
 from backend.retrieval.service import RetrievalService
+from backend.security.auth import get_current_user
 from backend.security.input_sanitizer import SanitizedChatInput, SanitizedRepoPath
 from backend.security.path_validator import validate_repository_path
 from backend.security.rate_limiter import CHAT_RATE, limiter
@@ -84,6 +89,8 @@ async def chat(
     retrieval: RetrievalService = Depends(get_retrieval),
     llm: LLMService = Depends(get_llm),
     parser: ParserService = Depends(get_parser),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Answer a question about the codebase using RAG.
 
@@ -94,6 +101,21 @@ async def chat(
     sanitized = SanitizedChatInput(question=body.question, repo_path=body.repo_path)
     path = validate_repository_path(sanitized.repo_path)
     repo_key = str(path)
+
+    # Strict user isolation check
+    if current_user.get("auth") and current_user.get("user_id"):
+        user_id = int(current_user["user_id"])
+        norm_path = repo_key.replace("\\", "/").rstrip("/")
+        stmt = select(Repository).where(
+            (Repository.path == norm_path) | (Repository.source_path == norm_path)
+        )
+        res = await db.execute(stmt)
+        repo = res.scalar_one_or_none()
+        if repo and repo.user_id is not None and repo.user_id != user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: You do not have permission to access this repository.",
+            )
 
     try:
         parsed_files = await parser.parse_repository(repo_key)

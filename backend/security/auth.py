@@ -124,7 +124,7 @@ def verify_token(token: str) -> dict[str, Any]:
 
 # ── FastAPI dependency ─────────────────────────────────────────────────
 
-_ANON_USER: dict[str, Any] = {"sub": "anonymous", "auth": False}
+_ANON_USER: dict[str, Any] = {"sub": "anonymous", "auth": False, "user_id": 1, "email": "dev@local", "name": "Developer"}
 
 
 async def get_current_user(
@@ -132,22 +132,36 @@ async def get_current_user(
 ) -> dict[str, Any]:
     """FastAPI dependency that resolves the current user.
 
-    Behaviour depends on ``AUTH_ENABLED``:
-    * **False** (default): returns an anonymous sentinel user; no token
-      required.
-    * **True**: requires a valid Bearer token and returns the decoded
-      payload.
-
-    Raises:
-        HTTPException(401): When auth is enabled but the token is
-            missing or invalid.
+    If credentials are provided, validates and decodes the token.
+    If no credentials and AUTH_ENABLED=false, returns anonymous user dict.
+    If no credentials and AUTH_ENABLED=true, raises HTTPException(401).
     """
     settings = get_settings()
 
-    if not settings.auth_enabled:
-        return _ANON_USER
+    if credentials is not None:
+        payload = verify_token(credentials.credentials)
+        payload["auth"] = True
+        if "user_id" not in payload and "sub" in payload:
+            try:
+                payload["user_id"] = int(payload["sub"])
+            except (ValueError, TypeError):
+                payload["user_id"] = 1
+        return payload
 
-    # Auth is enabled – a token is mandatory.
+    if not settings.auth_enabled:
+        return dict(_ANON_USER)
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def get_required_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    """FastAPI dependency that strictly enforces authentication regardless of server defaults."""
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -157,4 +171,9 @@ async def get_current_user(
 
     payload = verify_token(credentials.credentials)
     payload["auth"] = True
+    if "user_id" not in payload and "sub" in payload:
+        try:
+            payload["user_id"] = int(payload["sub"])
+        except (ValueError, TypeError):
+            payload["user_id"] = 1
     return payload

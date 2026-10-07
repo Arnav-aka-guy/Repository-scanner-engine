@@ -95,7 +95,7 @@ async def init_db() -> None:
     correctly without a Postgres connection.
     """
     settings = get_settings()
-    if not settings.database_enabled:
+    if not settings.database_enabled and "sqlite" not in settings.database_url:
         logger.info("Database disabled (DATABASE_ENABLED=false) — skipping table creation.")
         return
 

@@ -1,25 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import { Menu, Search, RefreshCw, Folder, FolderOpen, ChevronDown } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { CommandPalette } from '../components/CommandPalette';
 import { RepositoryModal } from '../components/RepositoryModal';
+import { RepositorySwitcher } from '../components/RepositorySwitcher';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { colors, radius, font } from '../design-system/tokens';
+import { getUserRepository } from '../services/repository';
 
-const PAGE_TITLES: Record<string, string> = {
-  '/': 'Overview',
-  '/explorer': 'Explorer',
-  '/graph': 'Dependencies',
-  '/architecture': 'Architecture',
-  '/search': 'Search',
-  '/chat': 'Assistant',
-  '/documentation': 'Documentation',
-  '/health-dashboard': 'Code Health',
-  '/settings': 'Settings',
-};
+function getPageTitle(pathname: string): string {
+  if (pathname.endsWith('/explorer')) return 'Explorer';
+  if (pathname.endsWith('/graph')) return 'Dependencies';
+  if (pathname.endsWith('/architecture')) return 'Architecture';
+  if (pathname.endsWith('/search')) return 'Search';
+  if (pathname.endsWith('/chat')) return 'Assistant';
+  if (pathname.endsWith('/documentation')) return 'Documentation';
+  if (pathname.endsWith('/health-dashboard')) return 'Code Health';
+  if (pathname.endsWith('/settings')) return 'Settings';
+  if (pathname.endsWith('/overview')) return 'Overview';
+  return 'Workspace';
+}
 
 function getRepoBasename(path: string): string {
   const normalized = path.replace(/\\/g, '/');
@@ -29,7 +32,7 @@ function getRepoBasename(path: string): string {
 
 export const MainLayout: React.FC = () => {
   const location = useLocation();
-  const pageTitle = PAGE_TITLES[location.pathname] || 'Workspace';
+  const pageTitle = getPageTitle(location.pathname);
 
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
   const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
@@ -39,6 +42,21 @@ export const MainLayout: React.FC = () => {
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Sync URL repositoryId if present
+  useEffect(() => {
+    const match = location.pathname.match(/\/app\/repositories\/(\d+)/);
+    if (match) {
+      const repoId = parseInt(match[1], 10);
+      getUserRepository(repoId)
+        .then((repo) => {
+          if (repo && repo.source_path && repo.source_path !== activeRepository) {
+            scanRepo(repo.source_path);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [location.pathname]);
 
   // On mount, re-scan the active repository if persisted but not loaded
   useEffect(() => {
@@ -126,83 +144,27 @@ export const MainLayout: React.FC = () => {
 
               {/* Product & Repository Breadcrumbs */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <span
+                <Link
+                  to="/app"
                   style={{
                     fontSize: '12px',
                     fontWeight: 600,
                     color: colors.text.secondary,
                     fontFamily: font.sans,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = colors.accent.blue)}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = colors.text.secondary)}
                 >
-                  Repository Scanner
-                </span>
+                  <span>Repositories</span>
+                </Link>
 
                 <span style={{ color: colors.border.strong, fontSize: '13px' }}>/</span>
 
-                {repoName ? (
-                  <button
-                    onClick={() => setRepoModalOpen(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      minWidth: 0,
-                      background: 'transparent',
-                      border: `1px solid ${colors.border.subtle}`,
-                      borderRadius: radius.md,
-                      padding: '2px 8px',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.1s ease, border-color 0.1s ease',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = colors.bg.surfaceSecondary;
-                      e.currentTarget.style.borderColor = colors.border.strong;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.borderColor = colors.border.subtle;
-                    }}
-                    title={`${activeRepository} — Click to switch repository`}
-                  >
-                    <Folder size={13} style={{ color: colors.accent.blue, flexShrink: 0 }} />
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        fontFamily: font.mono,
-                        color: colors.text.primary,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '220px',
-                      }}
-                    >
-                      {repoName}
-                    </span>
-                    <ChevronDown size={12} style={{ color: colors.text.muted, flexShrink: 0 }} />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setRepoModalOpen(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '2px 8px',
-                      borderRadius: radius.md,
-                      backgroundColor: 'rgba(91, 141, 239, 0.12)',
-                      border: '1px solid rgba(91, 141, 239, 0.3)',
-                      color: colors.accent.blue,
-                      fontSize: '12px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      fontFamily: font.sans,
-                    }}
-                  >
-                    <FolderOpen size={12} />
-                    <span>Open Repository</span>
-                  </button>
-                )}
+                <RepositorySwitcher />
 
                 {/* Status indicator pill */}
                 {activeRepository && (

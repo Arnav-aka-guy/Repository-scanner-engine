@@ -10,15 +10,115 @@ import json
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.db.models import ChatMessage, GeneratedDoc, Repository, ScanRecord
+from backend.db.models import ChatMessage, GeneratedDoc, Repository, ScanRecord, User
 
 logger = logging.getLogger(__name__)
 
 
-# ── Repository CRUD ─────────────────────────────────────────────────────
+# ── User CRUD ───────────────────────────────────────────────────────────
+
+
+async def create_user(
+    db: AsyncSession,
+    *,
+    name: str,
+    email: str,
+    password_hash: str,
+) -> User:
+    """Create a new user account."""
+    user = User(
+        name=name.strip(),
+        email=email.strip().lower(),
+        password_hash=password_hash,
+    )
+    db.add(user)
+    await db.flush()
+    logger.info("Created user account: %s (%s)", user.name, user.email)
+    return user
+
+
+async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
+    """Look up a user account by email address (case-insensitive)."""
+    stmt = select(User).where(func.lower(User.email) == email.strip().lower())
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:
+    """Look up a user account by primary key ID."""
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+# ── User-scoped Repository CRUD ─────────────────────────────────────────
+
+
+async def count_user_repositories(db: AsyncSession, user_id: int) -> int:
+    """Count how many repositories are currently owned by a user."""
+    stmt = select(func.count(Repository.id)).where(Repository.user_id == user_id)
+    result = await db.execute(stmt)
+    return result.scalar_one() or 0
+
+
+async def list_user_repositories(db: AsyncSession, user_id: int) -> list[Repository]:
+    """Return all repositories owned by a user, ordered newest first."""
+    stmt = select(Repository).where(Repository.user_id == user_id).order_by(Repository.created_at.desc())
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_user_repository(db: AsyncSession, repository_id: int, user_id: int) -> Repository | None:
+    """Retrieve a repository ensuring strict user ownership isolation."""
+    stmt = select(Repository).where(
+        Repository.id == repository_id,
+        Repository.user_id == user_id,
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def create_user_repository(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    name: str,
+    source_path: str,
+    source_type: str = "local",
+    description: str | None = None,
+) -> Repository:
+    """Create a new repository owned by user_id."""
+    normalized_path = source_path.replace("\\", "/").rstrip("/")
+    repo = Repository(
+        user_id=user_id,
+        name=name.strip(),
+        source_path=normalized_path,
+        path=normalized_path,
+        source_type=source_type,
+        description=description.strip() if description else None,
+        status="CREATED",
+    )
+    db.add(repo)
+    await db.flush()
+    logger.info("Created repository %s for user %d at %s", repo.name, user_id, normalized_path)
+    return repo
+
+
+async def delete_user_repository(db: AsyncSession, repository_id: int, user_id: int) -> bool:
+    """Delete a user-owned repository and cascade all associated data."""
+    repo = await get_user_repository(db, repository_id, user_id)
+    if not repo:
+        return False
+    await db.delete(repo)
+    await db.flush()
+    logger.info("Deleted repository %d for user %d", repository_id, user_id)
+    return True
+
+
+# ── Legacy / General Repository CRUD ────────────────────────────────────
 
 
 async def get_or_create_repository(db: AsyncSession, *, path: str, name: str) -> Repository:
@@ -28,7 +128,7 @@ async def get_or_create_repository(db: AsyncSession, *, path: str, name: str) ->
     repo = result.scalar_one_or_none()
 
     if repo is None:
-        repo = Repository(path=path, name=name)
+        repo = Repository(path=path, source_path=path, name=name)
         db.add(repo)
         await db.flush()
         logger.info("Created repository record: %s (%s)", name, path)
@@ -46,9 +146,13 @@ async def update_repository_stats(
 ) -> Repository:
     """Update scan statistics for a repository."""
     repo.total_files = total_files
+    repo.file_count = total_files
     repo.total_lines = total_lines
     repo.languages_json = json.dumps(languages)
+    if languages:
+        repo.language = max(languages.items(), key=lambda kv: kv[1])[0]
     repo.last_scanned_at = datetime.now(tz=UTC)
+    repo.status = "READY"
     await db.flush()
     return repo
 

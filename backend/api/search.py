@@ -5,8 +5,14 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend.api.dependencies import get_embeddings
+from backend.db.database import get_db
+from backend.db.models import Repository
 from backend.embeddings.service import EmbeddingsService
+from backend.security.auth import get_current_user
 from backend.security.input_sanitizer import SanitizedQuery, SanitizedRepoPath
 from backend.security.path_validator import validate_repository_path
 from backend.security.rate_limiter import SEARCH_RATE, limiter
@@ -58,12 +64,10 @@ async def search(
     request: Request,
     body: SearchRequest,
     embeddings: EmbeddingsService = Depends(get_embeddings),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> SearchResponse:
-    """Run a hybrid search (dense semantic + BM25 keyword + RRF reranker) against the indexed codebase.
-
-    The embeddings index must have been populated via the ``/api/repository/scan``
-    endpoint before calling this.
-    """
+    """Run a hybrid search against the indexed codebase, scoped to owned repository."""
     # Sanitize the query
     sanitized = SanitizedQuery(query=body.query)
 
@@ -72,6 +76,21 @@ async def search(
         sanitized_repo = SanitizedRepoPath(path=body.repo_path)
         path = validate_repository_path(sanitized_repo.path)
         validated_repo_path = str(path)
+
+        # Check repository ownership if user is authenticated
+        if current_user.get("auth") and current_user.get("user_id"):
+            user_id = int(current_user["user_id"])
+            norm_path = validated_repo_path.replace("\\", "/").rstrip("/")
+            stmt = select(Repository).where(
+                (Repository.path == norm_path) | (Repository.source_path == norm_path)
+            )
+            res = await db.execute(stmt)
+            repo = res.scalar_one_or_none()
+            if repo and repo.user_id is not None and repo.user_id != user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied: You do not own this repository.",
+                )
 
     try:
         raw_results: list[dict] = await embeddings.search(

@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import sys
 from logging.config import fileConfig
+
+sys.path.insert(0, os.path.abspath("."))
 
 from alembic import context
 from sqlalchemy import pool
@@ -11,7 +15,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from backend.core.config import get_settings
 from backend.db.database import Base
-from backend.db.models import ChatMessage, GeneratedDoc, Repository, ScanRecord  # noqa: F401
+from backend.db.models import ChatMessage, GeneratedDoc, Repository, ScanRecord, User  # noqa: F401
 
 # Alembic Config object
 config = context.config

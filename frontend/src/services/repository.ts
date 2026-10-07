@@ -77,3 +77,40 @@ export async function getOnboardingGuide(repoPath: string): Promise<RepoOnboardi
   return apiGet<RepoOnboardingGuide>('/repository/onboarding', { repo_path: repoPath });
 }
 
+// ── Multi-user Repository Management ────────────────────────────────────
+
+import { SavedRepository, RepositoryListResponse } from '../types/repository';
+import { apiDelete } from './api';
+
+export async function getUserRepositories(): Promise<RepositoryListResponse> {
+  return apiGet<RepositoryListResponse>('/repositories');
+}
+
+export async function createUserRepository(data: {
+  name: string;
+  source_path: string;
+  source_type?: string;
+  description?: string;
+}): Promise<SavedRepository> {
+  return apiPost<SavedRepository>('/repositories', data);
+}
+
+export async function getUserRepository(id: number): Promise<SavedRepository> {
+  return apiGet<SavedRepository>(`/repositories/${id}`);
+}
+
+export async function updateUserRepository(
+  id: number,
+  data: { name?: string; description?: string }
+): Promise<SavedRepository> {
+  return apiPost<SavedRepository>(`/repositories/${id}`, data);
+}
+
+export async function deleteUserRepository(id: number): Promise<{ status: string; message: string }> {
+  return apiDelete<{ status: string; message: string }>(`/repositories/${id}`);
+}
+
+export async function scanUserRepository(id: number): Promise<SavedRepository> {
+  return apiPost<SavedRepository>(`/repositories/${id}/scan`, {});
+}
+

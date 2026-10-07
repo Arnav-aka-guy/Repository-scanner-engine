@@ -34,4 +34,26 @@ export interface FileTreeNode {
   extension?: string;
 }
 
+export interface SavedRepository {
+  id: number;
+  name: string;
+  description?: string | null;
+  source_type: 'local' | 'github';
+  source_path: string;
+  status: 'CREATED' | 'SCANNING' | 'READY' | 'FAILED' | 'ARCHIVED';
+  language?: string | null;
+  file_count: number;
+  total_files: number;
+  total_lines: number;
+  languages: Record<string, number>;
+  last_scanned_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
 
+export interface RepositoryListResponse {
+  repositories: SavedRepository[];
+  count: number;
+  max_limit: number;
+  available_slots: number;
+}

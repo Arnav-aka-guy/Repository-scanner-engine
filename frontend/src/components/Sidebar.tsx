@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   Compass,
   FolderTree,
@@ -35,7 +35,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: 'WORKSPACE',
     items: [
-      { name: 'Overview', path: '/', icon: Compass },
+      { name: 'Overview', path: '/overview', icon: Compass },
       { name: 'Explorer', path: '/explorer', icon: FolderTree },
       { name: 'Search', path: '/search', icon: Search },
       { name: 'Assistant', path: '/chat', icon: MessageSquare },
@@ -82,6 +82,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
   const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
 
+  const repoMatch = location.pathname.match(/^\/app\/repositories\/([^/]+)/);
+  const repoPrefix = repoMatch ? `/app/repositories/${repoMatch[1]}` : '';
+
   const repoName = activeRepository ? getRepoBasename(activeRepository) : null;
   const isScanning = scanStatus === 'scanning';
 
@@ -93,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
   };
 
   const handleItemClick = (path: string) => {
-    if (path === '/') {
+    if (path === '/' || path === '/overview') {
       setSelectedFile(null);
     }
     if (onCloseMobile) {
@@ -152,7 +155,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
             height: '48px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Link
+            to="/app"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              textDecoration: 'none',
+              cursor: 'pointer',
+            }}
+          >
             <div
               style={{
                 width: '22px',
@@ -183,7 +195,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
                 Repository Scanner
               </span>
             </div>
-          </div>
+          </Link>
 
           {/* Mobile close button */}
           {onCloseMobile && (
@@ -336,12 +348,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
               {/* Section Navigation Items */}
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path;
+                const targetPath = repoPrefix ? `${repoPrefix}${item.path}` : item.path;
+                const isActive = location.pathname === targetPath || (item.path === '/overview' && location.pathname === repoPrefix);
 
                 return (
                   <NavLink
                     key={item.path}
-                    to={item.path}
+                    to={targetPath}
                     onClick={() => handleItemClick(item.path)}
                     style={{
                       display: 'flex',

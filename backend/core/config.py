@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
 
     # ── Database ──────────────────────────────────────────────────────
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/antigravity"
+    database_url: str = "sqlite+aiosqlite:///data/antigravity.db"
     # When False the application works without a relational database (indexes
     # are stored on the local filesystem only).
     database_enabled: bool = False
