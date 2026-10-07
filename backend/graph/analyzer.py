@@ -20,6 +20,28 @@ _ENTRY_POINT_NAMES: set[str] = {
     "configure",
     "cli",
     "entrypoint",
+    "index",
+    "init",
+    "handler",
+    "router",
+    "route",
+    "startup",
+    "shutdown",
+    "run",
+    "serve",
+}
+
+_ENTRY_POINT_FILE_NAMES: set[str] = {
+    "main.py",
+    "app.py",
+    "wsgi.py",
+    "asgi.py",
+    "index.ts",
+    "index.js",
+    "server.ts",
+    "server.js",
+    "page.tsx",
+    "route.ts",
 }
 
 
@@ -41,6 +63,7 @@ class GraphAnalyzer:
 
             node_type = data.get("node_type", "")
             label = data.get("label", "")
+            fpath = data.get("file_path", "")
 
             # Files are natural roots – skip them
             if node_type == "file":
@@ -53,6 +76,10 @@ class GraphAnalyzer:
 
             # Skip dunder methods (often implicitly called)
             if base_name.startswith("__") and base_name.endswith("__"):
+                continue
+
+            # Skip entry-point file roots
+            if fpath.replace("\\", "/").rsplit("/", 1)[-1].lower() in _ENTRY_POINT_FILE_NAMES and base_name.lower() in {"default", "handler"}:
                 continue
 
             dead.append(
@@ -75,23 +102,27 @@ class GraphAnalyzer:
             in_deg = graph.in_degree(node.id)
             out_deg = graph.out_degree(node.id)
             label = node.label.lower()
+            norm_path = node.file_path.replace("\\", "/").lower()
 
-            # Calibrate confidence based on references and naming patterns
-            confidence = 96
-            reason = "No references or calls found across indexed repository."
+            # Calibrate confidence based on references, module roles, and naming patterns
+            confidence = 94
+            reason = "No references found in internal call graph. May be called dynamically or externally."
 
-            if "test" in label or "mock" in label or "fixture" in label:
+            if "test" in label or "mock" in label or "fixture" in label or "/tests/" in norm_path:
                 confidence = 65
-                reason = "Symbol name suggests test helper or mock fixture."
+                reason = "Symbol name or path suggests test helper, fixture, or mock."
+            elif any(part in norm_path for part in ("/api/", "/routes/", "/endpoints/", "/controllers/", "/pages/")):
+                confidence = 72
+                reason = "Defined in API or routing module; may be invoked dynamically by framework route registration."
             elif label.startswith("_"):
                 confidence = 92
                 reason = "Private/internal symbol with 0 incoming calls or references."
             elif out_deg > 0:
                 confidence = 88
-                reason = "Symbol invokes other functions but is never invoked externally."
+                reason = "Symbol invokes other functions but is never invoked internally."
             else:
-                confidence = 96
-                reason = "No references found across indexed repository."
+                confidence = 94
+                reason = "No references found in internal call graph. May be called dynamically or externally."
 
             items.append(
                 DeadCodeConfidenceItem(

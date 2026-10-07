@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from backend.retrieval.graph_retriever import GraphRetriever
@@ -12,6 +13,38 @@ if TYPE_CHECKING:
     from backend.parser.models import ParsedFile
 
 logger = logging.getLogger(__name__)
+
+
+def get_language_from_path(file_path: str) -> str:
+    """Map file extension to Markdown syntax highlighting language identifier."""
+    ext = Path(file_path).suffix.lower()
+    mapping = {
+        ".py": "python",
+        ".ts": "typescript",
+        ".tsx": "typescript",
+        ".js": "javascript",
+        ".jsx": "javascript",
+        ".json": "json",
+        ".go": "go",
+        ".rs": "rust",
+        ".java": "java",
+        ".cpp": "cpp",
+        ".cc": "cpp",
+        ".c": "c",
+        ".h": "c",
+        ".hpp": "cpp",
+        ".cs": "csharp",
+        ".rb": "ruby",
+        ".php": "php",
+        ".html": "html",
+        ".css": "css",
+        ".sql": "sql",
+        ".sh": "bash",
+        ".yaml": "yaml",
+        ".yml": "yaml",
+        ".md": "markdown",
+    }
+    return mapping.get(ext, "")
 
 
 class HybridRetriever:
@@ -99,7 +132,8 @@ class HybridRetriever:
                 f"Docstring: {doc}\n"
             )
             if source:
-                block += f"Source Code:\n```python\n{source}\n```"
+                lang = get_language_from_path(ent.get("file_path", ""))
+                block += f"Source Code:\n```{lang}\n{source}\n```"
             else:
                 block += "[Source code not available for this entity type]"
 

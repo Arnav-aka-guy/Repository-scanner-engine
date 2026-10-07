@@ -11,9 +11,9 @@ from httpx import ASGITransport, AsyncClient
 
 from backend.graph.analyzer import GraphAnalyzer
 from backend.graph.builder import GraphBuilder
-from backend.graph.models import DeadCodeConfidenceItem, ImpactAnalysisResult
+from backend.graph.models import ImpactAnalysisResult
 from backend.main import app
-from backend.parser.models import ClassInfo, FunctionInfo, ImportInfo, ParsedFile
+from backend.parser.models import FunctionInfo, ImportInfo, ParsedFile
 
 
 @pytest.fixture()

@@ -36,6 +36,8 @@ class SearchResultItem(BaseModel):
     score: float = 0.0
     start_line: int = 0
     end_line: int = 0
+    match_type: str = "semantic"  # "semantic" | "keyword" | "hybrid"
+    match_reasons: list[str] = Field(default_factory=list)
 
 
 class SearchResponse(BaseModel):
@@ -57,7 +59,7 @@ async def search(
     body: SearchRequest,
     embeddings: EmbeddingsService = Depends(get_embeddings),
 ) -> SearchResponse:
-    """Run a semantic search against the indexed codebase.
+    """Run a hybrid search (dense semantic + BM25 keyword + RRF reranker) against the indexed codebase.
 
     The embeddings index must have been populated via the ``/api/repository/scan``
     endpoint before calling this.
@@ -86,15 +88,23 @@ async def search(
 
     items: list[SearchResultItem] = []
     for r in raw_results:
-        meta = r.get("metadata", {})
+        meta = r.get("metadata") if isinstance(r.get("metadata"), dict) else r
+        file_path = meta.get("file_path", "") or r.get("file_path", "")
+        entity_name = meta.get("entity_name", "") or r.get("entity_name", "")
+        snippet = meta.get("source_code", "") or r.get("source_code", "") or meta.get("snippet", "")
+        match_type = str(r.get("match_type") or "semantic")
+        match_reasons = list(r.get("match_reasons") or ["semantic similarity"])
+
         items.append(
             SearchResultItem(
-                file_path=meta.get("file_path", ""),
-                entity_name=meta.get("entity_name", ""),
-                snippet=meta.get("source_code", ""),
+                file_path=file_path,
+                entity_name=entity_name,
+                snippet=snippet,
                 score=float(r.get("score", 0.0)),
-                start_line=int(meta.get("start_line", 0)),
-                end_line=int(meta.get("end_line", 0)),
+                start_line=int(meta.get("start_line", 0) or r.get("start_line", 0)),
+                end_line=int(meta.get("end_line", 0) or r.get("end_line", 0)),
+                match_type=match_type,
+                match_reasons=match_reasons,
             )
         )
 

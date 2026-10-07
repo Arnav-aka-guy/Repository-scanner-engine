@@ -144,8 +144,8 @@ export const HealthDashboard: React.FC = () => {
   // Dimension explanation mappings
   const dimensionDescriptions: Record<string, string> = {
     Documentation: 'Measures docstring coverage across public functions, classes, and top-level modules.',
-    Complexity: 'Evaluates function line lengths, large files, and cyclomatic branching thresholds.',
-    Architecture: 'Checks for circular dependency loops, layer violations, and unreferenced dead code.',
+    Complexity: 'Evaluates function lengths (>50 lines), oversized files (>500 lines), and indentation nesting depth (>5 levels).',
+    Architecture: 'Checks for circular dependency loops, high import coupling (>15 imports), and unreferenced dead code.',
     Maintainability: 'Assesses function density per file, God classes (>15 methods), and cognitive load.',
     Security: 'Detects hardcoded secrets, exposed credentials, API keys, and insecure assignments.',
   };

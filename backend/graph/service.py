@@ -104,9 +104,25 @@ class GraphService:
 
     @staticmethod
     def _cache_key(parsed_files: dict[str, ParsedFile]) -> str:
-        """Derive a stable cache key from the set of file paths."""
-        paths = sorted(parsed_files.keys())
-        return "|".join(paths)
+        """Derive a stable cache key incorporating file paths and structural content signatures.
+
+        Automatically invalidates cached graph representations when imports, functions,
+        classes, line spans, or function calls change.
+        """
+        import hashlib
+
+        hasher = hashlib.sha256()
+        for path in sorted(parsed_files.keys()):
+            pf = parsed_files[path]
+            hasher.update(path.encode("utf-8"))
+            hasher.update(pf.language.encode("utf-8"))
+            for imp in pf.imports:
+                hasher.update(f"{imp.module}:{','.join(imp.names)}".encode())
+            for fn in pf.functions:
+                hasher.update(f"{fn.name}:{fn.start_line}-{fn.end_line}:{len(fn.calls)}".encode())
+            for cls in pf.classes:
+                hasher.update(f"{cls.name}:{cls.start_line}-{cls.end_line}:{len(cls.methods)}".encode())
+        return hasher.hexdigest()
 
     def invalidate_cache(self) -> None:
         """Clear all cached graphs."""

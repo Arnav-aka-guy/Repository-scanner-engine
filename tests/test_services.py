@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from backend.parser.models import ClassInfo, FunctionInfo, ImportInfo, ParsedFile
-from backend.services.health_score import DimensionScore, HealthReport, compute_health_score
+from backend.services.health_score import HealthReport, compute_health_score
 from backend.services.tech_debt import TechDebtReport, analyse_tech_debt
-
 
 # ── Test Fixtures ───────────────────────────────────────────────────────
 

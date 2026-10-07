@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from fastapi import HTTPException
-
 
 # ── Path Validator Tests ────────────────────────────────────────────────
 
@@ -160,6 +158,7 @@ class TestValidateFilePath:
     def test_read_ssh_key_through_api_rejected(self, tmp_path: Path):
         """Reading <tmp_home>/.ssh/id_rsa through /api/repository/file is rejected with 403."""
         from fastapi.testclient import TestClient
+
         from backend.main import app
 
         tmp_home = tmp_path / "fake_home"
@@ -184,6 +183,7 @@ class TestValidateFilePath:
     def test_relative_file_path_resolution(self, tmp_path: Path):
         """Relative file paths resolve against repo_path; escapes return 403."""
         from fastapi.testclient import TestClient
+
         from backend.main import app
         from backend.security.path_validator import validate_file_path
 
@@ -236,6 +236,7 @@ class TestScannedRepoRegistryAndFileLeak:
     def test_unscanned_repo_path_rejected_by_file_endpoint(self, tmp_path: Path):
         """Unscanned repo_path must be rejected with 403 'Repository has not been scanned.'."""
         from fastapi.testclient import TestClient
+
         from backend.main import app
         from backend.security.repo_registry import clear_scanned_repos
 
@@ -255,6 +256,7 @@ class TestScannedRepoRegistryAndFileLeak:
     def test_scanned_repo_path_accepted_by_file_endpoint(self, tmp_path: Path):
         """Once scanned, repo_path is accepted by /file."""
         from fastapi.testclient import TestClient
+
         from backend.main import app
 
         repo_dir = tmp_path / "scanned_repo"
@@ -275,6 +277,7 @@ class TestScannedRepoRegistryAndFileLeak:
     def test_bash_history_and_docker_config_unreadable(self, tmp_path: Path):
         """~/.bash_history and ~/.docker/config.json are unreadable with any repo_path."""
         from fastapi.testclient import TestClient
+
         from backend.main import app
         from backend.security.repo_registry import register_scanned_repo
 
@@ -318,6 +321,7 @@ class TestScannedRepoRegistryAndFileLeak:
     def test_github_workflows_and_gitignore_readable_but_git_config_blocked(self, tmp_path: Path):
         """.github/workflows/ci.yml and .gitignore are readable inside a scanned repo; .git/config still blocked."""
         from fastapi.testclient import TestClient
+
         from backend.main import app
         from backend.security.repo_registry import register_scanned_repo
 
@@ -380,14 +384,14 @@ class TestSanitizedRepoPath:
         """Paths with null bytes should be rejected."""
         from backend.security.input_sanitizer import SanitizedRepoPath
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SanitizedRepoPath(path="/home/user/\x00evil")
 
     def test_rejects_too_long_path(self):
         """Paths exceeding max length should be rejected."""
         from backend.security.input_sanitizer import SanitizedRepoPath
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SanitizedRepoPath(path="A" * 501)
 
     def test_strips_whitespace(self):
@@ -412,7 +416,7 @@ class TestSanitizedQuery:
         """Empty query should be rejected."""
         from backend.security.input_sanitizer import SanitizedQuery
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             SanitizedQuery(query="")
 
 
@@ -443,8 +447,9 @@ class TestAuth:
 
     def test_verify_expired_token(self):
         """Expired token should raise HTTPException."""
-        from backend.security.auth import create_access_token, verify_token
         from datetime import timedelta
+
+        from backend.security.auth import create_access_token, verify_token
 
         # Create a token that's already expired
         token = create_access_token(
@@ -457,8 +462,9 @@ class TestAuth:
     def test_token_endpoint_success_and_failure(self, monkeypatch):
         """Token endpoint returns a token for correct credentials and 401 for wrong ones."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+
         from backend.core.config import settings
+        from backend.main import app
         from backend.security.auth import hash_password
 
         pwd_hash = hash_password("secret123")
@@ -494,8 +500,9 @@ class TestAuth:
     def test_auth_token_returns_400_when_auth_disabled(self, monkeypatch):
         """POST /api/auth/token returns 400 'Authentication is disabled' when AUTH_ENABLED=false."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+
         from backend.core.config import settings
+        from backend.main import app
 
         monkeypatch.setattr(settings, "auth_enabled", False)
 
@@ -510,8 +517,9 @@ class TestAuth:
     def test_protected_route_enforcement_when_auth_enabled(self, monkeypatch, tmp_path: Path):
         """A protected route returns 401 without a token and 200 with one when AUTH_ENABLED=true."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+
         from backend.core.config import settings
+        from backend.main import app
         from backend.security.auth import create_access_token
 
         monkeypatch.setattr(settings, "auth_enabled", True)
@@ -542,8 +550,9 @@ class TestAuth:
     def test_auth_status_endpoint(self, monkeypatch):
         """GET /api/auth/status returns the current auth_enabled flag."""
         from fastapi.testclient import TestClient
-        from backend.main import app
+
         from backend.core.config import settings
+        from backend.main import app
 
         monkeypatch.setattr(settings, "auth_enabled", False)
         with TestClient(app) as client:

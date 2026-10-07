@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -102,7 +103,17 @@ async def chat(
             top_k=5,
             repo_path=repo_key,
         )
+        vector_results = retrieval_res.get("vector_results", [])
+        graph_results = retrieval_res.get("graph_results", [])
         context = retrieval_res.get("merged_context", "")
+
+        has_retrieval_context = bool(vector_results or graph_results)
+        confidence_prefix = ""
+        if not has_retrieval_context or not context.strip() or context.startswith("No relevant code context"):
+            confidence_prefix = (
+                "ℹ️ *Limited codebase context available for this question. "
+                "The answer is based on general knowledge and repository structure.*\n\n"
+            )
     except Exception as exc:
         logger.error("Context retrieval failed for %s: %s", path.name, exc, exc_info=True)
         raise HTTPException(
@@ -113,6 +124,10 @@ async def chat(
     async def _event_stream():
         """Yield SSE-formatted chunks from the LLM and persist the answer."""
         collected_chunks: list[str] = []
+
+        if confidence_prefix:
+            collected_chunks.append(confidence_prefix)
+            yield f"data: {json.dumps({'type': 'chunk', 'content': confidence_prefix})}\n\n"
 
         try:
             async for chunk in llm.answer_question_stream(sanitized.question, context):
@@ -135,11 +150,49 @@ async def chat(
 
         full_answer = "".join(collected_chunks)
 
+        # Ground citations: verify retrieved sources against actual repository files
+        verified_sources = []
+        seen_sources = set()
+        for src in (vector_results + graph_results):
+            fpath = src.get("file_path", "")
+            if not fpath:
+                continue
+
+            full_target = Path(fpath) if Path(fpath).is_absolute() else (path / fpath)
+            is_valid_file = fpath in parsed_files or str(full_target.resolve()) in parsed_files or full_target.exists()
+            if not is_valid_file:
+                continue
+
+            s_line = int(src.get("start_line", 0))
+            e_line = int(src.get("end_line", 0))
+
+            pf = parsed_files.get(fpath) or parsed_files.get(str(full_target.resolve()))
+            valid_lines = False
+            if pf:
+                max_line = max(
+                    [func.end_line for func in pf.functions] + [cls.end_line for cls in pf.classes] + [1]
+                )
+                if 1 <= s_line <= max_line:
+                    valid_lines = True
+
+            key = (fpath, src.get("entity_name", ""))
+            if key not in seen_sources:
+                seen_sources.add(key)
+                verified_sources.append({
+                    "file_path": fpath,
+                    "entity_name": src.get("entity_name", ""),
+                    "entity_type": src.get("entity_type", ""),
+                    "start_line": s_line if (valid_lines and s_line > 0) else None,
+                    "end_line": e_line if (valid_lines and e_line > 0) else None,
+                    "verified": True,
+                })
+
         entry = {
             "timestamp": datetime.now(tz=UTC).isoformat(),
             "question": sanitized.question,
             "answer": full_answer,
             "conversation_id": body.conversation_id,
+            "sources": verified_sources[:6],
         }
         _conversation_history.append(entry)
         if repo_key not in _repo_conversation_history:
@@ -153,7 +206,11 @@ async def chat(
             conversation_id=body.conversation_id,
         )
 
-        done_payload = json.dumps({"type": "done", "content": full_answer})
+        done_payload = json.dumps({
+            "type": "done",
+            "content": full_answer,
+            "sources": verified_sources[:6],
+        })
         yield f"data: {done_payload}\n\n"
 
     return StreamingResponse(

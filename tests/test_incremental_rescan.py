@@ -8,14 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from backend.core.models import FileInfo
 from backend.embeddings.service import EmbeddingsService
 from backend.parser.manifest import (
-    FileRecord,
-    RepoManifest,
     build_manifest_diff,
     compute_file_hash,
-    get_repo_id,
 )
 from backend.parser.service import ParserService
 
@@ -166,5 +162,6 @@ class TestIncrementalParserAndEmbeddings:
         (temp_repo / "alpha.py").unlink()
         parsed3 = await parser.parse_repository(str(temp_repo))
         count3 = await embeddings.index_repository(parsed3, repo_path=str(temp_repo))
+        assert count3 >= 0
 
         assert str(temp_repo / "alpha.py") not in embeddings._file_embeddings_cache[repo_id]

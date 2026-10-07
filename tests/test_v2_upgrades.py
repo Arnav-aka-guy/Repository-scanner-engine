@@ -13,15 +13,12 @@ Covers every major fix introduced in Phase 1-9:
 
 from __future__ import annotations
 
-import os
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-
 
 # ── Fixtures ────────────────────────────────────────────────────────────
 
@@ -173,7 +170,6 @@ class TestRateLimiting:
 
     def test_search_endpoint_has_rate_limit_decorator(self):
         """Search endpoint should have the rate limit applied."""
-        import inspect
 
         from backend.api.search import search
 
@@ -447,6 +443,7 @@ class TestMockEmbeddingEncoder:
 
     def test_mock_encoder_produces_deterministic_embeddings(self):
         import numpy as np
+
         from backend.embeddings.encoder import EmbeddingEncoder
 
         encoder = EmbeddingEncoder(model_name="mock")

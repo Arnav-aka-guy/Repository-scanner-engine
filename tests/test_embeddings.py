@@ -9,7 +9,6 @@ These tests load ML models and may be slow — marked with @pytest.mark.slow.
 
 from __future__ import annotations
 
-import os
 import json
 from pathlib import Path
 
@@ -173,7 +172,7 @@ class TestVectorStore:
         d_loaded, i_loaded = loaded_index.search(query, k=2)
 
         assert list(i_orig[0]) == list(i_loaded[0])
-        for a, b in zip(d_orig[0], d_loaded[0]):
+        for a, b in zip(d_orig[0], d_loaded[0], strict=False):
             assert a == pytest.approx(b, abs=1e-6)
 
     @pytest.mark.skipif(faiss is None, reason="faiss not installed")

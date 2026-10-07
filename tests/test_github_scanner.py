@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-import pytest
 
 from backend.main import app
 from backend.services.github_scanner import validate_github_url

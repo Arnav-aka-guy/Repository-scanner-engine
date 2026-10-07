@@ -41,13 +41,20 @@ def _get_engine():
     global _engine  # noqa: PLW0603
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(
-            settings.database_url,
-            echo=False,
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True,
-        )
+        if "sqlite" in settings.database_url:
+            _engine = create_async_engine(
+                settings.database_url,
+                echo=False,
+                connect_args={"check_same_thread": False},
+            )
+        else:
+            _engine = create_async_engine(
+                settings.database_url,
+                echo=False,
+                pool_size=5,
+                max_overflow=10,
+                pool_pre_ping=True,
+            )
         # Log only the host/db portion — never the credentials.
         db_host = settings.database_url.split("@")[-1]
         logger.info("Database engine created: %s", db_host)

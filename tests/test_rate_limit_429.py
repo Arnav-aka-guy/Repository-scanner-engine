@@ -25,7 +25,6 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -54,17 +53,16 @@ def low_limit_client():
     see the change.  The fixture is provided for completeness and potential
     future use with freshly-imported routers.
     """
-    from backend.main import app
     import backend.security.rate_limiter as rl
+    from backend.main import app
 
     with (
         patch.object(rl, "SCAN_RATE", "1/minute"),
         patch.object(rl, "SEARCH_RATE", "1/minute"),
         patch.object(rl, "CHAT_RATE", "1/minute"),
-        patch.object(rl, "FILE_RATE", "1/minute"),
+        patch.object(rl, "FILE_RATE", "1/minute"),TestClient(app, raise_server_exceptions=False) as client
     ):
-        with TestClient(app, raise_server_exceptions=False) as client:
-            yield client
+        yield client
 
 
 # ---------------------------------------------------------------------------

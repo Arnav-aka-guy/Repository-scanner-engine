@@ -99,9 +99,9 @@ class LLMService:
         async for token in self.manager.generate_stream(prompt, system_prompt=system_prompt):
             yield token
 
-    async def generate_documentation(self, code: str, entity_type: str) -> str:
+    async def generate_documentation(self, code: str, entity_type: str, language: str = "") -> str:
         """Generate formatted docstring/onboarding guide for a code entity."""
-        system_prompt, prompt = self._build_doc_prompt(code, entity_type)
+        system_prompt, prompt = self._build_doc_prompt(code, entity_type, language=language)
         return await self.manager.generate(prompt, system_prompt=system_prompt)
 
     def _build_qa_prompt(self, question: str, context: str | list[str]) -> tuple[str, str]:
@@ -139,18 +139,23 @@ class LLMService:
 
         return system, user
 
-    def _build_doc_prompt(self, code: str, entity_type: str) -> tuple[str, str]:
+    def _build_doc_prompt(self, code: str, entity_type: str, language: str = "") -> tuple[str, str]:
         """Construct prompt pair for documentation generation."""
         system = (
             "You are an expert technical writer specializing in clean software architecture documentation. "
             "Generate detailed, professional, and readable markdown documentation for codebases."
         )
 
+        lang_tag = (
+            language.strip()
+            or ("typescript" if "interface " in code or "type " in code or "export " in code else "python" if "def " in code or "class " in code else "")
+        )
+
         user = (
             f"Generate structured markdown documentation for the following {entity_type}.\n"
             f"Explain its purpose, high-level interface/behavior, design choices, "
             f"and describe inputs and outputs if applicable.\n\n"
-            f"Source code:\n```python\n{code}\n```"
+            f"Source code:\n```{lang_tag}\n{code}\n```"
         )
 
         return system, user

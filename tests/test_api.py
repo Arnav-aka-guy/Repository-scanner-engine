@@ -20,10 +20,10 @@ def _ensure_dist_index():
         created = True
     yield
     if created:
-        try:
+        import contextlib
+
+        with contextlib.suppress(OSError):
             index_file.unlink(missing_ok=True)
-        except OSError:
-            pass
 
 
 @pytest.fixture
@@ -133,7 +133,8 @@ class TestRepositoryEndpoints:
     def test_scan_jobs_capped_and_expired_cleaned_up(self):
         """Async scan jobs are capped at 100 and expired jobs older than 1hr are purged."""
         import time
-        from backend.api.repository import _scan_jobs, _cleanup_scan_jobs
+
+        from backend.api.repository import _cleanup_scan_jobs, _scan_jobs
 
         _scan_jobs.clear()
         now = time.time()

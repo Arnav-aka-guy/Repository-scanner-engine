@@ -377,7 +377,7 @@ export const Overview: React.FC = () => {
     if (complexitySmells > 0) {
       attentionItems.push({
         title: `${complexitySmells} high-complexity function${complexitySmells > 1 ? 's' : ''}`,
-        description: 'Exceeds cyclomatic complexity thresholds; harder to test and maintain.',
+        description: 'Exceeds function length or indentation nesting depth thresholds; harder to test and maintain.',
         severity: 'warning',
         action: () => navigate('/health-dashboard'),
       });

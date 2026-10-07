@@ -581,7 +581,7 @@ export const DocumentationGenerator: React.FC = () => {
                           Interactive Architecture Inspector
                         </span>
                         <span style={{ fontSize: '11px', color: colors.text.muted }}>
-                          View layer boundary violations, dead code, and cyclomatic couplings.
+                          View layer boundary violations, dead code, and circular dependencies.
                         </span>
                       </div>
                       <Button

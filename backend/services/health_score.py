@@ -52,6 +52,7 @@ THRESHOLDS: dict[str, dict[str, Any]] = {
         "long_function_lines": 50,  # > 50 lines review
         "very_long_function_lines": 80,  # > 80 lines critical
         "large_file_lines": 500,  # > 500 lines large file
+        "max_nesting_depth": 5,  # > 5 indentation levels review
         "tolerance_long_functions": 3,
         "tolerance_large_files": 2,
     },
@@ -391,8 +392,21 @@ def _score_documentation(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
     return dim
 
 
+def _check_nesting(source: str) -> int:
+    """Estimate maximum indentation nesting depth from source code."""
+    max_depth = 0
+    for line in source.splitlines():
+        stripped = line.lstrip()
+        if not stripped or stripped.startswith("#") or stripped.startswith("//"):
+            continue
+        indent = len(line) - len(stripped)
+        depth = indent // 4 if "\t" not in line else indent
+        max_depth = max(max_depth, depth)
+    return max_depth
+
+
 def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
-    """Score code complexity (0–20)."""
+    """Score code complexity (0–20) based on function length, oversized files, and nesting depth."""
     dim = DimensionScore(
         name="Complexity",
         key="complexity",
@@ -407,6 +421,7 @@ def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
 
     very_long_functions: list[tuple[str, str, int]] = []  # path, name, length
     long_functions: list[tuple[str, str, int]] = []
+    deeply_nested_functions: list[tuple[str, str, int]] = []  # path, name, depth
     large_files: list[tuple[str, int]] = []
     total_func_lengths: list[int] = []
 
@@ -424,6 +439,11 @@ def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
             elif length > THRESHOLDS["complexity"]["long_function_lines"]:
                 long_functions.append((path, func.name, length))
 
+            if func.source_code:
+                depth = _check_nesting(func.source_code)
+                if depth > THRESHOLDS["complexity"]["max_nesting_depth"]:
+                    deeply_nested_functions.append((path, func.name, depth))
+
         for cls in pf.classes:
             for method in cls.methods:
                 length = method.end_line - method.start_line
@@ -432,6 +452,11 @@ def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
                     very_long_functions.append((path, f"{cls.name}.{method.name}", length))
                 elif length > THRESHOLDS["complexity"]["long_function_lines"]:
                     long_functions.append((path, f"{cls.name}.{method.name}", length))
+
+                if method.source_code:
+                    depth = _check_nesting(method.source_code)
+                    if depth > THRESHOLDS["complexity"]["max_nesting_depth"]:
+                        deeply_nested_functions.append((path, f"{cls.name}.{method.name}", depth))
 
     avg_len = sum(total_func_lengths) / len(total_func_lengths) if total_func_lengths else 0.0
     max_len = max(total_func_lengths, default=0)
@@ -490,6 +515,20 @@ def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
         )
     )
 
+    dim.metrics.append(
+        MeasuredMetric(
+            name="Deep Nesting (>5 levels)",
+            key="deep_nesting",
+            measured_value=len(deeply_nested_functions),
+            display_value=f"{len(deeply_nested_functions)} functions",
+            unit="functions",
+            threshold=0,
+            threshold_display="0 functions",
+            status="good" if len(deeply_nested_functions) == 0 else "review" if len(deeply_nested_functions) <= 3 else "at_risk",
+            description="Functions with deep indentation nesting (>5 levels), increasing cognitive complexity.",
+        )
+    )
+
     penalties: list[ScorePenalty] = []
 
     if len(very_long_functions) > 0:
@@ -543,6 +582,23 @@ def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
         penalties.append(p)
         dim.deductions.append(f"{len(large_files)} files exceed 500 lines")
 
+    if len(deeply_nested_functions) > 0:
+        pts = min(3.0, float(len(deeply_nested_functions) * 1.0))
+        files = list({item[0] for item in deeply_nested_functions})[:5]
+        p = ScorePenalty(
+            rule_id="deep_nesting",
+            rule_name="Deep Nesting (>5 levels)",
+            points_deducted=pts,
+            reason=f"{len(deeply_nested_functions)} function(s) have deep nesting > 5 levels (-1 pt each, max -3)",
+            threshold="≤ 5 levels",
+            observed=f"{len(deeply_nested_functions)} exceeding",
+            severity="medium",
+            confidence="high",
+            affected_files=files,
+        )
+        penalties.append(p)
+        dim.deductions.append(f"{len(deeply_nested_functions)} functions have deep nesting > 5 levels")
+
     total_deductions = sum(p.points_deducted for p in penalties)
     dim.total_penalties = total_deductions
     dim.score = max(0.0, round(dim.starting_score - total_deductions, 1))
@@ -555,6 +611,8 @@ def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
         file_penalties.setdefault(f_path, []).append(f"{fn} ({func_len} lines)")
     for f_path, fn, func_len in long_functions:
         file_penalties.setdefault(f_path, []).append(f"{fn} ({func_len} lines)")
+    for f_path, fn, depth in deeply_nested_functions:
+        file_penalties.setdefault(f_path, []).append(f"{fn} (depth {depth})")
     for f_path, file_line_count in large_files:
         file_penalties.setdefault(f_path, []).append(f"Oversized file ({file_line_count} lines)")
 

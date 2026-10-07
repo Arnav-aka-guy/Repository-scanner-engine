@@ -109,6 +109,27 @@ class TestHealthScoringPillars:
         assert len(comp_dim.top_contributors) > 0
         assert comp_dim.top_contributors[0].file_path == "complex.py"
 
+    def test_complexity_deep_nesting_detection(self) -> None:
+        deep_code = (
+            "def deeply_nested():\n"
+            "    if True:\n"
+            "        if True:\n"
+            "            if True:\n"
+            "                if True:\n"
+            "                    if True:\n"
+            "                        if True:\n"
+            "                            return 42\n"
+        )
+        nested_fn = _make_function("deeply_nested", start=1, end=8)
+        nested_fn.source_code = deep_code
+        pf = _make_parsed_file("nested.py", functions=[nested_fn])
+
+        report = compute_health_score({"nested.py": pf})
+        comp_dim = next(d for d in report.dimensions if d.key == "complexity")
+        assert any(p.rule_id == "deep_nesting" for p in comp_dim.penalties)
+        metric = next(m for m in comp_dim.metrics if m.key == "deep_nesting")
+        assert metric.measured_value == 1
+
     def test_architecture_circular_dependencies_penalties(self) -> None:
         cycle = ["a.py", "b.py", "a.py"]
         mock_analysis = AnalysisResult(

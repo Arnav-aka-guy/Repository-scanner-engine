@@ -10,7 +10,7 @@
 
 <a href="https://github.com/Arnav-aka-guy/Repository-scanner-engine/actions/workflows/ci.yml"><img src="https://github.com/Arnav-aka-guy/Repository-scanner-engine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 <img src="https://img.shields.io/badge/version-2.0.0-6366f1?style=flat" alt="Version" />
-<img src="https://img.shields.io/badge/tests-175-22c55e?style=flat&logo=pytest&logoColor=white" alt="Tests" />
+<img src="https://img.shields.io/badge/tests-228_passing-22c55e?style=flat&logo=pytest&logoColor=white" alt="Tests" />
 <img src="https://img.shields.io/badge/license-MIT-0ea5e9?style=flat" alt="License" />
 <img src="https://img.shields.io/github/last-commit/Arnav-aka-guy/Repository-scanner-engine?style=flat&color=a855f7" alt="Last commit" />
 <img src="https://img.shields.io/github/stars/Arnav-aka-guy/Repository-scanner-engine?style=flat&color=f59e0b" alt="Stars" />
@@ -28,6 +28,7 @@
 <br/><br/>
 
 **[Features](#-features)** &nbsp;•&nbsp;
+**[Language support](#-language-support-matrix)** &nbsp;•&nbsp;
 **[Quick start](#-quick-start)** &nbsp;•&nbsp;
 **[Architecture](#%EF%B8%8F-architecture)** &nbsp;•&nbsp;
 **[Configuration](#%EF%B8%8F-configuration)** &nbsp;•&nbsp;
@@ -42,18 +43,9 @@
 
 Opening a new codebase usually means hours of clicking through folders and guessing how things connect. **Repository Scanner Engine** does that groundwork for you.
 
-You point it at a local folder or a public GitHub URL. It parses the code, builds a graph of how files, classes and functions relate, indexes everything for semantic search, and lets you ask questions in plain English. Answers come back with the exact files and line ranges they were drawn from, so you can check them yourself.
+You point it at a local folder or a public GitHub URL. It parses the code, builds a graph of how files, classes and functions relate, indexes everything for hybrid search, and lets you ask questions in plain English. Answers come back with verified sources and line ranges drawn from the actual codebase.
 
 It runs as a web app, as a desktop app (Electron), or in Docker, and works with cloud LLMs (Groq, OpenAI, OpenRouter) or fully offline with Ollama.
-
-<!--
-  📸 Add a screenshot or GIF here — it's the single biggest upgrade for a README.
-  Record a short screen capture (ScreenToGif on Windows, Kap on macOS), save it as docs/demo.gif, then uncomment:
-
-<div align="center">
-  <img src="docs/demo.gif" width="90%" alt="Repository Scanner Engine demo" />
-</div>
--->
 
 ## ✨ Features
 
@@ -62,41 +54,41 @@ It runs as a web app, as a desktop app (Electron), or in Docker, and works with 
 <td width="50%" valign="top">
 
 ### 📁 Repository explorer
-AST-based parsing for **Python, TypeScript and JavaScript** that pulls out files, imports, classes, functions and methods. The parser uses a pluggable `LanguageParser` protocol, so new languages can be added cleanly.
+Deep structural parsing for **Python, TypeScript and JavaScript** extracting files, imports, classes, functions, and docstrings. Pluggable `LanguageParser` protocol allows clean additions.
 
 </td>
 <td width="50%" valign="top">
 
 ### 🕸️ Dependency graph
-An interactive view of how modules connect: imports, inheritance, containment and call relationships, with filters to cut through the noise. Built on NetworkX.
+An interactive view of how modules connect: imports, inheritance, containment, and call relationships, with filters to cut through the noise. Built on NetworkX.
 
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 
-### 🔍 Semantic search
-Search by meaning, not just keywords. Each repository gets its **own FAISS index**, saved to disk and reloaded on restart, combined with keyword search and reranking.
+### 🔍 Hybrid code search
+Combines dense semantic vector retrieval (**FAISS**) with sparse lexical matching (**BM25 inverted index**), fused via **Reciprocal Rank Fusion (RRF)** for optimal recall.
 
 </td>
 <td width="50%" valign="top">
 
-### 💬 Graph-RAG chat
-Ask questions about the code. Retrieval mixes vector search with graph context, and every answer ends with a **Sources** list of `file:start-end` citations.
+### 💬 Grounded AI assistant
+Ask questions about the code. Answers combine vector retrieval and call-graph traversal with verified file references and line citations.
 
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
 
-### 🩺 Health dashboard
-An explainable health score across documentation, complexity, architecture, maintainability and security, plus technical-debt and dependency-risk panels.
+### 🩺 Health & tech debt
+Transparent, traceable health scoring (0–100) across documentation, complexity, architecture, maintainability, and security, with exact penalty formulas and file attribution.
 
 </td>
 <td width="50%" valign="top">
 
-### ⚡ Fast rescans
-File manifests with SHA-256 hashes mean only changed files are re-parsed and re-embedded. Large repos can scan in the background with progress polling.
+### ⚡ Incremental rescans
+File manifests with SHA-256 hashes mean only changed files are re-parsed and re-embedded, caching unmodified representations for instant re-scans.
 
 </td>
 </tr>
@@ -104,15 +96,25 @@ File manifests with SHA-256 hashes mean only changed files are re-parsed and re-
 <td width="50%" valign="top">
 
 ### 🌐 GitHub scanning
-Paste a public GitHub URL and it does a safe, validated `--depth 1` shallow clone into a temporary folder and scans it.
+Paste a public GitHub URL and it performs a validated, sandboxed `--depth 1` clone into a temporary workspace for instant analysis.
 
 </td>
 <td width="50%" valign="top">
 
 ### 📝 Docs & comparisons
-Generate documentation from the parsed structure, export Mermaid architecture diagrams, and compare two repositories side by side.
+Generate structured markdown documentation, export Mermaid architecture diagrams, and compare two repositories side-by-side.
 
 </td>
+</tr>
+</table>
+
+### 🌐 Language Support Matrix
+
+| Support Tier | Languages / Extensions | Capabilities |
+|---|---|---|
+| **Full Structural AST Analysis** | Python (`.py`), TypeScript (`.ts`, `.tsx`), JavaScript (`.js`, `.jsx`, `.mjs`, `.cjs`) | Full AST parsing: function signatures, docstrings, classes, interfaces, import graphs, internal call graphs, calibrated dead-code detection, indentation nesting depth |
+| **Hybrid Search & Token Matching** | Python, TypeScript, JavaScript, JSON, Markdown, YAML | Dense vector embeddings (FAISS) + BM25 sparse keyword search + Reciprocal Rank Fusion (RRF) reranker |
+| **File-Level Discovery & Scanning** | 30+ extensions (`.go`, `.rs`, `.java`, `.cpp`, `.c`, `.cs`, `.rb`, `.php`, `.sql`, `.sh`, etc.) | File tree discovery, line count metrics, SHA-256 change manifests, code viewer, and semantic embedding |
 </tr>
 </table>
 
