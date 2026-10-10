@@ -36,10 +36,11 @@ export async function apiGet<T>(path: string, params?: Record<string, string>): 
         ...getAuthHeaders(),
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
       throw new Error(
-        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.'
+        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.',
+        { cause: err }
       );
     }
     throw err;
@@ -68,10 +69,11 @@ export async function apiPost<T>(path: string, body: any): Promise<T> {
       },
       body: JSON.stringify(body),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
       throw new Error(
-        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.'
+        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.',
+        { cause: err }
       );
     }
     throw err;
@@ -187,10 +189,11 @@ export async function apiDelete<T = any>(path: string, params?: Record<string, s
         ...getAuthHeaders(),
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
       throw new Error(
-        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.'
+        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.',
+        { cause: err }
       );
     }
     throw err;

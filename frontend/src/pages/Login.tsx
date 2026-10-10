@@ -186,18 +186,28 @@ export const Login: React.FC = () => {
           </div>
 
           <div>
-            <label
-              htmlFor="login-password"
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                color: '#A0A8B5',
-                marginBottom: '6px',
-              }}
-            >
-              Password
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label
+                htmlFor="login-password"
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  color: '#A0A8B5',
+                }}
+              >
+                Password
+              </label>
+              <Link
+                to="/forgot-password"
+                style={{
+                  fontSize: '11px',
+                  color: '#5B8DEF',
+                  textDecoration: 'none',
+                }}
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div style={{ position: 'relative' }}>
               <Lock
                 size={14}

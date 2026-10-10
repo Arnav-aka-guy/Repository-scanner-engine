@@ -496,10 +496,27 @@ async def get_file(
 async def get_onboarding_guide(
     repo_path: str = Query(..., description="Absolute path to the repository root"),
     parser: ParserService = Depends(get_parser),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> RepoOnboardingGuide:
     """Generate a high-level developer onboarding guide grounded in repository structure."""
     sanitized = SanitizedRepoPath(path=repo_path)
     path = validate_repository_path(sanitized.path)
+
+    # Strict user isolation check
+    if current_user.get("auth") and current_user.get("user_id"):
+        user_id = int(current_user["user_id"])
+        norm_path = str(path).replace("\\", "/").rstrip("/")
+        stmt = select(Repository).where(
+            (Repository.path == norm_path) | (Repository.source_path == norm_path)
+        )
+        res = await db.execute(stmt)
+        repo = res.scalar_one_or_none()
+        if repo and repo.user_id is not None and repo.user_id != user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: You do not have permission to access this repository.",
+            )
 
     parsed_files = await parser.parse_repository(str(path))
     files = parser._scanner.get_files(str(path))

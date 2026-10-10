@@ -94,37 +94,39 @@ export const useAuthStore = create<AuthState>()(
             return { success: true };
           }
 
-          // Try legacy admin token endpoint if email is admin username
-          const adminRes = await fetch('/api/auth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: email.trim(), password }),
-          });
-
-          if (adminRes.ok) {
-            const data = await adminRes.json();
-            const adminUser: UserProfile = data.user || {
-              id: 1,
-              name: 'Administrator',
-              email: `${email.trim()}@localhost`,
-              repository_count: 0,
-              max_repositories: 5,
-            };
-            set({
-              token: data.access_token,
-              user: adminUser,
-              isLoggingIn: false,
-              loginError: null,
+          // Try legacy admin token endpoint ONLY if input is a simple username without '@'
+          if (!email.includes('@')) {
+            const adminRes = await fetch('/api/auth/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: email.trim(), password }),
             });
-            return { success: true };
+
+            if (adminRes.ok) {
+              const data = await adminRes.json();
+              const adminUser: UserProfile = data.user || {
+                id: 1,
+                name: 'Administrator',
+                email: `${email.trim()}@localhost`,
+                repository_count: 0,
+                max_repositories: 5,
+              };
+              set({
+                token: data.access_token,
+                user: adminUser,
+                isLoggingIn: false,
+                loginError: null,
+              });
+              return { success: true };
+            }
           }
 
           const errData = await res.json().catch(() => ({}));
           const errorMsg = errData.detail || 'Incorrect email or password.';
           set({ isLoggingIn: false, loginError: errorMsg });
           return { success: false, error: errorMsg };
-        } catch (err: any) {
-          const msg = err.message || 'Unable to connect to analysis server.';
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Unable to connect to analysis server.';
           set({ isLoggingIn: false, loginError: msg });
           return { success: false, error: msg };
         }

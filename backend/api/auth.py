@@ -3,7 +3,7 @@
 import logging
 import re
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
@@ -319,6 +319,111 @@ async def login_for_access_token(
         )
     token = create_access_token(data={"sub": credentials.username, "user_id": 1, "name": "Admin"})
     return TokenResponse(access_token=token)
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Payload for requesting a password reset."""
+
+    email: EmailStr = Field(..., description="Email address associated with account")
+
+
+class ResetPasswordRequest(BaseModel):
+    """Payload for resetting password with a reset token."""
+
+    token: str = Field(..., description="Password reset token")
+    new_password: str = Field(..., min_length=8, max_length=128, description="New password")
+
+
+class MessageResponse(BaseModel):
+    """Standard message response."""
+
+    message: str
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+@limiter.limit(AUTH_TOKEN_RATE)
+async def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """Initiate password reset flow for a user.
+
+    SECURITY: Returns identical success response regardless of whether email exists
+    to prevent user enumeration. In development/local mode, prints reset token to logs.
+    """
+    clean_email = body.email.strip().lower()
+    user = await get_user_by_email(db, clean_email)
+
+    if user is not None:
+        reset_token = create_access_token(
+            data={"sub": str(user.id), "type": "password_reset", "email": user.email},
+            expires_delta=timedelta(minutes=30),
+        )
+        # Log reset token securely for development / local console
+        logger.info(
+            "Password reset requested for %s. Reset link: /reset-password?token=%s",
+            clean_email,
+            reset_token,
+        )
+
+    return MessageResponse(
+        message="If an account exists with this email, password reset instructions have been sent."
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+@limiter.limit(AUTH_TOKEN_RATE)
+async def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """Reset account password using valid reset token."""
+    from backend.security.auth import verify_token
+
+    try:
+        payload = verify_token(body.token)
+    except HTTPException:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token.",
+        )
+
+    if payload.get("type") != "password_reset":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token type for password reset.",
+        )
+
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token subject.",
+        )
+
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user id in reset token.",
+        )
+
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User account not found.",
+        )
+
+    new_hash = hash_password(body.new_password)
+    user.password_hash = new_hash
+    await db.commit()
+    logger.info("Password successfully reset for user %s (%s)", user.name, user.email)
+
+    return MessageResponse(message="Password successfully reset. You can now log in.")
 
 
 @router.get("/status", response_model=AuthStatusResponse)

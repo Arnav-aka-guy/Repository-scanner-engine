@@ -19,8 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy backend
+# Copy backend and alembic migrations
 COPY backend/ ./backend/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./alembic.ini
 
 # Copy built frontend
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
@@ -35,5 +37,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
-# Run (binds to 0.0.0.0 inside container; ensure AUTH_ENABLED=true and ALLOWED_ROOTS are set when exposed)
-CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run with automatic migration when database is configured
+CMD ["sh", "-c", "if [ \"$DATABASE_ENABLED\" = \"true\" ]; then alembic upgrade head; fi && python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000"]

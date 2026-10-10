@@ -151,17 +151,13 @@ class Settings(BaseSettings):
         return []
 
     @model_validator(mode="after")
-    def _validate_auth_secret(self) -> Settings:
-        """Refuse to start in authenticated mode with an insecure secret.
+    def _validate_and_normalize(self) -> Settings:
+        """Validate auth settings and dynamically resolve database_url if using default sqlite."""
+        # Dynamic SQLite database URL based on data_dir
+        if self.database_url in ("sqlite+aiosqlite:///data/antigravity.db", "sqlite+aiosqlite:///antigravity.db"):
+            sqlite_db_path = Path(self.data_dir) / "antigravity.db"
+            self.database_url = f"sqlite+aiosqlite:///{sqlite_db_path.as_posix()}"
 
-        When ``AUTH_ENABLED=true`` the JWT secret:
-        - must be present
-        - must not be a known placeholder
-        - must be at least 32 characters long
-
-        To generate a secure secret run:
-            python -c "import secrets; print(secrets.token_hex(32))"
-        """
         if self.auth_enabled:
             secret = self.jwt_secret_key
             if not secret or secret.lower() in _INSECURE_SECRETS:

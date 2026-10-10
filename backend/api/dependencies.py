@@ -57,3 +57,36 @@ def get_llm() -> LLMService:
 def get_docs() -> DocumentationService:
     """Provide the singleton DocumentationService."""
     return get_container().documentation_service
+
+
+async def get_owned_repository(
+    repo_path: str,
+    current_user: dict = None,
+    db: any = None,
+) -> str:
+    """Validate that the requesting user owns the repository at repo_path.
+
+    Returns the normalized repository path if allowed; raises 403 or 404 otherwise.
+    """
+    from fastapi import HTTPException, status
+    from sqlalchemy import select
+    from backend.db.models import Repository
+
+    norm_path = repo_path.replace("\\", "/").rstrip("/")
+
+    # If user is authenticated and not in anonymous mode, enforce DB ownership
+    if current_user and current_user.get("auth") and current_user.get("user_id"):
+        user_id = int(current_user["user_id"])
+        if db is not None:
+            stmt = select(Repository).where(
+                (Repository.path == norm_path) | (Repository.source_path == norm_path)
+            )
+            res = await db.execute(stmt)
+            repo = res.scalar_one_or_none()
+            if repo and repo.user_id is not None and repo.user_id != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied: You do not have permission to access this repository.",
+                )
+
+    return norm_path

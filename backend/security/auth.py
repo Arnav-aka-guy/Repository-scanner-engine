@@ -28,30 +28,75 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 # ── Password hashing helpers ───────────────────────────────────────────
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plain password against a bcrypt hash."""
-    if not hashed_password:
-        return False
+_MAX_PASSWORD_LENGTH: int = 128
+_BCRYPT_MAX_BYTES: int = 72
+
+try:
+    from pwdlib import PasswordHash
+    from pwdlib.hashers.argon2 import Argon2Hasher
+    from pwdlib.hashers.bcrypt import BcryptHasher
+
+    _password_hash = PasswordHash((Argon2Hasher(), BcryptHasher()))
+except Exception:
+    _password_hash = None
+
+
+def verify_and_update_password(plain_password: str, hashed_password: str) -> tuple[bool, str | None]:
+    """Verify password and return (is_valid, new_hash_if_needs_upgrade)."""
+    if not hashed_password or not plain_password:
+        return False, None
+
+    if _password_hash is not None:
+        try:
+            valid, updated = _password_hash.verify_and_update(plain_password, hashed_password)
+            return bool(valid), updated
+        except Exception as exc:
+            logger.debug("pwdlib verification error: %s", exc)
+
+    # Fallback to direct bcrypt verification
     try:
         import bcrypt
 
-        return bool(bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8")))
+        pw_bytes = plain_password.encode("utf-8")
+        if len(pw_bytes) > _BCRYPT_MAX_BYTES and hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+            # Bcrypt cannot handle > 72 bytes
+            return False, None
+        is_valid = bool(bcrypt.checkpw(pw_bytes, hashed_password.encode("utf-8")))
+        return is_valid, None
     except Exception:
-        try:
-            from passlib.context import CryptContext
+        pass
 
-            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-            return bool(pwd_context.verify(plain_password, hashed_password))
-        except Exception:
-            return False
+    try:
+        from passlib.context import CryptContext
+
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        return bool(pwd_context.verify(plain_password, hashed_password)), None
+    except Exception:
+        return False, None
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against an Argon2id or bcrypt hash."""
+    is_valid, _ = verify_and_update_password(plain_password, hashed_password)
+    return is_valid
 
 
 def hash_password(password: str) -> str:
-    """Generate a bcrypt password hash."""
+    """Generate a secure password hash using Argon2id (or bcrypt fallback)."""
+    if len(password) > _MAX_PASSWORD_LENGTH:
+        raise ValueError(f"Password must not exceed {_MAX_PASSWORD_LENGTH} characters.")
+
+    if _password_hash is not None:
+        return str(_password_hash.hash(password))
+
+    pw_bytes = password.encode("utf-8")
+    if len(pw_bytes) > _BCRYPT_MAX_BYTES:
+        raise ValueError("Password must not exceed 72 bytes under bcrypt.")
+
     try:
         import bcrypt
 
-        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        return bcrypt.hashpw(pw_bytes, bcrypt.gensalt()).decode("utf-8")
     except Exception:
         from passlib.context import CryptContext
 
@@ -145,7 +190,15 @@ async def get_current_user(
             try:
                 payload["user_id"] = int(payload["sub"])
             except (ValueError, TypeError):
-                payload["user_id"] = 1
+                # When sub is a username (e.g. legacy 'admin')
+                if payload["sub"] == "admin":
+                    payload["user_id"] = 1
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid user subject in token.",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
         return payload
 
     if not settings.auth_enabled:
@@ -175,5 +228,12 @@ async def get_required_user(
         try:
             payload["user_id"] = int(payload["sub"])
         except (ValueError, TypeError):
-            payload["user_id"] = 1
+            if payload["sub"] == "admin":
+                payload["user_id"] = 1
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid user subject in token.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
     return payload

@@ -14,6 +14,11 @@ from backend.main import app
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
+    from backend.security.rate_limiter import limiter
+    try:
+        limiter.reset()
+    except Exception:
+        pass
     with TestClient(app) as c:
         yield c
 
@@ -282,3 +287,50 @@ class TestUserDataIsolation:
             json={"query": "SECRET_A", "repo_path": str(repo_a_dir)},
         )
         assert search_b.status_code == 403
+
+        # 6. User B tries to view onboarding of User A's repository -> 403 Forbidden
+        onboarding_b = client.get(
+            f"/api/repository/onboarding?repo_path={repo_a_dir}",
+            headers=headers_b,
+        )
+        assert onboarding_b.status_code == 403
+
+    def test_forgot_and_reset_password_flow(self, client: TestClient):
+        """Forgot password endpoint generates token, and reset password succeeds."""
+        email = f"reset_test_{tempfile.mktemp()[-6:]}@example.com"
+        reg_resp = client.post(
+            "/api/auth/register",
+            json={"name": "Reset User", "email": email, "password": "initialpassword123"},
+        )
+        assert reg_resp.status_code == 200
+
+        # Request password reset
+        forgot_resp = client.post("/api/auth/forgot-password", json={"email": email})
+        assert forgot_resp.status_code == 200
+        assert "instructions have been sent" in forgot_resp.json()["message"]
+
+        # Generate valid reset token for this user
+        from backend.security.auth import create_access_token
+        from datetime import timedelta
+        user_id = reg_resp.json()["user"]["id"]
+        token = create_access_token(
+            data={"sub": str(user_id), "type": "password_reset", "email": email},
+            expires_delta=timedelta(minutes=30),
+        )
+
+        # Reset password
+        reset_resp = client.post(
+            "/api/auth/reset-password",
+            json={"token": token, "new_password": "newsecurepassword123"},
+        )
+        assert reset_resp.status_code == 200
+        assert "successfully reset" in reset_resp.json()["message"]
+
+        # Log in with old password -> 401
+        old_login = client.post("/api/auth/login", json={"email": email, "password": "initialpassword123"})
+        assert old_login.status_code == 401
+
+        # Log in with new password -> 200
+        new_login = client.post("/api/auth/login", json={"email": email, "password": "newsecurepassword123"})
+        assert new_login.status_code == 200
+        assert "access_token" in new_login.json()
