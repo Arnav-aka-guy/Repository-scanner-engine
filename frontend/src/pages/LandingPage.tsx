@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import Lenis from 'lenis';
 import {
   FolderTree,
   Share2,
@@ -10,96 +11,134 @@ import {
   Layers,
   ArrowRight,
   ArrowLeft,
-  Terminal,
   CheckCircle2,
   ShieldCheck,
   Cpu,
   Database,
-  ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { SurveyHero } from '../components/SurveyHero';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuthStore();
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
   const isAuthenticated = Boolean(token);
+  const lenisRef = useRef<Lenis | null>(null);
+
+  // Initialize Lenis smooth scroll on landing page only, respecting prefers-reduced-motion
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      return;
+    }
+
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      gestureOrientation: 'vertical',
+      smoothWheel: true,
+      touchMultiplier: 2,
+    });
+    lenisRef.current = lenis;
+
+    let rafId: number;
+    const raf = (time: number) => {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    };
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
 
   const capabilities = [
     {
+      num: '01',
       icon: FolderTree,
       title: 'Repository Analysis',
-      badge: 'AST Parser',
+      badge: 'PARSER',
       description:
-        'Full AST parsing across Python and TypeScript/JavaScript. Discovers functions, classes, imports, and LOC metrics across files.',
+        'Full AST parsing across Python, TypeScript and JavaScript. Discovers functions, classes, imports, call signatures and line ranges.',
       highlight: 'Polyglot AST Extraction',
     },
     {
+      num: '02',
       icon: Share2,
       title: 'Dependency Intelligence',
-      badge: 'Graph Engine',
+      badge: 'GRAPH ENGINE',
       description:
         'Resolves module dependencies, call hierarchies, and cross-file references. Detects circular dependencies and structural choke points.',
       highlight: 'Cycle & Depth Detection',
     },
     {
+      num: '03',
       icon: Search,
       title: 'Semantic Code Search',
-      badge: 'Hybrid Retrieval',
+      badge: 'RETRIEVAL',
       description:
-        'Blends dense vector embeddings with BM25 keyword matching via Reciprocal Rank Fusion (RRF) for natural language discovery.',
+        'Combines dense vector embeddings with BM25 lexical token matching via Reciprocal Rank Fusion (RRF) for precise concept discovery.',
       highlight: 'Dense + BM25 Fusion',
     },
     {
+      num: '04',
       icon: MessageSquare,
       title: 'AI Codebase Assistant',
-      badge: 'Grounded RAG',
+      badge: 'PROVENANCE',
       description:
-        'Repository-aware question answering with verifiable line-range citations and AST source grounding. No hallucinations.',
+        'Repository-aware assistant with verifiable line-range citations and AST source grounding. Every statement is traceable to code.',
       highlight: 'Verifiable Citations',
     },
     {
+      num: '05',
       icon: Layers,
       title: 'Architecture Analysis',
-      badge: 'System View',
+      badge: 'SYSTEM MODEL',
       description:
-        'Maps architectural layers, entry points, module cohesion, and data flows to deliver a mental model in minutes.',
+        'Maps architectural layers, public entry points, module cohesion, and data flows to construct a mental model of the system.',
       highlight: 'Layer & Flow Mapping',
     },
     {
+      num: '06',
       icon: Activity,
-      title: 'Code Health & Tech Debt',
-      badge: 'Transparent Scoring',
+      title: 'Code Health',
+      badge: 'TRANSPARENT MATH',
       description:
-        'Deterministic health metrics across complexity, maintainability, architecture, and docs with inspectable math.',
-      highlight: 'Formula Traceability',
+        'Deterministic health metrics across complexity, maintainability, architecture, and docs with inspectable rate-based formulas.',
+      highlight: 'Formula Traceability & Tech Debt',
     },
     {
+      num: '07',
       icon: FileCode2,
       title: 'Documentation Generation',
-      badge: 'Automated Docs',
+      badge: 'STATIC GEN',
       description:
-        'Generates architectural documentation, API contracts, and onboarding walkthroughs directly from parsed code.',
+        'Generates architectural briefs, API contracts, and onboarding walkthroughs directly from parsed codebase symbols.',
       highlight: 'Instant Markdown & HTML',
     },
   ];
 
   const steps = [
     {
-      number: '01',
+      number: '01 — Scan',
       title: 'Add Repository',
-      description: 'Point to any local codebase on your machine or import public repositories.',
+      description: 'Point to any local directory on your machine or import public repositories.',
     },
     {
-      number: '02',
-      title: 'Analyze Codebase',
+      number: '02 — Index',
+      title: 'Parse & Map',
       description: 'The engine parses ASTs, maps dependency graphs, and builds isolated vector indexes.',
     },
     {
-      number: '03',
-      title: 'Explore & Understand',
-      description: 'Query the assistant, inspect call chains, search concepts, and inspect architecture.',
+      number: '03 — Explore',
+      title: 'Inspect & Query',
+      description: 'Query the assistant, inspect call chains, trace debt, and explore system boundaries.',
     },
   ];
 
@@ -107,36 +146,19 @@ export const LandingPage: React.FC = () => {
     e.preventDefault();
     const el = document.getElementById(id);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+      if (lenisRef.current) {
+        lenisRef.current.scrollTo(el);
+      } else {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: '#0F1115',
-        color: '#E6EAF0',
-        minHeight: '100vh',
-        width: '100%',
-        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-      }}
-    >
+    <div className="bg-[#0D0F0E] text-[#E9ECE6] min-h-screen w-full font-sans selection:bg-[#F2A93B]/20 selection:text-[#F2A93B]">
       {/* ── Top Navigation Bar ─────────────────────────────────────────── */}
-      <header
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
-          backgroundColor: '#151922',
-          borderBottom: '1px solid #292F38',
-          padding: '0 24px',
-          height: '52px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <header className="sticky top-0 z-40 bg-[#151816] border-b border-[#262B28] px-6 h-13 flex items-center justify-between">
+        <div className="flex items-center gap-5">
           {/* Back Navigation Button */}
           <button
             type="button"
@@ -149,14 +171,7 @@ export const LandingPage: React.FC = () => {
                 navigate('/app');
               }
             }}
-            className="btn-secondary"
-            style={{
-              padding: '4px 10px',
-              fontSize: '12px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
+            className="btn-secondary text-xs inline-flex items-center gap-1.5 px-2.5 py-1"
             title={activeRepository ? 'Back to repository' : 'Go back'}
           >
             <ArrowLeft size={13} />
@@ -165,78 +180,51 @@ export const LandingPage: React.FC = () => {
 
           <Link
             to="/"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              textDecoration: 'none',
-              color: '#E6EAF0',
-              fontWeight: 600,
-              fontSize: '14px',
-            }}
+            className="flex items-center gap-2.5 text-[#E9ECE6] font-semibold text-sm hover:opacity-90 transition-opacity"
           >
-            <div
-              style={{
-                width: '24px',
-                height: '24px',
-                backgroundColor: '#5B8DEF',
-                borderRadius: '5px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '13px',
-              }}
-            >
+            <div className="w-6 h-6 bg-[#F2A93B] rounded flex items-center justify-center text-[#0D0F0E] font-bold text-xs font-mono">
               A
             </div>
-            <span>Repository Scanner</span>
+            <span className="tracking-tight font-display text-base">Repository Scanner</span>
           </Link>
 
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <nav className="hidden md:flex items-center gap-5 ml-2">
             <a
-              href="#features"
-              onClick={(e) => scrollToSection(e, 'features')}
-              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none', cursor: 'pointer' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#E6EAF0')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#A0A8B5')}
+              href="#preview"
+              onClick={(e) => scrollToSection(e, 'preview')}
+              className="text-xs font-mono text-[#8A928B] hover:text-[#E9ECE6] transition-colors"
             >
-              Capabilities
+              01 — Survey Map
+            </a>
+            <a
+              href="#capabilities"
+              onClick={(e) => scrollToSection(e, 'capabilities')}
+              className="text-xs font-mono text-[#8A928B] hover:text-[#E9ECE6] transition-colors"
+            >
+              02 — Capabilities
             </a>
             <a
               href="#how-it-works"
               onClick={(e) => scrollToSection(e, 'how-it-works')}
-              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none', cursor: 'pointer' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#E6EAF0')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#A0A8B5')}
+              className="text-xs font-mono text-[#8A928B] hover:text-[#E9ECE6] transition-colors"
             >
-              How it works
+              03 — Workflow
             </a>
             <a
-              href="#preview"
-              onClick={(e) => scrollToSection(e, 'preview')}
-              style={{ fontSize: '13px', color: '#A0A8B5', textDecoration: 'none', cursor: 'pointer' }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = '#E6EAF0')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = '#A0A8B5')}
+              href="#specs"
+              onClick={(e) => scrollToSection(e, 'specs')}
+              className="text-xs font-mono text-[#8A928B] hover:text-[#E9ECE6] transition-colors"
             >
-              Preview
+              04 — Specs
             </a>
           </nav>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <button
               onClick={() => navigate('/app')}
-              className="btn-primary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                padding: '6px 14px',
-              }}
+              className="btn-primary text-xs inline-flex items-center gap-1.5"
             >
               <span>Workspace ({user?.name || 'My Repos'})</span>
               <ArrowRight size={14} />
@@ -245,28 +233,13 @@ export const LandingPage: React.FC = () => {
             <>
               <Link
                 to="/login"
-                style={{
-                  fontSize: '13px',
-                  color: '#A0A8B5',
-                  textDecoration: 'none',
-                  padding: '6px 12px',
-                  borderRadius: '5px',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = '#E6EAF0')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = '#A0A8B5')}
+                className="text-xs font-mono text-[#8A928B] hover:text-[#E9ECE6] px-3 py-1.5 rounded transition-colors"
               >
                 Log In
               </Link>
               <button
                 onClick={() => navigate('/signup')}
-                className="btn-primary"
-                style={{
-                  fontSize: '12px',
-                  padding: '6px 14px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className="btn-primary text-xs inline-flex items-center gap-1.5"
               >
                 <span>Get Started</span>
                 <ArrowRight size={13} />
@@ -277,383 +250,75 @@ export const LandingPage: React.FC = () => {
       </header>
 
       {/* ── Main Hero Section ─────────────────────────────────────────── */}
-      <section
-        style={{
-          maxWidth: '1160px',
-          margin: '0 auto',
-          padding: '64px 24px 48px',
-          textAlign: 'center',
-        }}
-      >
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            backgroundColor: '#1B2028',
-            border: '1px solid #292F38',
-            borderRadius: '20px',
-            padding: '4px 12px',
-            marginBottom: '20px',
-          }}
-        >
-          <span
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: '#4CAF79',
-            }}
-          />
-          <span style={{ fontSize: '11px', color: '#A0A8B5', fontFamily: 'JetBrains Mono, monospace' }}>
-            Multi-User Code Intelligence Engine v2.0
+      <section className="max-w-5xl mx-auto px-6 pt-16 pb-12 text-center">
+        {/* Technical mono badge */}
+        <div className="inline-flex items-center gap-2 bg-[#151816] border border-[#262B28] rounded px-3 py-1 mb-6">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#7FB77E]" />
+          <span className="text-[11px] text-[#8A928B] font-mono tracking-wider uppercase">
+            Codebase Survey Engine · Multi-User v2.0
           </span>
         </div>
 
-        <h1
-          style={{
-            fontSize: '46px',
-            fontWeight: 700,
-            lineHeight: 1.15,
-            letterSpacing: '-0.02em',
-            margin: '0 auto 16px',
-            maxWidth: '820px',
-            color: '#E6EAF0',
-          }}
-        >
-          Understand unfamiliar codebases faster.
+        <h1 className="text-4xl md:text-5xl font-bold font-display tracking-tight text-[#E9ECE6] max-w-3xl mx-auto mb-5 leading-tight">
+          A survey map for code.
         </h1>
 
-        <p
-          style={{
-            fontSize: '16px',
-            lineHeight: 1.6,
-            color: '#A0A8B5',
-            maxWidth: '680px',
-            margin: '0 auto 32px',
-          }}
-        >
-          Repository Scanner turns complex codebases into an understandable map of files,
-          dependencies, architecture, code health, and searchable knowledge grounded in your actual code.
+        <p className="text-base text-[#8A928B] max-w-2xl mx-auto mb-8 leading-relaxed font-sans">
+          Understand unfamiliar codebases faster. Turn complex codebases into precise engineering maps of files, call hierarchies,
+          dependencies, code health, and AST-grounded search.
         </p>
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            marginBottom: '48px',
-          }}
-        >
+        <div className="flex items-center justify-center gap-3 mb-12">
           <button
             onClick={() => navigate(activeRepository ? '/explorer' : '/app')}
-            className="btn-primary"
-            style={{
-              padding: '10px 22px',
-              fontSize: '14px',
-              fontWeight: 500,
-              gap: '8px',
-            }}
+            className="btn-primary px-5 py-2 text-sm font-medium gap-2"
           >
             <span>{activeRepository ? 'Resume Analysis' : isAuthenticated ? 'Open Workspace' : 'Get Started Free'}</span>
-            <ArrowRight size={16} />
+            <ArrowRight size={15} />
           </button>
 
           <button
             type="button"
             onClick={(e) => scrollToSection(e, 'how-it-works')}
-            className="btn-secondary"
-            style={{
-              padding: '9px 18px',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className="btn-secondary px-4 py-2 text-xs"
           >
             See how it works
           </button>
         </div>
 
-        {/* ── Realistic Hero Visual (Developer Tool Workspace) ────────── */}
-        <div
-          id="preview"
-          style={{
-            backgroundColor: '#151922',
-            border: '1px solid #292F38',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            boxShadow: '0 12px 36px rgba(0,0,0,0.5)',
-            textAlign: 'left',
-          }}
-        >
-          {/* Mock Window Title Bar */}
-          <div
-            style={{
-              height: '32px',
-              backgroundColor: '#1B2028',
-              borderBottom: '1px solid #292F38',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '0 12px',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#292F38' }} />
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#292F38' }} />
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#292F38' }} />
-              <span
-                style={{
-                  fontSize: '11px',
-                  color: '#6F7887',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  marginLeft: '8px',
-                }}
-              >
-                summer-project-1 / analysis-session
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span
-                style={{
-                  fontSize: '10px',
-                  backgroundColor: 'rgba(76,175,121,0.1)',
-                  color: '#4CAF79',
-                  border: '1px solid rgba(76,175,121,0.2)',
-                  borderRadius: '3px',
-                  padding: '1px 6px',
-                  fontFamily: 'JetBrains Mono, monospace',
-                }}
-              >
-                READY · 128 FILES
-              </span>
-            </div>
-          </div>
-
-          {/* Mock Workspace Content Grid */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '240px 1fr 300px',
-              height: '380px',
-              fontFamily: 'JetBrains Mono, monospace',
-              fontSize: '11px',
-            }}
-          >
-            {/* Column 1: Tree */}
-            <div
-              style={{
-                backgroundColor: '#11141A',
-                borderRight: '1px solid #292F38',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '6px',
-                color: '#A0A8B5',
-              }}
-            >
-              <div style={{ color: '#6F7887', fontSize: '10px', textTransform: 'uppercase', marginBottom: '4px' }}>
-                EXPLORER
-              </div>
-              <div>▾ backend/</div>
-              <div style={{ paddingLeft: '12px' }}>▾ api/</div>
-              <div style={{ paddingLeft: '24px', color: '#5B8DEF' }}>• repository.py</div>
-              <div style={{ paddingLeft: '24px' }}>• search.py</div>
-              <div style={{ paddingLeft: '24px' }}>• chat.py</div>
-              <div style={{ paddingLeft: '12px' }}>▾ graph/</div>
-              <div style={{ paddingLeft: '24px' }}>• builder.py</div>
-              <div style={{ paddingLeft: '24px' }}>• service.py</div>
-              <div style={{ paddingLeft: '12px' }}>▾ retrieval/</div>
-              <div style={{ paddingLeft: '24px' }}>• hybrid.py</div>
-            </div>
-
-            {/* Column 2: Code / Graph representation */}
-            <div
-              style={{
-                backgroundColor: '#151922',
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                overflow: 'hidden',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ color: '#E6EAF0', fontWeight: 600 }}>backend/api/repository.py</span>
-                <span style={{ color: '#6F7887' }}>Python 3.13 · AST Indexed</span>
-              </div>
-
-              <div
-                style={{
-                  backgroundColor: '#0F1115',
-                  border: '1px solid #1E2530',
-                  borderRadius: '4px',
-                  padding: '10px',
-                  lineHeight: '1.6',
-                  color: '#A0A8B5',
-                }}
-              >
-                <div>
-                  <span style={{ color: '#5B8DEF' }}>@router</span>.post(
-                  <span style={{ color: '#4CAF79' }}>"/scan"</span>)
-                </div>
-                <div>
-                  <span style={{ color: '#C9943A' }}>async def</span>{' '}
-                  <span style={{ color: '#E6EAF0' }}>scan_repository</span>(body: ScanRequest):
-                </div>
-                <div style={{ paddingLeft: '16px', color: '#6F7887' }}>
-                  # Verifies path isolation and triggers AST dependency index
-                </div>
-                <div style={{ paddingLeft: '16px' }}>
-                  path = validate_repository_path(body.path)
-                </div>
-                <div style={{ paddingLeft: '16px' }}>
-                  parsed = <span style={{ color: '#C9943A' }}>await</span> parser.parse_repository(path)
-                </div>
-              </div>
-
-              {/* Dependency relation teaser */}
-              <div
-                style={{
-                  backgroundColor: '#1B2028',
-                  border: '1px solid #292F38',
-                  borderRadius: '4px',
-                  padding: '10px',
-                }}
-              >
-                <div style={{ color: '#6F7887', marginBottom: '6px' }}>GRAPH RELATIONSHIPS</div>
-                <div style={{ color: '#E6EAF0' }}>
-                  repository.py <span style={{ color: '#5B8DEF' }}>IMPORTS</span> parser.service
-                </div>
-                <div style={{ color: '#E6EAF0' }}>
-                  repository.py <span style={{ color: '#5B8DEF' }}>CALLS</span> validate_repository_path
-                </div>
-              </div>
-            </div>
-
-            {/* Column 3: Grounded AI Assistant preview */}
-            <div
-              style={{
-                backgroundColor: '#11141A',
-                borderLeft: '1px solid #292F38',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}
-            >
-              <div style={{ color: '#6F7887', fontSize: '10px', textTransform: 'uppercase' }}>
-                AI CODEBASE ASSISTANT
-              </div>
-              <div
-                style={{
-                  backgroundColor: '#1B2028',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  color: '#E6EAF0',
-                }}
-              >
-                "Where does repository scanning start?"
-              </div>
-
-              <div
-                style={{
-                  backgroundColor: '#151922',
-                  border: '1px solid #292F38',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  color: '#A0A8B5',
-                  lineHeight: '1.5',
-                  fontSize: '10px',
-                }}
-              >
-                Scanning starts in <span style={{ color: '#5B8DEF' }}>backend/api/repository.py:scan_repository</span>,
-                which delegates AST extraction to <span style={{ color: '#5B8DEF' }}>ParserService</span>.
-                <div style={{ marginTop: '8px', color: '#6F7887' }}>
-                  Grounded in:
-                  <div style={{ color: '#4CAF79' }}>• backend/api/repository.py #L12-L34</div>
-                  <div style={{ color: '#4CAF79' }}>• backend/parser/service.py #L8-L20</div>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Survey Hero Visual Animation */}
+        <div id="preview" className="mt-8">
+          <SurveyHero />
         </div>
       </section>
 
-      {/* ── Section 2: The Problem ────────────────────────────────────── */}
-      <section
-        style={{
-          borderTop: '1px solid #1E2530',
-          borderBottom: '1px solid #1E2530',
-          backgroundColor: '#151922',
-          padding: '64px 24px',
-        }}
-      >
-        <div style={{ maxWidth: '840px', margin: '0 auto', textAlign: 'center' }}>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              color: '#5B8DEF',
-              letterSpacing: '0.08em',
-            }}
-          >
-            The Reality
+      {/* ── Section 2: Reality / Why Survey Map ───────────────────────── */}
+      <section className="border-y border-[#262B28] bg-[#151816] py-16 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <span className="text-[11px] font-mono text-[#F2A93B] uppercase tracking-widest">
+            01 — The Problem
           </span>
-          <h2
-            style={{
-              fontSize: '28px',
-              fontWeight: 700,
-              marginTop: '8px',
-              marginBottom: '16px',
-              color: '#E6EAF0',
-            }}
-          >
-            Reading a large repository shouldn't feel like archaeology.
+          <h2 className="text-2xl md:text-3xl font-bold font-display text-[#E9ECE6] mt-2 mb-4">
+            Reading unfamiliar code should not feel like archaeology.
           </h2>
-          <p
-            style={{
-              fontSize: '14px',
-              lineHeight: 1.7,
-              color: '#A0A8B5',
-              marginBottom: '28px',
-            }}
-          >
-            Developers spend up to 70% of their time reading unfamiliar code rather than writing new features.
-            Searching blindly across thousands of files leads to missed dependencies, hidden side effects,
-            and fragile architectural assumptions.
+          <p className="text-sm text-[#8A928B] leading-relaxed max-w-2xl mx-auto mb-8">
+            Developers spend up to 70% of engineering time reading unfamiliar code. Blindly searching across
+            thousands of files produces fragile mental models and missed dependency cycles.
           </p>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '16px',
-              textAlign: 'left',
-            }}
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-left">
             {[
-              'Where does core functionality live?',
-              'How do modules depend on each other?',
-              'What symbols are most critical to stability?',
-              'Where does hidden technical debt reside?',
-            ].map((question, idx) => (
+              { label: '01', text: 'Where does execution begin?' },
+              { label: '02', text: 'How do modules depend on each other?' },
+              { label: '03', text: 'Which symbols are structural choke points?' },
+              { label: '04', text: 'Where does hidden technical debt reside?' },
+            ].map((item, idx) => (
               <div
                 key={idx}
-                style={{
-                  backgroundColor: '#1B2028',
-                  border: '1px solid #292F38',
-                  borderRadius: '6px',
-                  padding: '14px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px',
-                }}
+                className="bg-[#1C201D] border border-[#262B28] rounded p-3.5 flex flex-col gap-2"
               >
-                <CheckCircle2 size={16} style={{ color: '#5B8DEF', flexShrink: 0, marginTop: '2px' }} />
-                <span style={{ fontSize: '12px', color: '#E6EAF0', lineHeight: 1.5 }}>{question}</span>
+                <span className="font-mono text-[10px] text-[#5E645F]">{item.label}</span>
+                <span className="text-xs text-[#E9ECE6] leading-snug">{item.text}</span>
               </div>
             ))}
           </div>
@@ -661,110 +326,46 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ── Section 3: Core Capabilities ─────────────────────────────── */}
-      <section
-        id="features"
-        style={{
-          maxWidth: '1160px',
-          margin: '0 auto',
-          padding: '72px 24px',
-        }}
-      >
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              color: '#5B8DEF',
-              letterSpacing: '0.08em',
-            }}
-          >
-            Core Capabilities
+      <section id="capabilities" className="max-w-5xl mx-auto py-20 px-6">
+        <div className="text-center mb-12">
+          <span className="text-[11px] font-mono text-[#F2A93B] uppercase tracking-widest">
+            02 — Capabilities
           </span>
-          <h2 style={{ fontSize: '30px', fontWeight: 700, color: '#E6EAF0', marginTop: '6px' }}>
-            Built for serious developer workflows.
+          <h2 className="text-2xl md:text-3xl font-bold font-display text-[#E9ECE6] mt-2">
+            Engineered for serious codebase inspection.
           </h2>
-          <p style={{ fontSize: '14px', color: '#A0A8B5', maxWidth: '580px', margin: '8px auto 0' }}>
-            Every capability is grounded in static AST structures and deterministic dependency graphs.
+          <p className="text-sm text-[#8A928B] max-w-lg mx-auto mt-2">
+            Static AST structures, deterministic dependency resolution, and inspectable code health math.
           </p>
         </div>
 
-        {/* Editorial Structured Capabilities Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-            gap: '20px',
-          }}
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {capabilities.map((cap, idx) => {
             const Icon = cap.icon;
             return (
               <div
                 key={idx}
-                style={{
-                  backgroundColor: '#151922',
-                  border: '1px solid #292F38',
-                  borderRadius: '6px',
-                  padding: '22px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  transition: 'border-color 0.15s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#5B8DEF')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#292F38')}
+                className="bg-[#151816] border border-[#262B28] rounded p-5 flex flex-col gap-3 hover:border-[#3A423D] transition-colors"
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '6px',
-                      backgroundColor: 'rgba(91,141,239,0.1)',
-                      border: '1px solid rgba(91,141,239,0.2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#5B8DEF',
-                    }}
-                  >
-                    <Icon size={18} />
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded bg-[#1C201D] border border-[#262B28] flex items-center justify-center text-[#7CC4C9]">
+                    <Icon size={16} />
                   </div>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      fontFamily: 'JetBrains Mono, monospace',
-                      color: '#A0A8B5',
-                      backgroundColor: '#1B2028',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid #292F38',
-                    }}
-                  >
+                  <span className="text-[10px] font-mono text-[#8A928B] bg-[#1C201D] px-2 py-0.5 rounded border border-[#262B28]">
                     {cap.badge}
                   </span>
                 </div>
 
                 <div>
-                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#E6EAF0', margin: '0 0 6px' }}>
+                  <h3 className="text-sm font-semibold text-[#E9ECE6] mb-1 font-display">
                     {cap.title}
                   </h3>
-                  <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#A0A8B5', margin: 0 }}>
+                  <p className="text-xs text-[#8A928B] leading-relaxed">
                     {cap.description}
                   </p>
                 </div>
 
-                <div
-                  style={{
-                    marginTop: 'auto',
-                    paddingTop: '10px',
-                    borderTop: '1px solid #1E2530',
-                    fontSize: '11px',
-                    fontFamily: 'JetBrains Mono, monospace',
-                    color: '#5B8DEF',
-                  }}
-                >
+                <div className="mt-auto pt-2 border-t border-[#1C201D] text-[11px] font-mono text-[#7CC4C9]">
                   {cap.highlight}
                 </div>
               </div>
@@ -773,67 +374,31 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Section 4: How It Works ──────────────────────────────────── */}
-      <section
-        id="how-it-works"
-        style={{
-          borderTop: '1px solid #1E2530',
-          borderBottom: '1px solid #1E2530',
-          backgroundColor: '#151922',
-          padding: '64px 24px',
-        }}
-      >
-        <div style={{ maxWidth: '1160px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                color: '#5B8DEF',
-                letterSpacing: '0.08em',
-              }}
-            >
-              Workflow
+      {/* ── Section 4: Workflow ──────────────────────────────────────── */}
+      <section id="how-it-works" className="border-y border-[#262B28] bg-[#151816] py-16 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <span className="text-[11px] font-mono text-[#F2A93B] uppercase tracking-widest">
+              03 — Workflow
             </span>
-            <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#E6EAF0', marginTop: '6px' }}>
+            <h2 className="text-2xl md:text-3xl font-bold font-display text-[#E9ECE6] mt-2">
               Three steps to complete architectural clarity.
             </h2>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '24px',
-            }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {steps.map((st, i) => (
               <div
                 key={i}
-                style={{
-                  backgroundColor: '#1B2028',
-                  border: '1px solid #292F38',
-                  borderRadius: '6px',
-                  padding: '24px',
-                  position: 'relative',
-                }}
+                className="bg-[#1C201D] border border-[#262B28] rounded p-6 relative"
               >
-                <div
-                  style={{
-                    fontSize: '28px',
-                    fontWeight: 700,
-                    fontFamily: 'JetBrains Mono, monospace',
-                    color: '#5B8DEF',
-                    marginBottom: '12px',
-                  }}
-                >
+                <div className="text-xs font-mono text-[#F2A93B] mb-2 font-semibold tracking-wider">
                   {st.number}
                 </div>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#E6EAF0', marginBottom: '8px' }}>
+                <h3 className="text-base font-semibold text-[#E9ECE6] mb-2 font-display">
                   {st.title}
                 </h3>
-                <p style={{ fontSize: '13px', lineHeight: 1.6, color: '#A0A8B5', margin: 0 }}>
+                <p className="text-xs text-[#8A928B] leading-relaxed">
                   {st.description}
                 </p>
               </div>
@@ -842,170 +407,81 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Section 5: Product Preview ───────────────────────────────── */}
-      <section
-        id="preview"
-        style={{
-          maxWidth: '1160px',
-          margin: '0 auto',
-          padding: '64px 24px',
-          textAlign: 'center',
-        }}
-      >
-        <span
-          style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            color: '#5B8DEF',
-            letterSpacing: '0.08em',
-          }}
-        >
-          Product Architecture
-        </span>
-        <h2 style={{ fontSize: '28px', fontWeight: 700, color: '#E6EAF0', marginTop: '6px', marginBottom: '32px' }}>
-          Personal developer workspace with multi-repo storage.
-        </h2>
+      {/* ── Section 5: Architecture & Storage Specs ───────────────────── */}
+      <section id="specs" className="max-w-5xl mx-auto py-16 px-6">
+        <div className="text-center mb-8">
+          <span className="text-[11px] font-mono text-[#F2A93B] uppercase tracking-widest">
+            04 — Platform Specifications
+          </span>
+          <h2 className="text-2xl font-bold font-display text-[#E9ECE6] mt-2">
+            Multi-repository isolation with local first safety.
+          </h2>
+        </div>
 
-        <div
-          style={{
-            backgroundColor: '#151922',
-            border: '1px solid #292F38',
-            borderRadius: '8px',
-            padding: '24px',
-            textAlign: 'left',
-          }}
-        >
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '20px',
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: '#1B2028',
-                border: '1px solid #292F38',
-                borderRadius: '6px',
-                padding: '18px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#5B8DEF', marginBottom: '8px' }}>
-                <Database size={16} />
-                <span style={{ fontSize: '13px', fontWeight: 600 }}>5 Repositories Quota</span>
-              </div>
-              <p style={{ fontSize: '12px', color: '#A0A8B5', lineHeight: 1.6, margin: 0 }}>
-                Save up to 5 repositories in your personal account with isolated vector indexes, persisted AST scans, and instant 1-click switching.
-              </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-[#151816] border border-[#262B28] rounded p-5">
+            <div className="flex items-center gap-2 text-[#F2A93B] mb-2">
+              <Database size={16} />
+              <span className="text-xs font-semibold font-mono">5 Repositories Quota</span>
             </div>
+            <p className="text-xs text-[#8A928B] leading-relaxed">
+              Save up to 5 repositories per user account with isolated vector indexes, persisted AST scans, and 1-click active switching.
+            </p>
+          </div>
 
-            <div
-              style={{
-                backgroundColor: '#1B2028',
-                border: '1px solid #292F38',
-                borderRadius: '6px',
-                padding: '18px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#4CAF79', marginBottom: '8px' }}>
-                <ShieldCheck size={16} />
-                <span style={{ fontSize: '13px', fontWeight: 600 }}>Strict User Data Isolation</span>
-              </div>
-              <p style={{ fontSize: '12px', color: '#A0A8B5', lineHeight: 1.6, margin: 0 }}>
-                Every repository, vector chunk, and file read is authenticated and scoped to the user. Sensitive files (.env, keys) are strictly blocked.
-              </p>
+          <div className="bg-[#151816] border border-[#262B28] rounded p-5">
+            <div className="flex items-center gap-2 text-[#7FB77E] mb-2">
+              <ShieldCheck size={16} />
+              <span className="text-xs font-semibold font-mono">Tenant Isolation & Guardrails</span>
             </div>
+            <p className="text-xs text-[#8A928B] leading-relaxed">
+              Every repository and file read is authenticated and scoped to the user. Sensitive files (.env, keys) are strictly blocked.
+            </p>
+          </div>
 
-            <div
-              style={{
-                backgroundColor: '#1B2028',
-                border: '1px solid #292F38',
-                borderRadius: '6px',
-                padding: '18px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#C9943A', marginBottom: '8px' }}>
-                <Cpu size={16} />
-                <span style={{ fontSize: '13px', fontWeight: 600 }}>Local & Cloud Providers</span>
-              </div>
-              <p style={{ fontSize: '12px', color: '#A0A8B5', lineHeight: 1.6, margin: 0 }}>
-                Choose local offline AI (Ollama) or fast cloud inference (Groq / OpenRouter / OpenAI) with transparent provider management.
-              </p>
+          <div className="bg-[#151816] border border-[#262B28] rounded p-5">
+            <div className="flex items-center gap-2 text-[#7CC4C9] mb-2">
+              <Cpu size={16} />
+              <span className="text-xs font-semibold font-mono">Configurable Inference</span>
             </div>
+            <p className="text-xs text-[#8A928B] leading-relaxed">
+              Select local offline inference (Ollama) or fast cloud inference (Groq / OpenRouter / OpenAI) with transparent provider management.
+            </p>
           </div>
         </div>
       </section>
 
       {/* ── Section 6: Final CTA ─────────────────────────────────────── */}
-      <section
-        style={{
-          borderTop: '1px solid #1E2530',
-          backgroundColor: '#11141A',
-          padding: '72px 24px',
-          textAlign: 'center',
-        }}
-      >
-        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
-          <h2
-            style={{
-              fontSize: '32px',
-              fontWeight: 700,
-              color: '#E6EAF0',
-              marginBottom: '12px',
-            }}
-          >
-            Stop searching blindly. Start understanding the system.
+      <section className="border-t border-[#262B28] bg-[#11141A] py-16 px-6 text-center">
+        <div className="max-w-xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold font-display text-[#E9ECE6] mb-3">
+            Stop searching blindly. Start surveying the system.
           </h2>
-          <p
-            style={{
-              fontSize: '15px',
-              color: '#A0A8B5',
-              lineHeight: 1.6,
-              marginBottom: '28px',
-            }}
-          >
-            Get instant architectural clarity, dependency intelligence, and verifiable code grounding for your codebase.
+          <p className="text-sm text-[#8A928B] leading-relaxed mb-6 font-sans">
+            Get instant architectural clarity, dependency intelligence, and verifiable code grounding for your repository.
           </p>
 
           <button
             onClick={() => navigate(isAuthenticated ? '/app' : '/signup')}
-            className="btn-primary"
-            style={{
-              padding: '11px 26px',
-              fontSize: '14px',
-              fontWeight: 500,
-              gap: '8px',
-            }}
+            className="btn-primary px-6 py-2.5 text-sm font-medium gap-2 mx-auto"
           >
             <span>{isAuthenticated ? 'Go to Workspace' : 'Get Started Now'}</span>
-            <ArrowRight size={16} />
+            <ArrowRight size={15} />
           </button>
         </div>
       </section>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <footer
-        style={{
-          borderTop: '1px solid #292F38',
-          backgroundColor: '#0F1115',
-          padding: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          maxWidth: '1160px',
-          margin: '0 auto',
-          fontSize: '12px',
-          color: '#6F7887',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>Repository Scanner Engine</span>
-          <span>·</span>
-          <span>Technical Codebase Intelligence</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>v2.0.0</span>
+      <footer className="border-t border-[#262B28] bg-[#0D0F0E] py-6 px-6">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#5E645F]">
+          <div className="flex items-center gap-2">
+            <span className="text-[#8A928B]">Repository Scanner Engine</span>
+            <span>·</span>
+            <span>Survey Map For Code</span>
+          </div>
+          <div>
+            <span className="tabular-nums">v2.0.0</span>
+          </div>
         </div>
       </footer>
     </div>

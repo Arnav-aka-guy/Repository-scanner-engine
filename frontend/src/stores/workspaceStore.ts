@@ -45,6 +45,7 @@ interface WorkspaceState {
 
   // ── Chat ───────────────────────────────────────────────────────────
   chatMessages: ChatMessage[];
+  chatMessagesByRepo: Record<string, ChatMessage[]>;
   chatLoading: boolean;
   chatError: string | null;
   activeConversationId: string | null;
@@ -157,6 +158,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       searchError: null,
 
       chatMessages: [],
+      chatMessagesByRepo: {},
       chatLoading: false,
       chatError: null,
       activeConversationId: null,
@@ -187,6 +189,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           recent.unshift(path);
           if (recent.length > 10) recent.pop();
 
+          const repoChat = get().chatMessagesByRepo[targetPath] || [];
           set({
             activeRepository: targetPath,
             repositoryInfo: info,
@@ -199,6 +202,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             graphData: null,
             analysisResult: null,
             searchResults: [],
+            chatMessages: repoChat,
             generatedDocs: null,
             recentRepositories: recent,
           });
@@ -312,9 +316,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           timestamp: new Date().toLocaleTimeString(),
         };
 
-        set((state) => ({
-          chatMessages: [...state.chatMessages, userMsg, assistantMsg],
-        }));
+        set((state) => {
+          const next = [...state.chatMessages, userMsg, assistantMsg];
+          return {
+            chatMessages: next,
+            chatMessagesByRepo: {
+              ...state.chatMessagesByRepo,
+              [repoPath]: next.slice(-100),
+            },
+          };
+        });
 
         try {
           const convId = get().activeConversationId || undefined;
@@ -322,13 +333,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             question,
             repoPath,
             (chunk: string) => {
-              set((state) => ({
-                chatMessages: state.chatMessages.map((msg) =>
-                  msg.id === assistantMsgId
-                    ? { ...msg, content: msg.content + chunk }
-                    : msg
-                ),
-              }));
+              set((state) => {
+                const next = state.chatMessages.map((msg) =>
+                  msg.id === assistantMsgId ? { ...msg, content: msg.content + chunk } : msg
+                );
+                return {
+                  chatMessages: next,
+                  chatMessagesByRepo: {
+                    ...state.chatMessagesByRepo,
+                    [repoPath]: next.slice(-100),
+                  },
+                };
+              });
             },
             () => {
               set({ chatLoading: false });
@@ -336,15 +352,22 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             convId
           );
         } catch (err: any) {
-          set((state) => ({
-            chatError: err.message || 'Error during streaming.',
-            chatLoading: false,
-            chatMessages: state.chatMessages.map((msg) =>
+          set((state) => {
+            const next = state.chatMessages.map((msg) =>
               msg.id === assistantMsgId
                 ? { ...msg, content: msg.content + '\n\n*Error: Failed to stream response.*' }
                 : msg
-            ),
-          }));
+            );
+            return {
+              chatError: err.message || 'Error during streaming.',
+              chatLoading: false,
+              chatMessages: next,
+              chatMessagesByRepo: {
+                ...state.chatMessagesByRepo,
+                [repoPath]: next.slice(-100),
+              },
+            };
+          });
         }
       },
 
@@ -369,7 +392,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 timestamp: new Date(h.timestamp).toLocaleTimeString(),
               });
             });
-            set({ chatMessages: msgs });
+            set((state) => ({
+              chatMessages: msgs,
+              chatMessagesByRepo: {
+                ...state.chatMessagesByRepo,
+                [repoPath]: msgs.slice(-100),
+              },
+            }));
           }
         } catch (err) {
           console.warn('Could not load persistent chat history:', err);
@@ -381,7 +410,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (repoPath) {
           clearChatHistoryApi(repoPath, get().activeConversationId || undefined).catch(() => {});
         }
-        set({ chatMessages: [], chatError: null });
+        set((state) => ({
+          chatMessages: [],
+          chatError: null,
+          chatMessagesByRepo: repoPath
+            ? { ...state.chatMessagesByRepo, [repoPath]: [] }
+            : state.chatMessagesByRepo,
+        }));
       },
 
       generateDocs: async (format: 'markdown' | 'html' = 'markdown') => {
@@ -461,7 +496,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       partialize: (state) => ({
         activeRepository: state.activeRepository,
         recentRepositories: state.recentRepositories,
-        chatMessages: state.chatMessages.slice(-100),  // Cap at 100 messages
+        chatMessagesByRepo: state.chatMessagesByRepo,
         graphType: state.graphType,
       }),
     }

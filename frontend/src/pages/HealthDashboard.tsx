@@ -11,6 +11,7 @@ import {
   ScorePenalty,
   SymbolGroup,
 } from '../components/health/HealthTypes';
+import { getHealthBand } from '../components/health/healthBands';
 import {
   Activity,
   AlertTriangle,
@@ -116,28 +117,14 @@ export const HealthDashboard: React.FC = () => {
     }, 100);
   };
 
-  // Human-readable status label & description
+  // Human-readable status label & description from shared getHealthBand
   const healthStatus = useMemo(() => {
     if (!healthScore) return { label: 'Unknown', color: colors.text.muted, description: '' };
-    const score = healthScore.total_score;
-    if (score >= 80) {
-      return {
-        label: 'Healthy',
-        color: colors.status.success,
-        description: 'Codebase adheres to clean architectural guidelines with minimal complexity and well-documented interfaces.',
-      };
-    }
-    if (score >= 60) {
-      return {
-        label: 'Needs Review',
-        color: colors.status.warning,
-        description: 'Some complexity hotspots or unmaintained modules were detected that require structural review.',
-      };
-    }
+    const band = getHealthBand(healthScore.total_score);
     return {
-      label: 'Needs Attention',
-      color: colors.status.danger,
-      description: 'Multiple architectural risks, excessive function complexity, or critical documentation gaps identified.',
+      label: band.label,
+      color: band.color,
+      description: band.description,
     };
   }, [healthScore]);
 

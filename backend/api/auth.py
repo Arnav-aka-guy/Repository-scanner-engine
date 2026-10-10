@@ -324,7 +324,7 @@ async def refresh_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token.",
-        )
+        ) from None
 
     user_id = int(payload["sub"])
     token_hash = hashlib.sha256(raw_cookie.encode("utf-8")).hexdigest()
@@ -353,9 +353,7 @@ async def refresh_access_token(
 
     # Revoke current token and issue replacement (rotation)
     await revoke_refresh_token(db, token_hash)
-    new_raw_refresh, new_token_hash, new_expires_at = create_refresh_token(
-        user.id, token_version=user.token_version
-    )
+    new_raw_refresh, new_token_hash, new_expires_at = create_refresh_token(user.id, token_version=user.token_version)
     await create_refresh_token_record(
         db, user_id=user.id, token_hash=new_token_hash, jti=uuid.uuid4().hex, expires_at=new_expires_at
     )
@@ -419,18 +417,19 @@ async def get_current_user_profile(
     db: AsyncSession = Depends(get_db),
 ) -> UserProfileResponse:
     """Retrieve authenticated user's account details and current repository quota."""
-    user_id = current_user.get("user_id")
-    if not user_id and current_user.get("sub"):
+    raw_id = current_user.get("user_id")
+    if not raw_id and current_user.get("sub"):
         try:
-            user_id = int(current_user["sub"])
+            raw_id = int(current_user["sub"])
         except (ValueError, TypeError):
-            user_id = 1
+            raw_id = 1
+    uid = int(raw_id) if raw_id else 1
 
-    user = await get_user_by_id(db, user_id)
+    user = await get_user_by_id(db, uid)
     if user is None:
         # If user record not in DB yet (e.g. from static token), provide payload info
         return UserProfileResponse(
-            id=user_id or 1,
+            id=uid,
             name=current_user.get("name", "Developer"),
             email=current_user.get("email", "dev@local"),
             repository_count=0,
@@ -509,12 +508,6 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=128, description="New password")
 
 
-class MessageResponse(BaseModel):
-    """Standard message response."""
-
-    message: str
-
-
 @router.post("/forgot-password", response_model=MessageResponse)
 @limiter.limit(AUTH_TOKEN_RATE)
 async def forgot_password(
@@ -542,9 +535,7 @@ async def forgot_password(
             reset_token,
         )
 
-    return MessageResponse(
-        message="If an account exists with this email, password reset instructions have been sent."
-    )
+    return MessageResponse(message="If an account exists with this email, password reset instructions have been sent.")
 
 
 @router.post("/reset-password", response_model=MessageResponse)
@@ -563,7 +554,7 @@ async def reset_password(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token.",
-        )
+        ) from None
 
     if payload.get("type") != "password_reset":
         raise HTTPException(
@@ -584,7 +575,7 @@ async def reset_password(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid user id in reset token.",
-        )
+        ) from None
 
     user = await get_user_by_id(db, user_id)
     if not user:

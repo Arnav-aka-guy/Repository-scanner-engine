@@ -298,14 +298,11 @@ async def scan_user_repository(
         parser.invalidate_cache(str(path))
         embeddings.invalidate_repo(str(path))
 
+        repo_info = await parser.scan_repository(str(path))
         parsed_files = await parser.parse_repository(str(path))
-        total_files = len(parsed_files)
-        total_lines = sum(f.line_count for f in parsed_files.values())
-
-        languages: dict[str, int] = {}
-        for f in parsed_files.values():
-            if f.language:
-                languages[f.language] = languages.get(f.language, 0) + 1
+        total_files = repo_info.total_files
+        total_lines = repo_info.total_lines
+        languages = repo_info.languages
 
         # Build isolated vector index
         await embeddings.index_repository(parsed_files, repo_path=str(path), force_reindex=True)
@@ -327,7 +324,7 @@ async def scan_user_repository(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Repository scan stopped: {exc.code}",
-        )
+        ) from exc
     except Exception as exc:
         logger.error("Scan failed for repository %d: %s", repository_id, exc, exc_info=True)
         repo.status = "FAILED"
@@ -335,4 +332,4 @@ async def scan_user_repository(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Repository scanning failed. Please check the repository directory.",
-        )
+        ) from exc

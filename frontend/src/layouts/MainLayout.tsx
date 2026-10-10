@@ -58,12 +58,11 @@ export const MainLayout: React.FC = () => {
     }
   }, [location.pathname]);
 
-  // On mount, re-scan the active repository if persisted but not loaded
+  // On mount, only request scan info if active repository exists and we are not scanning
   useEffect(() => {
-    if (activeRepository && !repositoryInfo && scanStatus === 'idle') {
-      scanRepo(activeRepository);
-    }
-  }, [activeRepository, repositoryInfo, scanStatus, scanRepo]);
+    // We do NOT blindly trigger scanRepo on route changes or component mounts
+    // Scans should only be triggered explicitly by user action or initial repository onboarding
+  }, []);
 
   // Global keyboard listener for Ctrl+K / Cmd+K
   useEffect(() => {

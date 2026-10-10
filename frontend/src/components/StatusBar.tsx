@@ -23,24 +23,38 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
   useEffect(() => {
     let isMounted = true;
+    let consecutiveFailures = 0;
 
     const checkHealth = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       try {
-        let healthRes = await fetch('/api/health');
+        let healthRes = await fetch('/api/health', { signal: controller.signal });
         if (!healthRes.ok) {
-          healthRes = await fetch('/health');
+          healthRes = await fetch('/health', { signal: controller.signal });
         }
+        clearTimeout(timeoutId);
+
         if (healthRes.ok) {
           const data = await healthRes.json();
           if (isMounted) {
+            consecutiveFailures = 0;
             setIsConnected(true);
             setActiveModel(data.embedding_model || '—');
           }
         } else {
-          if (isMounted) setIsConnected(false);
+          consecutiveFailures++;
+          if (isMounted && consecutiveFailures >= 2) {
+            setIsConnected(false);
+          }
         }
       } catch {
-        if (isMounted) setIsConnected(false);
+        clearTimeout(timeoutId);
+        consecutiveFailures++;
+        if (isMounted && consecutiveFailures >= 2) {
+          setIsConnected(false);
+        }
       }
     };
 

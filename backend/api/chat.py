@@ -106,9 +106,7 @@ async def chat(
     if current_user.get("auth") and current_user.get("user_id"):
         user_id = int(current_user["user_id"])
         norm_path = repo_key.replace("\\", "/").rstrip("/")
-        stmt = select(Repository).where(
-            (Repository.path == norm_path) | (Repository.source_path == norm_path)
-        )
+        stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
         res = await db.execute(stmt)
         repo = res.scalar_one_or_none()
         if repo and repo.user_id is not None and repo.user_id != user_id:
@@ -175,7 +173,7 @@ async def chat(
         # Ground citations: verify retrieved sources against actual repository files
         verified_sources = []
         seen_sources = set()
-        for src in (vector_results + graph_results):
+        for src in vector_results + graph_results:
             fpath = src.get("file_path", "")
             if not fpath:
                 continue
@@ -191,23 +189,23 @@ async def chat(
             pf = parsed_files.get(fpath) or parsed_files.get(str(full_target.resolve()))
             valid_lines = False
             if pf:
-                max_line = max(
-                    [func.end_line for func in pf.functions] + [cls.end_line for cls in pf.classes] + [1]
-                )
+                max_line = max([func.end_line for func in pf.functions] + [cls.end_line for cls in pf.classes] + [1])
                 if 1 <= s_line <= max_line:
                     valid_lines = True
 
             key = (fpath, src.get("entity_name", ""))
             if key not in seen_sources:
                 seen_sources.add(key)
-                verified_sources.append({
-                    "file_path": fpath,
-                    "entity_name": src.get("entity_name", ""),
-                    "entity_type": src.get("entity_type", ""),
-                    "start_line": s_line if (valid_lines and s_line > 0) else None,
-                    "end_line": e_line if (valid_lines and e_line > 0) else None,
-                    "verified": True,
-                })
+                verified_sources.append(
+                    {
+                        "file_path": fpath,
+                        "entity_name": src.get("entity_name", ""),
+                        "entity_type": src.get("entity_type", ""),
+                        "start_line": s_line if (valid_lines and s_line > 0) else None,
+                        "end_line": e_line if (valid_lines and e_line > 0) else None,
+                        "verified": True,
+                    }
+                )
 
         entry = {
             "timestamp": datetime.now(tz=UTC).isoformat(),
@@ -228,11 +226,13 @@ async def chat(
             conversation_id=body.conversation_id,
         )
 
-        done_payload = json.dumps({
-            "type": "done",
-            "content": full_answer,
-            "sources": verified_sources[:6],
-        })
+        done_payload = json.dumps(
+            {
+                "type": "done",
+                "content": full_answer,
+                "sources": verified_sources[:6],
+            }
+        )
         yield f"data: {done_payload}\n\n"
 
     return StreamingResponse(

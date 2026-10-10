@@ -226,7 +226,10 @@ class EmbeddingsService:
             results = []
             for r in vector_results[:top_k]:
                 item = dict(r)
-                meta = item.get("metadata") if isinstance(item.get("metadata"), dict) else item
+                meta_val = item.get("metadata")
+                meta: dict[str, Any] = (
+                    meta_val if isinstance(meta_val, dict) else (item if isinstance(item, dict) else {})
+                )
                 item["match_type"] = "semantic"
                 item["match_reasons"] = ["semantic similarity"]
                 item["metadata"] = meta

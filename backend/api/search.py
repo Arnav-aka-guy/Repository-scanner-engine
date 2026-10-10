@@ -1,10 +1,10 @@
 """Semantic code search endpoints."""
 
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,9 +81,7 @@ async def search(
         if current_user.get("auth") and current_user.get("user_id"):
             user_id = int(current_user["user_id"])
             norm_path = validated_repo_path.replace("\\", "/").rstrip("/")
-            stmt = select(Repository).where(
-                (Repository.path == norm_path) | (Repository.source_path == norm_path)
-            )
+            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
             res = await db.execute(stmt)
             repo = res.scalar_one_or_none()
             if repo and repo.user_id is not None and repo.user_id != user_id:
@@ -106,26 +104,46 @@ async def search(
         ) from exc
 
     items: list[SearchResultItem] = []
+    root_norm = validated_repo_path.replace("\\", "/").rstrip("/") if validated_repo_path else ""
+
     for r in raw_results:
-        meta = r.get("metadata") if isinstance(r.get("metadata"), dict) else r
-        file_path = meta.get("file_path", "") or r.get("file_path", "")
+        if not isinstance(r, dict):
+            continue
+        meta_val = r.get("metadata")
+        meta: dict[Any, Any] = meta_val if isinstance(meta_val, dict) else r
+        raw_fpath = str(meta.get("file_path", "") or r.get("file_path", ""))
+        norm_fpath = raw_fpath.replace("\\", "/")
+
+        if root_norm and norm_fpath.startswith(root_norm):
+            rel_file_path = norm_fpath[len(root_norm) :].lstrip("/")
+        else:
+            rel_file_path = norm_fpath
+
         entity_name = meta.get("entity_name", "") or r.get("entity_name", "")
         snippet = meta.get("source_code", "") or r.get("source_code", "") or meta.get("snippet", "")
         match_type = str(r.get("match_type") or "semantic")
         match_reasons = list(r.get("match_reasons") or ["semantic similarity"])
 
+        raw_score = float(r.get("score", 0.0))
+        # Prioritize source files over test/fixture files
+        is_test = any(t in rel_file_path.lower() for t in ("/tests/", "/test/", "test_", "_test.", ".spec."))
+        effective_score = raw_score if not is_test else raw_score * 0.85
+
         items.append(
             SearchResultItem(
-                file_path=file_path,
+                file_path=rel_file_path,
                 entity_name=entity_name,
                 snippet=snippet,
-                score=float(r.get("score", 0.0)),
+                score=round(effective_score, 4),
                 start_line=int(meta.get("start_line", 0) or r.get("start_line", 0)),
                 end_line=int(meta.get("end_line", 0) or r.get("end_line", 0)),
                 match_type=match_type,
                 match_reasons=match_reasons,
             )
         )
+
+    # Sort results by effective score descending so source implementations precede tests
+    items.sort(key=lambda it: it.score, reverse=True)
 
     return SearchResponse(
         query=sanitized.query,

@@ -517,7 +517,7 @@ export const SemanticSearch: React.FC = () => {
 
                       {/* Right: Match Strength Tier */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
-                        <Tooltip content={`Cosine similarity: ${Math.round((res.score || 0) * 100)}%. Indicates neural vector distance between your query and this code snippet.`}>
+                        <Tooltip content={`Vector search score: ${(res.score || 0).toFixed(2)}. Represents embedding distance and keyword rank fusion.`}>
                           <span
                             style={{
                               fontSize: '11px',
@@ -535,7 +535,7 @@ export const SemanticSearch: React.FC = () => {
                           </span>
                         </Tooltip>
                         <span style={{ fontSize: '10px', color: colors.text.muted, fontFamily: font.mono }}>
-                          {Math.round((res.score || 0) * 100)}% relevance
+                          Score: {(res.score || 0).toFixed(2)}
                         </span>
                       </div>
                     </div>

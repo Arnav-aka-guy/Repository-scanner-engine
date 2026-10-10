@@ -79,7 +79,10 @@ class GraphAnalyzer:
                 continue
 
             # Skip entry-point file roots
-            if fpath.replace("\\", "/").rsplit("/", 1)[-1].lower() in _ENTRY_POINT_FILE_NAMES and base_name.lower() in {"default", "handler"}:
+            if fpath.replace("\\", "/").rsplit("/", 1)[-1].lower() in _ENTRY_POINT_FILE_NAMES and base_name.lower() in {
+                "default",
+                "handler",
+            }:
                 continue
 
             dead.append(

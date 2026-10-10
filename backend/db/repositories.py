@@ -114,6 +114,7 @@ async def revoke_refresh_token(db: AsyncSession, token_hash: str) -> bool:
 async def revoke_user_refresh_tokens(db: AsyncSession, user_id: int) -> int:
     """Revoke all refresh tokens for a user upon logout or token theft detection."""
     from sqlalchemy import update
+
     from backend.db.models import RefreshToken
 
     stmt = update(RefreshToken).where(RefreshToken.user_id == user_id).values(revoked=True)

@@ -276,9 +276,18 @@ class GraphBuilder:
         if not module:
             return None
 
+        # Check Python standard library first if applicable
+        import sys
+
+        stdlib_modules = set(getattr(sys, "stdlib_module_names", ())) | set(getattr(sys, "builtin_module_names", ()))
+        root_pkg = module.split(".")[0].split("/")[0]
+        if root_pkg in stdlib_modules:
+            return None
+
         # 1. Direct lookup
+        target = None
         if module in module_index:
-            return module_index[module]
+            target = module_index[module]
 
         # 2. Strip leading dots (Python relative import)
         stripped = module.lstrip(".")
@@ -305,9 +314,13 @@ class GraphBuilder:
         # 4. Try the last path segment as bare name
         bare = module.rsplit("/", 1)[-1].rsplit(".", 1)[0]
         if bare in module_index:
-            return module_index[bare]
+            target = module_index[bare]
 
-        return None
+        # Prevent reporting a file as importing itself
+        if target and str(Path(target).resolve()) == str(Path(current_file).resolve()):
+            return None
+
+        return target
 
     @staticmethod
     def _find_class_node(

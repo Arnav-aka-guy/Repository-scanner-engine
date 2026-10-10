@@ -1,23 +1,32 @@
 // Design tokens — single source of truth for all visual values
+// Follows .agents/skills/design-direction/SKILL.md ("survey map for code")
+// and preserves Phase 0 baseline token assertions.
+
 export const colors = {
   bg: {
     primary: '#0F1115',
     surface: '#151922',
     surfaceSecondary: '#1B2028',
-    elevated: '#222A35',
+    elevated: '#262B28',
+    ground: '#0D0F0E',
   },
   border: {
     default: '#292F38',
-    subtle: '#1E2530',
-    strong: '#3D4654',
+    subtle: '#1C201D',
+    strong: '#3A423D',
   },
   text: {
     primary: '#E6EAF0',
-    secondary: '#A0A8B5',
-    muted: '#6F7887',
-    disabled: '#4A5260',
+    secondary: '#8A928B',
+    muted: '#5E645F',
+    disabled: '#3A423D',
   },
   accent: {
+    signal: '#F2A93B',
+    signalSubtle: 'rgba(242, 169, 59, 0.12)',
+    signalMuted: 'rgba(242, 169, 59, 0.08)',
+    edge: '#7CC4C9',
+    edgeSubtle: 'rgba(124, 196, 201, 0.12)',
     blue: '#5B8DEF',
     blueSubtle: 'rgba(91, 141, 239, 0.12)',
     blueMuted: 'rgba(91, 141, 239, 0.08)',
@@ -67,7 +76,8 @@ export const heights = {
 } as const;
 
 export const font = {
-  sans: "Inter, system-ui, -apple-system, sans-serif",
+  sans: "Inter, 'IBM Plex Sans', system-ui, -apple-system, sans-serif",
+  display: "'Bricolage Grotesque', system-ui, sans-serif",
   mono: "'JetBrains Mono', 'Fira Code', monospace",
   size: {
     xs: '11px',
@@ -75,9 +85,10 @@ export const font = {
     md: '13px',
     base: '14px',
     lg: '16px',
-    xl: '18px',
-    '2xl': '20px',
-    '3xl': '24px',
+    xl: '20px',
+    '2xl': '28px',
+    '3xl': '40px',
+    '4xl': '64px',
   },
   weight: {
     normal: 400,
@@ -88,13 +99,13 @@ export const font = {
 } as const;
 
 export const transition = {
-  fast: '0.12s ease',
-  base: '0.18s ease',
-  slow: '0.25s ease',
+  fast: '0.15s cubic-bezier(0.22, 1, 0.36, 1)',
+  base: '0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+  slow: '0.6s cubic-bezier(0.22, 1, 0.36, 1)',
 } as const;
 
 export const shadow = {
-  sm: '0 1px 3px rgba(0,0,0,0.3)',
-  md: '0 4px 12px rgba(0,0,0,0.35)',
-  lg: '0 8px 24px rgba(0,0,0,0.4)',
+  sm: 'none',
+  md: 'none',
+  lg: '0 4px 16px rgba(0, 0, 0, 0.4)',
 } as const;

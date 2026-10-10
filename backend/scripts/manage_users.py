@@ -12,10 +12,8 @@ import os
 import secrets
 import string
 import sys
-from typing import Optional
 
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 # Ensure project root is in sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -56,13 +54,11 @@ async def list_users() -> None:
         print(f"{'ID':<6} {'NAME':<25} {'EMAIL':<35} {'ACTIVE':<8} {'TOKEN_VER':<10}")
         print("-" * 88)
         for u in users:
-            print(
-                f"{u.id:<6} {u.name:<25} {u.email:<35} {str(u.is_active):<8} {u.token_version:<10}"
-            )
+            print(f"{u.id:<6} {u.name:<25} {u.email:<35} {str(u.is_active):<8} {u.token_version:<10}")
         print(f"\nTotal users: {len(users)}")
 
 
-async def create_user_cmd(email: str, name: str, password: Optional[str] = None) -> None:
+async def create_user_cmd(email: str, name: str, password: str | None = None) -> None:
     """Create a new user."""
     factory = _get_session_factory()
     clean_email = email.strip().lower()
@@ -93,7 +89,7 @@ async def create_user_cmd(email: str, name: str, password: Optional[str] = None)
             print(f"Generated Password: {password}")
 
 
-async def reset_password_cmd(email: str, password: Optional[str] = None) -> None:
+async def reset_password_cmd(email: str, password: str | None = None) -> None:
     """Reset the password for a specific user."""
     factory = _get_session_factory()
     clean_email = email.strip().lower()
@@ -123,7 +119,7 @@ async def reset_password_cmd(email: str, password: Optional[str] = None) -> None
 
 async def reset_all_passwords_cmd() -> list[dict[str, str]]:
     """Reset passwords for all existing users to distinct secure random passwords.
-    
+
     Returns the list of user credentials for presentation.
     """
     factory = _get_session_factory()
@@ -142,12 +138,14 @@ async def reset_all_passwords_cmd() -> list[dict[str, str]]:
             user.password_hash = hash_password(new_pw)
             await increment_user_token_version(session, user.id)
             await revoke_user_refresh_tokens(session, user.id)
-            results.append({
-                "id": str(user.id),
-                "name": user.name,
-                "email": user.email,
-                "password": new_pw,
-            })
+            results.append(
+                {
+                    "id": str(user.id),
+                    "name": user.name,
+                    "email": user.email,
+                    "password": new_pw,
+                }
+            )
 
         await session.commit()
 

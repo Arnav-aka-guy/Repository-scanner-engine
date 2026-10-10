@@ -31,6 +31,7 @@ import {
   DependencyRisk,
   Dimension,
 } from '../components/health/HealthTypes';
+import { getHealthBand } from '../components/health/healthBands';
 import { colors, radius, font } from '../design-system/tokens';
 import {
   Button,
@@ -148,10 +149,11 @@ export const Overview: React.FC = () => {
       setHealthLoading(true);
       setHealthError(null);
       try {
+        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
         const [hs, td, dr] = await Promise.all([
-          apiGet<HealthScore>('/health-score', { repo_path: activeRepository }).catch(() => null),
-          apiGet<TechDebt>('/tech-debt', { repo_path: activeRepository }).catch(() => null),
-          apiGet<DependencyRisk>('/dependency-risk', { repo_path: activeRepository }).catch(() => null),
+          Promise.race([apiGet<HealthScore>('/health-score', { repo_path: activeRepository }), timeoutPromise]).catch(() => null),
+          Promise.race([apiGet<TechDebt>('/tech-debt', { repo_path: activeRepository }), timeoutPromise]).catch(() => null),
+          Promise.race([apiGet<DependencyRisk>('/dependency-risk', { repo_path: activeRepository }), timeoutPromise]).catch(() => null),
         ]);
 
         if (isMounted) {
@@ -354,15 +356,11 @@ export const Overview: React.FC = () => {
   // Sort languages by file count
   const sortedLanguages = Object.entries(languages).sort((a, b) => b[1] - a[1]);
 
-  // Overall health presentation
-  const overallScore = healthScore?.total_score ?? 80;
-  const healthGrade = healthScore?.grade ?? 'Good';
-  const getHealthTone = (score: number) => {
-    if (score >= 80) return { color: colors.status.success, badge: 'green' as const, label: 'Good' };
-    if (score >= 60) return { color: colors.status.warning, badge: 'yellow' as const, label: 'Fair' };
-    return { color: colors.status.danger, badge: 'red' as const, label: 'Needs Attention' };
-  };
-  const healthTone = getHealthTone(overallScore);
+  // Overall health presentation using shared getHealthBand
+  const overallScore = Math.round(healthScore?.total_score ?? 80);
+  const healthBand = getHealthBand(overallScore);
+  const healthGrade = healthBand.letter;
+  const healthTone = { color: healthBand.color, badge: healthBand.badge, label: healthBand.label };
 
   // Attention Items calculation from real API responses
   const attentionItems: Array<{

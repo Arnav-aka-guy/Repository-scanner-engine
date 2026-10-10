@@ -524,7 +524,11 @@ def _score_complexity(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
             unit="functions",
             threshold=0,
             threshold_display="0 functions",
-            status="good" if len(deeply_nested_functions) == 0 else "review" if len(deeply_nested_functions) <= 3 else "at_risk",
+            status="good"
+            if len(deeply_nested_functions) == 0
+            else "review"
+            if len(deeply_nested_functions) <= 3
+            else "at_risk",
             description="Functions with deep indentation nesting (>5 levels), increasing cognitive complexity.",
         )
     )

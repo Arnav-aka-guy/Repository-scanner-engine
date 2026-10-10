@@ -100,6 +100,8 @@ export const MyRepositories: React.FC = () => {
 
   const handleRepoCreated = (newRepo: SavedRepository) => {
     setRepositories((prev) => [newRepo, ...prev]);
+    // Auto-scan newly added repository so it is indexed and ready immediately
+    handleScan(newRepo);
   };
 
   return (
@@ -498,9 +500,15 @@ export const MyRepositories: React.FC = () => {
 
                     <button
                       onClick={() => handleOpen(repo)}
+                      disabled={isScanning || (!hasScanned && repo.status !== 'READY')}
                       className="btn-primary"
-                      title="Open repository workspace"
-                      style={{ height: '32px', padding: '0 14px' }}
+                      title={!hasScanned ? 'Scan repository before opening' : 'Open repository workspace'}
+                      style={{
+                        height: '32px',
+                        padding: '0 14px',
+                        opacity: isScanning || (!hasScanned && repo.status !== 'READY') ? 0.5 : 1,
+                        cursor: isScanning || (!hasScanned && repo.status !== 'READY') ? 'not-allowed' : 'pointer',
+                      }}
                     >
                       <Play size={13} />
                       <span style={{ fontSize: '12px' }}>Open</span>

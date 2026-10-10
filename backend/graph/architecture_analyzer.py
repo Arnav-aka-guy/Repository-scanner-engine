@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 # ── Layer detection heuristics ────────────────────────────────────────────
 
 LAYER_PATTERNS: dict[str, list[str]] = {
+    "Tests": [
+        r"(?:^|/)(?:tests?|__tests__|spec|e2e|integration)/",
+        r"(?:_test|_spec|\.test|\.spec)\.",
+        r"(?:^|/)test_[^/]+\.py$",
+    ],
     "UI / Presentation": [
         r"(?:^|/)(?:components?|pages?|views?|layouts?|screens?|templates?|widgets?)/",
         r"\.(?:tsx|jsx|vue|svelte|html)$",
@@ -28,19 +33,16 @@ LAYER_PATTERNS: dict[str, list[str]] = {
         r"(?:^|/)(?:middleware|guards?)/",
     ],
     "Business Logic": [
-        r"(?:^|/)(?:services?|use_?cases?|domain|logic|managers?|engines?)/",
+        r"(?:^|/)(?:services?|use_?cases?|domain|logic|managers?|engines?|parser|embeddings|retrieval|graph|health|llm|security|storage)/",
     ],
     "Data / Persistence": [
         r"(?:^|/)(?:models?|schemas?|repositories?|database|db|store|migrations?|orm)/",
         r"(?:^|/)(?:entities|dao)/",
     ],
     "Infrastructure": [
-        r"(?:^|/)(?:config|settings?|utils?|helpers?|lib|common|shared|core)/",
+        r"(?:^|/)(?:config|settings?|utils?|helpers?|lib|common|shared|core|scripts|desktop)/",
         r"(?:^|/)(?:constants?|types?|enums?|interfaces?)/",
-    ],
-    "Tests": [
-        r"(?:^|/)(?:tests?|__tests__|spec|e2e|integration)/",
-        r"(?:_test|_spec|\.test|\.spec)\.",
+        r"\.(?:json|ya?ml|toml|env|ini|cfg|sh|bat|ps1)$",
     ],
 }
 

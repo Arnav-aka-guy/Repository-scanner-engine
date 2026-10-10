@@ -8,15 +8,15 @@ consistent shape.
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import hashlib
-import uuid
-import jwt
 from jwt.exceptions import PyJWTError
 
 from backend.core.config import get_settings
@@ -34,6 +34,7 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 _MAX_PASSWORD_LENGTH: int = 128
 _BCRYPT_MAX_BYTES: int = 72
 
+_password_hash: Any = None
 try:
     from pwdlib import PasswordHash
     from pwdlib.hashers.argon2 import Argon2Hasher
@@ -120,9 +121,7 @@ def create_access_token(
     """
     settings = get_settings()
     now = datetime.now(UTC)
-    expire = now + (
-        expires_delta if expires_delta is not None else timedelta(hours=settings.jwt_expiry_hours)
-    )
+    expire = now + (expires_delta if expires_delta is not None else timedelta(hours=settings.jwt_expiry_hours))
 
     to_encode = data.copy()
     to_encode.setdefault("iss", settings.jwt_issuer)
@@ -149,11 +148,7 @@ def create_refresh_token(
     """Create a signed JWT refresh token and return (raw_token, token_hash, expires_at)."""
     settings = get_settings()
     now = datetime.now(UTC)
-    expire = now + (
-        expires_delta
-        if expires_delta is not None
-        else timedelta(days=settings.refresh_token_expiry_days)
-    )
+    expire = now + (expires_delta if expires_delta is not None else timedelta(days=settings.refresh_token_expiry_days))
 
     jti = uuid.uuid4().hex
     payload = {
@@ -217,7 +212,13 @@ def verify_token(token: str, expected_type: str | None = None) -> dict[str, Any]
 
 # ── FastAPI dependency ─────────────────────────────────────────────────
 
-_ANON_USER: dict[str, Any] = {"sub": "anonymous", "auth": False, "user_id": 1, "email": "dev@local", "name": "Developer"}
+_ANON_USER: dict[str, Any] = {
+    "sub": "anonymous",
+    "auth": False,
+    "user_id": 1,
+    "email": "dev@local",
+    "name": "Developer",
+}
 
 
 async def get_current_user(
@@ -250,7 +251,7 @@ async def get_current_user(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail="Invalid user subject in token.",
                         headers={"WWW-Authenticate": "Bearer"},
-                    )
+                    ) from None
         return payload
 
     if not settings.auth_enabled:
@@ -287,5 +288,5 @@ async def get_required_user(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid user subject in token.",
                     headers={"WWW-Authenticate": "Bearer"},
-                )
+                ) from None
     return payload

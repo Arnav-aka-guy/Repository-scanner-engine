@@ -16,7 +16,7 @@ Usage in a route::
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from backend.core.container import get_container
 
@@ -61,8 +61,8 @@ def get_docs() -> DocumentationService:
 
 async def get_owned_repository(
     repo_path: str,
-    current_user: dict = None,
-    db: any = None,
+    current_user: dict[str, Any] | None = None,
+    db: Any = None,
 ) -> str:
     """Validate that the requesting user owns the repository at repo_path.
 
@@ -70,6 +70,7 @@ async def get_owned_repository(
     """
     from fastapi import HTTPException, status
     from sqlalchemy import select
+
     from backend.db.models import Repository
 
     norm_path = repo_path.replace("\\", "/").rstrip("/")
@@ -78,9 +79,7 @@ async def get_owned_repository(
     if current_user and current_user.get("auth") and current_user.get("user_id"):
         user_id = int(current_user["user_id"])
         if db is not None:
-            stmt = select(Repository).where(
-                (Repository.path == norm_path) | (Repository.source_path == norm_path)
-            )
+            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
             res = await db.execute(stmt)
             repo = res.scalar_one_or_none()
             if repo and repo.user_id is not None and repo.user_id != user_id:

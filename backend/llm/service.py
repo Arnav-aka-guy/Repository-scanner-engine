@@ -146,9 +146,12 @@ class LLMService:
             "Generate detailed, professional, and readable markdown documentation for codebases."
         )
 
-        lang_tag = (
-            language.strip()
-            or ("typescript" if "interface " in code or "type " in code or "export " in code else "python" if "def " in code or "class " in code else "")
+        lang_tag = language.strip() or (
+            "typescript"
+            if "interface " in code or "type " in code or "export " in code
+            else "python"
+            if "def " in code or "class " in code
+            else ""
         )
 
         user = (

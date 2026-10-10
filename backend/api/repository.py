@@ -7,7 +7,6 @@ import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -361,9 +360,7 @@ async def list_files(
     if current_user.get("auth") and current_user.get("user_id"):
         user_id = int(current_user["user_id"])
         norm_path = str(path).replace("\\", "/").rstrip("/")
-        stmt = select(Repository).where(
-            (Repository.path == norm_path) | (Repository.source_path == norm_path)
-        )
+        stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
         res = await db.execute(stmt)
         repo = res.scalar_one_or_none()
         if repo and repo.user_id is not None and repo.user_id != user_id:
@@ -413,9 +410,7 @@ async def get_file(
     if current_user.get("auth") and current_user.get("user_id"):
         user_id = int(current_user["user_id"])
         norm_path = str(root).replace("\\", "/").rstrip("/")
-        stmt = select(Repository).where(
-            (Repository.path == norm_path) | (Repository.source_path == norm_path)
-        )
+        stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
         res = await db.execute(stmt)
         repo = res.scalar_one_or_none()
         if repo and repo.user_id is not None and repo.user_id != user_id:
@@ -507,9 +502,7 @@ async def get_onboarding_guide(
     if current_user.get("auth") and current_user.get("user_id"):
         user_id = int(current_user["user_id"])
         norm_path = str(path).replace("\\", "/").rstrip("/")
-        stmt = select(Repository).where(
-            (Repository.path == norm_path) | (Repository.source_path == norm_path)
-        )
+        stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
         res = await db.execute(stmt)
         repo = res.scalar_one_or_none()
         if repo and repo.user_id is not None and repo.user_id != user_id:

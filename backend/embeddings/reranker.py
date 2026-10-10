@@ -66,7 +66,10 @@ class SearchReranker:
 
         for key in ranked_keys[:top_k]:
             source_item = result_map[key]
-            meta = source_item.get("metadata") if isinstance(source_item.get("metadata"), dict) else source_item
+            meta_val = source_item.get("metadata")
+            meta: dict[str, Any] = (
+                meta_val if isinstance(meta_val, dict) else (source_item if isinstance(source_item, dict) else {})
+            )
 
             is_vec = key in in_vector
             is_kw = key in in_keyword
@@ -115,7 +118,8 @@ class SearchReranker:
     @staticmethod
     def _result_key(result: dict[str, Any]) -> str:
         """Generate a unique key for deduplication across nested metadata and top-level fields."""
-        meta = result.get("metadata") if isinstance(result.get("metadata"), dict) else result
+        meta_val = result.get("metadata")
+        meta: dict[str, Any] = meta_val if isinstance(meta_val, dict) else (result if isinstance(result, dict) else {})
         name = meta.get("entity_name", "") or result.get("entity_name", "")
         path = meta.get("file_path", "") or result.get("file_path", "")
         start = meta.get("start_line", 0) or result.get("start_line", 0)
