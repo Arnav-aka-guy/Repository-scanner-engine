@@ -1,0 +1,98 @@
+{
+  "version": "2026.1",
+  "scoring_version": "2.0.0",
+  "languages": {
+    "Python": {
+      "cognitive_complexity": {
+        "function_threshold": 15,
+        "critical_threshold": 25,
+        "median_per_100_loc": 6.5,
+        "p90_per_100_loc": 18.0
+      },
+      "nesting_depth": {
+        "max_recommended": 4,
+        "critical_depth": 6
+      },
+      "function_length": {
+        "long_lines": 80,
+        "complexity_coupling_required": 15
+      },
+      "file_size": {
+        "large_lines": 500,
+        "critical_lines": 1000
+      },
+      "coupling": {
+        "max_fan_out": 15,
+        "critical_fan_out": 25
+      },
+      "documentation": {
+        "target_coverage": 0.60,
+        "critical_coverage": 0.30
+      }
+    },
+    "TypeScript": {
+      "cognitive_complexity": {
+        "function_threshold": 15,
+        "critical_threshold": 25,
+        "median_per_100_loc": 7.0,
+        "p90_per_100_loc": 20.0
+      },
+      "nesting_depth": {
+        "max_recommended": 4,
+        "critical_depth": 6
+      },
+      "function_length": {
+        "long_lines": 80,
+        "complexity_coupling_required": 15
+      },
+      "file_size": {
+        "large_lines": 500,
+        "critical_lines": 1000
+      },
+      "coupling": {
+        "max_fan_out": 15,
+        "critical_fan_out": 25
+      },
+      "documentation": {
+        "target_coverage": 0.50,
+        "critical_coverage": 0.25
+      }
+    },
+    "JavaScript": {
+      "cognitive_complexity": {
+        "function_threshold": 15,
+        "critical_threshold": 25,
+        "median_per_100_loc": 7.0,
+        "p90_per_100_loc": 20.0
+      },
+      "nesting_depth": {
+        "max_recommended": 4,
+        "critical_depth": 6
+      },
+      "function_length": {
+        "long_lines": 80,
+        "complexity_coupling_required": 15
+      },
+      "file_size": {
+        "large_lines": 500,
+        "critical_lines": 1000
+      },
+      "coupling": {
+        "max_fan_out": 15,
+        "critical_fan_out": 25
+      },
+      "documentation": {
+        "target_coverage": 0.50,
+        "critical_coverage": 0.25
+      }
+    }
+  },
+  "weights": {
+    "Complexity": 0.25,
+    "Architecture": 0.20,
+    "Maintainability": 0.20,
+    "Security": 0.15,
+    "Testing": 0.15,
+    "Documentation": 0.05
+  }
+}

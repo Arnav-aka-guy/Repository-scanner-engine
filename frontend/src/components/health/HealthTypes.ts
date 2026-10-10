@@ -78,6 +78,20 @@ export interface Dimension {
   deductions: (Deduction | string)[];
 }
 
+export interface Finding {
+  id: string;
+  rule_id: string;
+  title: string;
+  file_path: string;
+  line_number: number;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  confidence: 'high' | 'medium' | 'low';
+  score_effect: number;
+  why_it_matters: string;
+  dismissed?: boolean;
+  dismiss_reason?: string;
+}
+
 export interface HealthScore {
   total_score: number;
   grade: string;
@@ -88,6 +102,10 @@ export interface HealthScore {
   scoring_formula?: string;
   issue_counts?: IssueCountsSummary;
   statistics?: AnalysisStatistics;
+  findings?: Finding[];
+  hotspots?: any[];
+  scoring_version?: string;
+  baselines_version?: string;
   dimensions: Dimension[];
 }
 

@@ -7,11 +7,14 @@ import {
   TechDebt,
   DependencyRisk,
   Dimension,
+  Finding,
   MeasuredMetric,
   ScorePenalty,
   SymbolGroup,
 } from '../components/health/HealthTypes';
 import { getHealthBand } from '../components/health/healthBands';
+import { TreemapHotspots } from '../components/health/TreemapHotspots';
+import { FindingsDrawer } from '../components/health/FindingsDrawer';
 import {
   Activity,
   AlertTriangle,
@@ -55,6 +58,9 @@ export const HealthDashboard: React.FC = () => {
   const repoPath = useWorkspaceStore((s) => s.activeRepository);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
 
+  const cachedHealthScore = useWorkspaceStore((s) => s.cachedHealthScore);
+  const setCachedHealthScore = useWorkspaceStore((s) => s.setCachedHealthScore);
+
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
   const [techDebt, setTechDebt] = useState<TechDebt | null>(null);
   const [depRisk, setDepRisk] = useState<DependencyRisk | null>(null);
@@ -67,6 +73,7 @@ export const HealthDashboard: React.FC = () => {
   const [expandedDimension, setExpandedDimension] = useState<string | null>(null);
   const [showMethodology, setShowMethodology] = useState<boolean>(false);
   const [showTelemetry, setShowTelemetry] = useState<boolean>(false);
+  const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
 
   useEffect(() => {
     if (!repoPath) {
@@ -76,9 +83,16 @@ export const HealthDashboard: React.FC = () => {
       return;
     }
 
+    // Reuse cached health score if available
+    if (cachedHealthScore[repoPath]) {
+      setHealthScore(cachedHealthScore[repoPath]);
+    }
+
     let cancelled = false;
     const fetchAll = async () => {
-      setLoading(true);
+      if (!cachedHealthScore[repoPath]) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const [hs, td, dr] = await Promise.all([
@@ -88,11 +102,14 @@ export const HealthDashboard: React.FC = () => {
         ]);
         if (!cancelled) {
           setHealthScore(hs);
+          setCachedHealthScore(repoPath, hs);
           setTechDebt(td);
           setDepRisk(dr);
         }
       } catch (err: any) {
-        if (!cancelled) setError(err.message || 'Failed to load code health metrics.');
+        if (!cancelled && !cachedHealthScore[repoPath]) {
+          setError(err.message || 'Failed to load code health metrics.');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -103,6 +120,51 @@ export const HealthDashboard: React.FC = () => {
       cancelled = true;
     };
   }, [repoPath]);
+
+  const handleDismissFinding = (findingId: string, reason: string) => {
+    if (!healthScore) return;
+    const updatedFindings = (healthScore.findings || []).map((f) =>
+      f.id === findingId ? { ...f, dismissed: true, dismiss_reason: reason } : f
+    );
+    // Recalculate score without dismissed finding
+    const dismissedItem = healthScore.findings?.find((f) => f.id === findingId);
+    const scoreDiff = dismissedItem ? dismissedItem.score_effect : 0;
+    const newTotalScore = Math.min(100, healthScore.total_score + scoreDiff);
+    const updatedScore: HealthScore = {
+      ...healthScore,
+      total_score: Math.round(newTotalScore * 10) / 10,
+      findings: updatedFindings,
+    };
+    setHealthScore(updatedScore);
+    if (repoPath) {
+      setCachedHealthScore(repoPath, updatedScore);
+    }
+    if (selectedFinding && selectedFinding.id === findingId) {
+      setSelectedFinding({ ...selectedFinding, dismissed: true, dismiss_reason: reason });
+    }
+  };
+
+  const handleUndismissFinding = (findingId: string) => {
+    if (!healthScore) return;
+    const dismissedItem = healthScore.findings?.find((f) => f.id === findingId);
+    const scoreDiff = dismissedItem ? dismissedItem.score_effect : 0;
+    const newTotalScore = Math.max(0, healthScore.total_score - scoreDiff);
+    const updatedFindings = (healthScore.findings || []).map((f) =>
+      f.id === findingId ? { ...f, dismissed: false, dismiss_reason: undefined } : f
+    );
+    const updatedScore: HealthScore = {
+      ...healthScore,
+      total_score: Math.round(newTotalScore * 10) / 10,
+      findings: updatedFindings,
+    };
+    setHealthScore(updatedScore);
+    if (repoPath) {
+      setCachedHealthScore(repoPath, updatedScore);
+    }
+    if (selectedFinding && selectedFinding.id === findingId) {
+      setSelectedFinding({ ...selectedFinding, dismissed: false, dismiss_reason: undefined });
+    }
+  };
 
   const handleOpenFile = (path: string) => {
     setSelectedFile(path);
@@ -482,6 +544,30 @@ export const HealthDashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* ── Hotspot Treemap (LOC × Cognitive Complexity) ── */}
+          {healthScore.hotspots && healthScore.hotspots.length > 0 && (
+            <div
+              style={{
+                backgroundColor: colors.bg.surface,
+                border: `1px solid ${colors.border.default}`,
+                borderRadius: radius.lg,
+                padding: '16px 20px',
+              }}
+            >
+              <TreemapHotspots
+                items={healthScore.hotspots.map((h: any) => ({
+                  file_path: h.file_path,
+                  loc: h.loc || 10,
+                  complexity: h.cognitive_complexity || 0,
+                  fan_in: h.fan_in || 0,
+                  score_effect: h.score_effect,
+                }))}
+                repoPath={repoPath || ''}
+                onOpenFile={handleOpenFile}
+              />
+            </div>
+          )}
+
           {/* ── Section B: Dimensions (5 Pillars with Drilldown) ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -679,59 +765,90 @@ export const HealthDashboard: React.FC = () => {
                               Deduction Rules Triggered ({dim.penalties.length})
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {dim.penalties.map((pen: ScorePenalty, pIdx: number) => (
-                                <div
-                                  key={pIdx}
-                                  style={{
-                                    backgroundColor: colors.bg.surface,
-                                    border: `1px solid ${colors.border.default}`,
-                                    borderRadius: radius.md,
-                                    padding: '10px 12px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '6px',
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <Badge variant="red">-{pen.points_deducted.toFixed(1)} pts</Badge>
-                                      <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
-                                        {pen.rule_name}
+                              {dim.penalties.map((pen: ScorePenalty, pIdx: number) => {
+                                const matchingFinding = healthScore.findings?.find((f) => f.rule_id === pen.rule_id);
+                                return (
+                                  <div
+                                    key={pIdx}
+                                    onClick={() => {
+                                      if (matchingFinding) {
+                                        setSelectedFinding(matchingFinding);
+                                      } else {
+                                        setSelectedFinding({
+                                          id: `pen-${pen.rule_id}`,
+                                          rule_id: pen.rule_id,
+                                          title: pen.rule_name,
+                                          file_path: pen.affected_files[0] || repoPath || '',
+                                          line_number: 1,
+                                          severity: pen.severity,
+                                          confidence: pen.confidence,
+                                          score_effect: pen.points_deducted,
+                                          why_it_matters: pen.reason,
+                                        });
+                                      }
+                                    }}
+                                    style={{
+                                      backgroundColor: colors.bg.surface,
+                                      border: `1px solid ${colors.border.default}`,
+                                      borderRadius: radius.md,
+                                      padding: '10px 12px',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '6px',
+                                      cursor: 'pointer',
+                                      transition: 'border-color 0.15s ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.borderColor = colors.accent.blue;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.borderColor = colors.border.default;
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Badge variant="red">-{pen.points_deducted.toFixed(1)} pts</Badge>
+                                        <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
+                                          {pen.rule_name}
+                                        </span>
+                                        <Badge variant="default">Confidence: {pen.confidence}</Badge>
+                                      </div>
+                                      <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: font.mono }}>
+                                        Observed: {pen.observed} (Threshold: {pen.threshold})
                                       </span>
-                                      <Badge variant="default">Confidence: {pen.confidence}</Badge>
                                     </div>
-                                    <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: font.mono }}>
-                                      Observed: {pen.observed} (Threshold: {pen.threshold})
+                                    <span style={{ fontSize: '11px', color: colors.text.secondary }}>
+                                      {pen.reason}
                                     </span>
+                                    {pen.affected_files && pen.affected_files.length > 0 && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                                        <span style={{ fontSize: '10px', color: colors.text.muted }}>Affected files:</span>
+                                        {pen.affected_files.map((af, afIdx) => (
+                                          <button
+                                            key={afIdx}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpenFile(af);
+                                            }}
+                                            style={{
+                                              fontSize: '10px',
+                                              fontFamily: font.mono,
+                                              color: colors.accent.blue,
+                                              backgroundColor: colors.bg.elevated,
+                                              border: `1px solid ${colors.border.subtle}`,
+                                              borderRadius: radius.sm,
+                                              padding: '1px 5px',
+                                              cursor: 'pointer',
+                                            }}
+                                          >
+                                            {getRelativePath(af, repoPath)}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                  <span style={{ fontSize: '11px', color: colors.text.secondary }}>
-                                    {pen.reason}
-                                  </span>
-                                  {pen.affected_files && pen.affected_files.length > 0 && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
-                                      <span style={{ fontSize: '10px', color: colors.text.muted }}>Affected files:</span>
-                                      {pen.affected_files.map((af, afIdx) => (
-                                        <button
-                                          key={afIdx}
-                                          onClick={() => handleOpenFile(af)}
-                                          style={{
-                                            fontSize: '10px',
-                                            fontFamily: font.mono,
-                                            color: colors.accent.blue,
-                                            backgroundColor: colors.bg.elevated,
-                                            border: `1px solid ${colors.border.subtle}`,
-                                            borderRadius: radius.sm,
-                                            padding: '1px 5px',
-                                            cursor: 'pointer',
-                                          }}
-                                        >
-                                          {getRelativePath(af, repoPath)}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         ) : (
@@ -1344,7 +1461,7 @@ export const HealthDashboard: React.FC = () => {
                   <div style={{ backgroundColor: colors.bg.surfaceSecondary, padding: '6px', textAlign: 'center', borderRadius: radius.sm }}><strong style={{ color: colors.accent.blue }}>B</strong> (80–89)</div>
                   <div style={{ backgroundColor: colors.bg.surfaceSecondary, padding: '6px', textAlign: 'center', borderRadius: radius.sm }}><strong style={{ color: colors.status.warning }}>C</strong> (70–79)</div>
                   <div style={{ backgroundColor: colors.bg.surfaceSecondary, padding: '6px', textAlign: 'center', borderRadius: radius.sm }}><strong style={{ color: colors.status.warning }}>D</strong> (60–69)</div>
-                  <div style={{ backgroundColor: colors.bg.surfaceSecondary, padding: '6px', textAlign: 'center', borderRadius: radius.sm }}><strong style={{ color: colors.status.danger }}>F</strong> (&lt; 60)</div>
+                  <div style={{ backgroundColor: colors.bg.surfaceSecondary, padding: '6px', textAlign: 'center', borderRadius: radius.sm }}><strong style={{ color: colors.status.danger }}>E</strong> (&lt; 60)</div>
                 </div>
               </div>
             </div>
@@ -1357,6 +1474,16 @@ export const HealthDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── Findings Drawer ── */}
+      <FindingsDrawer
+        finding={selectedFinding}
+        onClose={() => setSelectedFinding(null)}
+        onOpenFile={handleOpenFile}
+        onAskAI={handleAskAI}
+        onDismiss={handleDismissFinding}
+        onUndismiss={handleUndismissFinding}
+      />
     </div>
   );
 };

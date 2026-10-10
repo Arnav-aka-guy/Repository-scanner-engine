@@ -85,6 +85,8 @@ export const Overview: React.FC = () => {
   const selectLocalDirectory = useWorkspaceStore((s) => s.selectLocalDirectory);
   const recentRepositories = useWorkspaceStore((s) => s.recentRepositories);
   const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
+  const cachedHealthScore = useWorkspaceStore((s) => s.cachedHealthScore);
+  const setCachedHealthScore = useWorkspaceStore((s) => s.setCachedHealthScore);
 
   const [inputPath, setInputPath] = useState('');
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
@@ -144,9 +146,15 @@ export const Overview: React.FC = () => {
       return;
     }
 
+    if (cachedHealthScore[activeRepository]) {
+      setHealthScore(cachedHealthScore[activeRepository]);
+    }
+
     let isMounted = true;
     const fetchHealthData = async () => {
-      setHealthLoading(true);
+      if (!cachedHealthScore[activeRepository]) {
+        setHealthLoading(true);
+      }
       setHealthError(null);
       try {
         const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
@@ -157,12 +165,15 @@ export const Overview: React.FC = () => {
         ]);
 
         if (isMounted) {
-          if (hs) setHealthScore(hs);
+          if (hs) {
+            setHealthScore(hs);
+            setCachedHealthScore(activeRepository, hs);
+          }
           if (td) setTechDebt(td);
           if (dr) setDepRisk(dr);
         }
       } catch (err: any) {
-        if (isMounted) {
+        if (isMounted && !cachedHealthScore[activeRepository]) {
           setHealthError(err.message || 'Failed to calculate health metrics.');
         }
       } finally {

@@ -19,9 +19,16 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from backend.health.models import (
+    DimensionScore,
+    FileScoreContribution,
+    HealthReport,
+    MeasuredMetric,
+    ScorePenalty,
+)
 
 if TYPE_CHECKING:
     from backend.graph.models import AnalysisResult
@@ -79,114 +86,6 @@ _SECRET_PATTERNS = [
 # ── 2. Formal Data Models ─────────────────────────────────────────────────
 
 
-@dataclass
-class MeasuredMetric:
-    """A measured parameter with observed value, unit, threshold, and status."""
-
-    name: str
-    key: str
-    measured_value: Any
-    display_value: str
-    unit: str
-    threshold: Any
-    threshold_display: str
-    status: str  # "good" | "review" | "at_risk"
-    description: str
-
-
-@dataclass
-class ScorePenalty:
-    """An exact mathematical deduction applied to a dimension based on rule evaluation."""
-
-    rule_id: str
-    rule_name: str
-    points_deducted: float
-    reason: str
-    threshold: str
-    observed: str
-    severity: str  # "critical" | "high" | "medium" | "low"
-    confidence: str  # "high" | "medium" | "low"
-    affected_files: list[str] = field(default_factory=list)
-
-
-@dataclass
-class FileScoreContribution:
-    """A top file contributing to deductions within a dimension."""
-
-    file_path: str
-    deduction_points: float
-    finding_count: int
-    summary: str
-
-
-@dataclass
-class DimensionScore:
-    """Score for a single health dimension with complete transparency."""
-
-    name: str
-    score: float
-    max_score: float = 20.0
-    weight: float = 0.20
-    key: str = ""
-    status: str = "Healthy"  # "Healthy" | "Needs Review" | "At Risk"
-    starting_score: float = 20.0
-    total_penalties: float = 0.0
-    formula: str = ""
-    metrics: list[MeasuredMetric] = field(default_factory=list)
-    penalties: list[ScorePenalty] = field(default_factory=list)
-    top_contributors: list[FileScoreContribution] = field(default_factory=list)
-    deductions: list[str] = field(default_factory=list)  # backward compatibility
-
-
-@dataclass
-class IssueCountsSummary:
-    """Clear breakdown of raw signals vs scoring rules vs actionable issues."""
-
-    raw_signals: int
-    scoring_rules_triggered: int
-    prioritized_actionable: int
-    files_affected: int
-    explanation: str
-
-
-@dataclass
-class AnalysisStatistics:
-    """Raw codebase telemetry measured by the static analysis pipeline."""
-
-    files_analyzed: int
-    total_lines: int
-    total_functions: int
-    total_classes: int
-    public_functions: int
-    documented_functions: int
-    undocumented_functions: int
-    average_function_length: float
-    max_function_length: int
-    longest_function: str
-    circular_dependencies: int
-    architecture_violations: int
-    potential_secrets: int
-    total_code_smells: int
-    god_classes_count: int
-    oversized_files_count: int
-
-
-@dataclass
-class HealthReport:
-    """Complete transparent health report."""
-
-    total_score: float
-    grade: str  # A, B, C, D, F
-    dimensions: list[DimensionScore]
-    summary: str
-    file_count: int = 0
-    total_lines: int = 0
-    weights: dict[str, float] = field(default_factory=dict)
-    scoring_formula: str = ""
-    issue_counts: IssueCountsSummary | None = None
-    statistics: AnalysisStatistics | None = None
-
-
 def _grade(score: float) -> str:
     """Convert a 0–100 score to a letter grade."""
     if score >= 90:
@@ -197,7 +96,7 @@ def _grade(score: float) -> str:
         return "C"
     if score >= 60:
         return "D"
-    return "F"
+    return "E"
 
 
 def _status_for_score(score: float, max_score: float = 20.0) -> str:
@@ -980,139 +879,7 @@ def compute_health_score(
     parsed_files: dict[str, ParsedFile],
     analysis: AnalysisResult | None = None,
 ) -> HealthReport:
-    """Compute the full transparent health score for a parsed repository."""
-    dimensions = [
-        _score_documentation(parsed_files),
-        _score_complexity(parsed_files),
-        _score_architecture(parsed_files, analysis),
-        _score_maintainability(parsed_files),
-        _score_security(parsed_files),
-    ]
+    """Compute the full transparent health score for a parsed repository using backend.health engine."""
+    from backend.health.service import compute_health_report
 
-    total = sum(d.score for d in dimensions)
-
-    file_count = len(parsed_files)
-    total_lines = 0
-    total_funcs = 0
-    total_classes = 0
-    public_funcs = 0
-    doc_funcs = 0
-    undoc_funcs = 0
-    max_func_len = 0
-    longest_func_name = ""
-    god_classes_count = 0
-    oversized_files_count = 0
-    func_lengths: list[int] = []
-
-    for path, pf in parsed_files.items():
-        f_max = max((f.end_line for f in pf.functions), default=0)
-        c_max = max((c.end_line for c in pf.classes), default=0)
-        file_lines = max(f_max, c_max)
-        total_lines += file_lines
-
-        if file_lines > THRESHOLDS["complexity"]["large_file_lines"]:
-            oversized_files_count += 1
-
-        for f in pf.functions:
-            total_funcs += 1
-            if not f.name.startswith("_"):
-                public_funcs += 1
-            if f.docstring:
-                doc_funcs += 1
-            else:
-                undoc_funcs += 1
-            flen = f.end_line - f.start_line
-            func_lengths.append(flen)
-            if flen > max_func_len:
-                max_func_len = flen
-                longest_func_name = f"{f.name}() in {Path(path).name} ({flen} lines)"
-
-        for c in pf.classes:
-            total_classes += 1
-            if len(c.methods) > THRESHOLDS["maintainability"]["god_class_methods"]:
-                god_classes_count += 1
-            for m in c.methods:
-                total_funcs += 1
-                if not m.name.startswith("_"):
-                    public_funcs += 1
-                if m.docstring:
-                    doc_funcs += 1
-                else:
-                    undoc_funcs += 1
-                mlen = m.end_line - m.start_line
-                func_lengths.append(mlen)
-                if mlen > max_func_len:
-                    max_func_len = mlen
-                    longest_func_name = f"{c.name}.{m.name}() in {Path(path).name} ({mlen} lines)"
-
-    all_penalties: list[ScorePenalty] = []
-    for dim in dimensions:
-        all_penalties.extend(dim.penalties)
-
-    scoring_rules_triggered = len(all_penalties)
-    prioritized_actionable = sum(1 for p in all_penalties if p.severity in ("critical", "high"))
-    affected_files = len({f for p in all_penalties for f in p.affected_files})
-
-    # Raw code smell signals count (from penalties or estimate)
-    raw_signals_estimate = sum(
-        (len(p.affected_files) if p.affected_files else 1)
-        * (3 if p.severity == "critical" else 2 if p.severity == "high" else 1)
-        for p in all_penalties
-    )
-
-    issue_counts = IssueCountsSummary(
-        raw_signals=max(raw_signals_estimate, scoring_rules_triggered),
-        scoring_rules_triggered=scoring_rules_triggered,
-        prioritized_actionable=prioritized_actionable,
-        files_affected=affected_files,
-        explanation=(
-            f"{scoring_rules_triggered} scoring deduction rules triggered "
-            f"across {affected_files or file_count} files, producing {prioritized_actionable} high-priority actionable issues."
-        ),
-    )
-
-    avg_f_len = round(sum(func_lengths) / len(func_lengths), 1) if func_lengths else 0.0
-
-    statistics = AnalysisStatistics(
-        files_analyzed=file_count,
-        total_lines=total_lines,
-        total_functions=total_funcs,
-        total_classes=total_classes,
-        public_functions=public_funcs,
-        documented_functions=doc_funcs,
-        undocumented_functions=undoc_funcs,
-        average_function_length=avg_f_len,
-        max_function_length=max_func_len,
-        longest_function=longest_func_name or "N/A",
-        circular_dependencies=len(analysis.circular_dependencies) if analysis else 0,
-        architecture_violations=0,
-        potential_secrets=sum(len(p.affected_files) for p in all_penalties if p.rule_id == "hardcoded_secrets"),
-        total_code_smells=scoring_rules_triggered,
-        god_classes_count=god_classes_count,
-        oversized_files_count=oversized_files_count,
-    )
-
-    summary_parts = [f"Repository health score: {total:.0f}/100 ({_grade(total)})"]
-    if scoring_rules_triggered > 0:
-        summary_parts.append(f"{scoring_rules_triggered} issue(s) found across {file_count} files.")
-    else:
-        summary_parts.append("No significant issues detected.")
-
-    formula_parts = " + ".join(f"{d.name}: {d.score:.0f}/20 ({d.weight * 100:.0f}%)" for d in dimensions)
-    scoring_formula = f"Overall Health = {formula_parts} = {total:.0f}/100"
-
-    report = HealthReport(
-        total_score=round(total, 1),
-        grade=_grade(total),
-        dimensions=dimensions,
-        summary=" ".join(summary_parts),
-        file_count=file_count,
-        total_lines=total_lines,
-        weights=HEALTH_WEIGHTS,
-        scoring_formula=scoring_formula,
-        issue_counts=issue_counts,
-        statistics=statistics,
-    )
-
-    logger.info("Health score computed: %s/100 (%s)", report.total_score, report.grade)
-    return report
+    return compute_health_report(parsed_files, analysis)

@@ -55,6 +55,10 @@ interface WorkspaceState {
   docsLoading: boolean;
   docsError: string | null;
 
+  // ── Health Cache ──────────────────────────────────────────────────
+  cachedHealthScore: Record<string, any>;
+  setCachedHealthScore: (repoPath: string, score: any) => void;
+
   // ── Actions ────────────────────────────────────────────────────────
   scanRepo: (path: string) => Promise<void>;
   setSelectedFile: (path: string | null) => void;
@@ -166,6 +170,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       generatedDocs: null,
       docsLoading: false,
       docsError: null,
+
+      // ── Health Cache ────────────────────────────────────────────────
+      cachedHealthScore: {},
+      setCachedHealthScore: (repoPath: string, score: any) =>
+        set((s) => ({
+          cachedHealthScore: { ...s.cachedHealthScore, [repoPath]: score },
+        })),
 
       // ── Actions ────────────────────────────────────────────────────
 

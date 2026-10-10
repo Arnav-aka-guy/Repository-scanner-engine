@@ -33,6 +33,9 @@ class HealthScoreResponse(BaseModel):
     scoring_formula: str = ""
     statistics: dict[str, Any] = Field(default_factory=dict)
     issue_counts: dict[str, Any] = Field(default_factory=dict)
+    findings: list[dict[str, Any]] = Field(default_factory=list)
+    scoring_version: str = "2.0.0"
+    baselines_version: str = "2026.1"
 
 
 @router.get("", response_model=HealthScoreResponse)
@@ -73,6 +76,9 @@ async def get_health_score(
         scoring_formula=report.scoring_formula,
         statistics=asdict(report.statistics) if report.statistics else {},
         issue_counts=asdict(report.issue_counts) if report.issue_counts else {},
+        findings=[asdict(f) for f in getattr(report, "findings", [])],
+        scoring_version=getattr(report, "scoring_version", "2.0.0"),
+        baselines_version=getattr(report, "baselines_version", "2026.1"),
         dimensions=[
             {
                 "name": d.name,
