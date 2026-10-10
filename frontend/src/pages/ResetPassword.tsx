@@ -107,7 +107,7 @@ export const ResetPassword: React.FC = () => {
 
         {error && (
           <div style={{ marginBottom: '16px' }}>
-            <ErrorCard title="Reset failed" technicalError={error} />
+            <ErrorCard title="Reset failed" whatHappened={error} />
           </div>
         )}
 

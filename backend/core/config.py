@@ -103,13 +103,23 @@ class Settings(BaseSettings):
     database_enabled: bool = False
 
     # ── Authentication ────────────────────────────────────────────────
+    local_mode: bool = False
     auth_enabled: bool = False
-    # Safe placeholder for development (only safe when auth_enabled=False).
     jwt_secret_key: str = "change-me-to-a-random-secret"
     jwt_algorithm: str = "HS256"
-    jwt_expiry_hours: int = 24
+    jwt_issuer: str = "repository-scanner-engine"
+    jwt_audience: str = "repository-scanner-client"
+    jwt_expiry_hours: int = 1
+    refresh_token_expiry_days: int = 7
     admin_username: str = "admin"
     admin_password_hash: str = ""
+
+    # ── SMTP (Optional for password reset) ───────────────────────────
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "noreply@antigravity.local"
 
     # ── CORS ──────────────────────────────────────────────────────────
     cors_origins: list[str] = [

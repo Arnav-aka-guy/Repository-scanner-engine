@@ -1,11 +1,13 @@
 """Authentication endpoints for multi-user registration, login, profile, and status."""
 
+import hashlib
 import logging
 import re
 import secrets
+import uuid
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,15 +15,23 @@ from backend.core.config import get_settings
 from backend.db.database import get_db
 from backend.db.repositories import (
     count_user_repositories,
+    create_refresh_token_record,
     create_user,
+    get_refresh_token_record,
     get_user_by_email,
     get_user_by_id,
+    increment_user_token_version,
+    revoke_refresh_token,
+    revoke_user_refresh_tokens,
 )
 from backend.security.auth import (
     create_access_token,
+    create_refresh_token,
     get_required_user,
     hash_password,
+    verify_and_update_password,
     verify_password,
+    verify_token,
 )
 from backend.security.rate_limiter import limiter
 
@@ -83,6 +93,12 @@ class AuthStatusResponse(BaseModel):
     auth_enabled: bool
 
 
+class MessageResponse(BaseModel):
+    """Standard message response."""
+
+    message: str
+
+
 # ── Endpoints ───────────────────────────────────────────────────────────
 
 
@@ -90,6 +106,7 @@ class AuthStatusResponse(BaseModel):
 @limiter.limit(AUTH_TOKEN_RATE)
 async def register_user(
     request: Request,
+    response: Response,
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
@@ -132,7 +149,26 @@ async def register_user(
             "user_id": user.id,
             "email": user.email,
             "name": user.name,
+            "ver": getattr(user, "token_version", 1),
         }
+    )
+
+    refresh_token, token_hash, expires_at = create_refresh_token(
+        user.id, token_version=getattr(user, "token_version", 1)
+    )
+    await create_refresh_token_record(
+        db, user_id=user.id, token_hash=token_hash, jti=uuid.uuid4().hex, expires_at=expires_at
+    )
+    await db.commit()
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        expires=int(expires_at.timestamp()),
+        path="/api/auth",
     )
 
     logger.info("New user registered successfully: %s (%s)", user.name, user.email)
@@ -154,14 +190,17 @@ async def register_user(
 @limiter.limit(AUTH_TOKEN_RATE)
 async def login_user(
     request: Request,
+    response: Response,
     credentials: UserLoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
-    """Authenticate user with email and password, returning a JWT access token."""
+    """Authenticate user with email and password, returning a JWT access token and rotating refresh cookie."""
     clean_email = credentials.email.strip().lower()
     user = await get_user_by_email(db, clean_email)
 
-    if user is None or not verify_password(credentials.password, user.password_hash):
+    is_valid, new_hash = verify_and_update_password(credentials.password, user.password_hash if user else "")
+
+    if user is None or not is_valid:
         # Check backward-compatible admin fallback
         settings = get_settings()
         if (
@@ -184,6 +223,7 @@ async def login_user(
                     "user_id": admin_user.id,
                     "email": admin_user.email,
                     "name": admin_user.name,
+                    "ver": getattr(admin_user, "token_version", 1),
                 }
             )
             count = await count_user_repositories(db, admin_user.id)
@@ -213,13 +253,38 @@ async def login_user(
             detail="Account is inactive.",
         )
 
+    # Seamless password upgrade if needs rehash (e.g. from bcrypt to argon2id)
+    if new_hash:
+        user.password_hash = new_hash
+        await db.flush()
+
+    token_version = getattr(user, "token_version", 1)
     token = create_access_token(
         data={
             "sub": str(user.id),
             "user_id": user.id,
             "email": user.email,
             "name": user.name,
+            "ver": token_version,
         }
+    )
+
+    # Issue refresh token and persist hashed record
+    raw_refresh, token_hash, expires_at = create_refresh_token(user.id, token_version=token_version)
+    await create_refresh_token_record(
+        db, user_id=user.id, token_hash=token_hash, jti=uuid.uuid4().hex, expires_at=expires_at
+    )
+    await db.commit()
+
+    # Set httpOnly cookie for refresh token
+    response.set_cookie(
+        key="refresh_token",
+        value=raw_refresh,
+        httponly=True,
+        samesite="lax",
+        secure=False,  # Set True in HTTPS production
+        expires=int(expires_at.timestamp()),
+        path="/api/auth",
     )
 
     repo_count = await count_user_repositories(db, user.id)
@@ -236,6 +301,116 @@ async def login_user(
             max_repositories=5,
         ),
     )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_access_token(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Rotate refresh token and issue a fresh access token."""
+    raw_cookie = request.cookies.get("refresh_token")
+    if not raw_cookie:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing refresh token cookie.",
+        )
+
+    try:
+        payload = verify_token(raw_cookie, expected_type="refresh")
+    except HTTPException:
+        response.delete_cookie("refresh_token", path="/api/auth")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token.",
+        )
+
+    user_id = int(payload["sub"])
+    token_hash = hashlib.sha256(raw_cookie.encode("utf-8")).hexdigest()
+    record = await get_refresh_token_record(db, token_hash)
+
+    # Reuse detection / revocation
+    if not record or record.revoked:
+        await revoke_user_refresh_tokens(db, user_id)
+        await increment_user_token_version(db, user_id)
+        await db.commit()
+        response.delete_cookie("refresh_token", path="/api/auth")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Revoked refresh token reused. All sessions terminated.",
+        )
+
+    user = await get_user_by_id(db, user_id)
+    if not user or not user.is_active or user.token_version != payload.get("ver", 1):
+        await revoke_refresh_token(db, token_hash)
+        await db.commit()
+        response.delete_cookie("refresh_token", path="/api/auth")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired.",
+        )
+
+    # Revoke current token and issue replacement (rotation)
+    await revoke_refresh_token(db, token_hash)
+    new_raw_refresh, new_token_hash, new_expires_at = create_refresh_token(
+        user.id, token_version=user.token_version
+    )
+    await create_refresh_token_record(
+        db, user_id=user.id, token_hash=new_token_hash, jti=uuid.uuid4().hex, expires_at=new_expires_at
+    )
+
+    new_access_token = create_access_token(
+        data={
+            "sub": str(user.id),
+            "user_id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "ver": user.token_version,
+        }
+    )
+    await db.commit()
+
+    response.set_cookie(
+        key="refresh_token",
+        value=new_raw_refresh,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        expires=int(new_expires_at.timestamp()),
+        path="/api/auth",
+    )
+
+    repo_count = await count_user_repositories(db, user.id)
+    return TokenResponse(
+        access_token=new_access_token,
+        token_type="bearer",
+        user=UserProfileResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            created_at=user.created_at,
+            repository_count=repo_count,
+            max_repositories=5,
+        ),
+    )
+
+
+@router.post("/logout")
+async def logout_user(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    """Revoke current refresh token and clear cookie."""
+    raw_cookie = request.cookies.get("refresh_token")
+    if raw_cookie:
+        token_hash = hashlib.sha256(raw_cookie.encode("utf-8")).hexdigest()
+        await revoke_refresh_token(db, token_hash)
+        await db.commit()
+
+    response.delete_cookie("refresh_token", path="/api/auth")
+    return MessageResponse(message="Successfully logged out.")
 
 
 @router.get("/me", response_model=UserProfileResponse)

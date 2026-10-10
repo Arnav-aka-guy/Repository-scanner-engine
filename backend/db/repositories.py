@@ -54,6 +54,74 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def increment_user_token_version(db: AsyncSession, user_id: int) -> int:
+    """Increment user's token version to invalidate all active JWTs and refresh tokens."""
+    user = await get_user_by_id(db, user_id)
+    if user:
+        user.token_version = (user.token_version or 1) + 1
+        await db.flush()
+        return user.token_version
+    return 1
+
+
+# ── Refresh Token CRUD ─────────────────────────────────────────────────
+
+
+async def create_refresh_token_record(
+    db: AsyncSession,
+    *,
+    user_id: int,
+    token_hash: str,
+    jti: str,
+    expires_at: datetime,
+) -> None:
+    """Save a hashed refresh token record in the database."""
+    from backend.db.models import RefreshToken
+
+    record = RefreshToken(
+        user_id=user_id,
+        token_hash=token_hash,
+        jti=jti,
+        expires_at=expires_at,
+        revoked=False,
+    )
+    db.add(record)
+    await db.flush()
+
+
+async def get_refresh_token_record(
+    db: AsyncSession,
+    token_hash: str,
+):
+    """Retrieve refresh token record by its SHA-256 hash."""
+    from backend.db.models import RefreshToken
+
+    stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def revoke_refresh_token(db: AsyncSession, token_hash: str) -> bool:
+    """Mark a refresh token as revoked."""
+    record = await get_refresh_token_record(db, token_hash)
+    if record:
+        record.revoked = True
+        await db.flush()
+        return True
+    return False
+
+
+async def revoke_user_refresh_tokens(db: AsyncSession, user_id: int) -> int:
+    """Revoke all refresh tokens for a user upon logout or token theft detection."""
+    from sqlalchemy import update
+    from backend.db.models import RefreshToken
+
+    stmt = update(RefreshToken).where(RefreshToken.user_id == user_id).values(revoked=True)
+    res = await db.execute(stmt)
+    await db.flush()
+    return res.rowcount or 0
+
+
 # ── User-scoped Repository CRUD ─────────────────────────────────────────
 
 

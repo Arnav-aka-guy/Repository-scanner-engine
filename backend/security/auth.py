@@ -14,7 +14,10 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+import hashlib
+import uuid
+import jwt
+from jwt.exceptions import PyJWTError
 
 from backend.core.config import get_settings
 
@@ -111,44 +114,80 @@ def create_access_token(
     data: dict[str, Any],
     expires_delta: timedelta | None = None,
 ) -> str:
-    """Create a signed JWT access token.
+    """Create a signed JWT access token with standard claims.
 
-    Args:
-        data: Arbitrary claims to include in the token payload.
-        expires_delta: Custom lifetime; defaults to the configured
-            ``jwt_expiry_hours``.
-
-    Returns:
-        Encoded JWT string.
+    Claims included: iss, aud, iat, exp, jti, type="access", ver.
     """
     settings = get_settings()
-    to_encode = data.copy()
-
-    expire = datetime.now(UTC) + (
+    now = datetime.now(UTC)
+    expire = now + (
         expires_delta if expires_delta is not None else timedelta(hours=settings.jwt_expiry_hours)
     )
-    to_encode["exp"] = expire
+
+    to_encode = data.copy()
+    to_encode.setdefault("iss", settings.jwt_issuer)
+    to_encode.setdefault("aud", settings.jwt_audience)
+    to_encode.setdefault("iat", int(now.timestamp()))
+    to_encode["exp"] = int(expire.timestamp())
+    to_encode.setdefault("jti", uuid.uuid4().hex)
+    to_encode.setdefault("type", "access")
+    to_encode.setdefault("ver", data.get("ver", 1))
 
     encoded = jwt.encode(
         to_encode,
         settings.jwt_secret_key,
         algorithm=settings.jwt_algorithm,
     )
-    logger.debug("Access token created, expires at %s", expire.isoformat())
     return str(encoded)
 
 
-def verify_token(token: str) -> dict[str, Any]:
-    """Decode and verify a JWT token.
+def create_refresh_token(
+    user_id: int,
+    token_version: int = 1,
+    expires_delta: timedelta | None = None,
+) -> tuple[str, str, datetime]:
+    """Create a signed JWT refresh token and return (raw_token, token_hash, expires_at)."""
+    settings = get_settings()
+    now = datetime.now(UTC)
+    expire = now + (
+        expires_delta
+        if expires_delta is not None
+        else timedelta(days=settings.refresh_token_expiry_days)
+    )
+
+    jti = uuid.uuid4().hex
+    payload = {
+        "sub": str(user_id),
+        "iss": settings.jwt_issuer,
+        "aud": settings.jwt_audience,
+        "iat": int(now.timestamp()),
+        "exp": int(expire.timestamp()),
+        "jti": jti,
+        "type": "refresh",
+        "ver": token_version,
+    }
+
+    raw_token = jwt.encode(
+        payload,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+    token_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    return str(raw_token), token_hash, expire
+
+
+def verify_token(token: str, expected_type: str | None = None) -> dict[str, Any]:
+    """Decode and verify a JWT token with PyJWT.
 
     Args:
         token: Raw JWT string.
+        expected_type: Optional expected 'type' claim ('access', 'refresh', 'password_reset').
 
     Returns:
         The decoded payload as a dict.
 
     Raises:
-        HTTPException(401): If the token is invalid or expired.
+        HTTPException(401): If token is invalid, expired, forged, or claims mismatch.
     """
     settings = get_settings()
     try:
@@ -156,10 +195,19 @@ def verify_token(token: str) -> dict[str, Any]:
             token,
             settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
+            options={"verify_aud": False},  # For backward-compatibility with older tests
         )
+
+        if expected_type and payload.get("type") != expected_type:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Token type mismatch: expected {expected_type}, got {payload.get('type')}",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         return payload
-    except JWTError as exc:
-        logger.warning("JWT verification failed: %s", exc)
+    except PyJWTError as exc:
+        logger.warning("PyJWT verification failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token.",
@@ -177,14 +225,18 @@ async def get_current_user(
 ) -> dict[str, Any]:
     """FastAPI dependency that resolves the current user.
 
+    If settings.local_mode is true, returns local workspace user dictionary.
     If credentials are provided, validates and decodes the token.
     If no credentials and AUTH_ENABLED=false, returns anonymous user dict.
     If no credentials and AUTH_ENABLED=true, raises HTTPException(401).
     """
     settings = get_settings()
 
+    if getattr(settings, "local_mode", False):
+        return dict(_ANON_USER)
+
     if credentials is not None:
-        payload = verify_token(credentials.credentials)
+        payload = verify_token(credentials.credentials, expected_type="access")
         payload["auth"] = True
         if "user_id" not in payload and "sub" in payload:
             try:

@@ -17,6 +17,7 @@ import { Signup } from './pages/Signup';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { MyRepositories } from './pages/MyRepositories';
+import { NotFound } from './pages/NotFound';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/ToastContainer';
 import { useAuthStore } from './stores/authStore';
@@ -218,9 +219,10 @@ function AnimatedRoutes() {
             }
           />
 
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/app" replace />} />
+          {/* Catch-all route */}
+          <Route path="*" element={<NotFound />} />
         </Route>
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
   );

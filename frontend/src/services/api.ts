@@ -2,6 +2,40 @@ import { useAuthStore } from '../stores/authStore';
 
 const API_BASE = '/api';
 
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newToken = data.access_token;
+        useAuthStore.getState().setToken(newToken);
+        if (data.user) {
+          useAuthStore.getState().setUser(data.user);
+        }
+        return newToken;
+      }
+    } catch {
+      // refresh failed
+    } finally {
+      refreshPromise = null;
+    }
+    useAuthStore.getState().logout();
+    return null;
+  })();
+
+  return refreshPromise;
+}
+
 function getAuthHeaders(): Record<string, string> {
   const token = useAuthStore.getState().token;
   if (token) {
@@ -46,6 +80,15 @@ export async function apiGet<T>(path: string, params?: Record<string, string>): 
     throw err;
   }
 
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      response = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${newToken}` },
+      });
+    }
+  }
+
   if (response.status === 401) {
     useAuthStore.getState().logout();
   }
@@ -77,6 +120,20 @@ export async function apiPost<T>(path: string, body: any): Promise<T> {
       );
     }
     throw err;
+  }
+
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      response = await fetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+    }
   }
 
   if (response.status === 401) {
@@ -197,6 +254,16 @@ export async function apiDelete<T = any>(path: string, params?: Record<string, s
       );
     }
     throw err;
+  }
+
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      response = await fetch(url.toString(), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${newToken}` },
+      });
+    }
   }
 
   if (response.status === 401) {
