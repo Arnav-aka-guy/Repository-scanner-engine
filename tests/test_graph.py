@@ -31,6 +31,7 @@ pytestmark = pytest.mark.skipif(nx is None, reason="networkx not installed")
 # Fixtures — mock parsed files
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def parsed_files() -> list[ParsedFile]:
     """Return a small set of ParsedFile objects simulating three modules."""
@@ -113,6 +114,7 @@ def cyclic_parsed_files() -> list[ParsedFile]:
 # Helper — build a simple NetworkX digraph from ParsedFile data
 # ---------------------------------------------------------------------------
 
+
 def build_import_graph(parsed_files: list[ParsedFile]) -> nx.DiGraph:
     """Build a directed graph where edges represent import relationships."""
     g = nx.DiGraph()
@@ -157,9 +159,7 @@ def build_call_graph(parsed_files: list[ParsedFile]) -> nx.DiGraph:
                 caller_id = f"{pf.file_path}::{cls.name}.{method.name}"
                 for callee_name in method.calls:
                     if callee_name in name_to_id:
-                        g.add_edge(
-                            caller_id, name_to_id[callee_name], edge_type="calls"
-                        )
+                        g.add_edge(caller_id, name_to_id[callee_name], edge_type="calls")
 
     return g
 
@@ -167,6 +167,7 @@ def build_call_graph(parsed_files: list[ParsedFile]) -> nx.DiGraph:
 # ---------------------------------------------------------------------------
 # Tests — Dependency graph construction
 # ---------------------------------------------------------------------------
+
 
 class TestGraphConstruction:
     """Verify the import graph is built correctly from parsed files."""
@@ -194,15 +195,14 @@ class TestGraphConstruction:
     def test_call_graph_edges(self, parsed_files: list[ParsedFile]) -> None:
         """Call edges should link callers to callees."""
         g = build_call_graph(parsed_files)
-        call_edges = [
-            (u, v) for u, v, d in g.edges(data=True) if d.get("edge_type") == "calls"
-        ]
+        call_edges = [(u, v) for u, v, d in g.edges(data=True) if d.get("edge_type") == "calls"]
         assert len(call_edges) >= 1
 
 
 # ---------------------------------------------------------------------------
 # Tests — Cycle detection
 # ---------------------------------------------------------------------------
+
 
 class TestCycleDetection:
     """Circular dependencies should be identifiable."""
@@ -229,6 +229,7 @@ class TestCycleDetection:
 # Tests — Dead code detection
 # ---------------------------------------------------------------------------
 
+
 class TestDeadCodeDetection:
     """Nodes with no incoming edges (except entry points) are dead code."""
 
@@ -252,6 +253,7 @@ class TestDeadCodeDetection:
 # ---------------------------------------------------------------------------
 # Tests — Graph models
 # ---------------------------------------------------------------------------
+
 
 class TestGraphModels:
     """Validate the Pydantic graph models serialize correctly."""

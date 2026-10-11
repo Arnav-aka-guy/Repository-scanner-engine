@@ -45,6 +45,7 @@ EXPECTED_DIM = 384  # output dimension for all-MiniLM-L6-v2
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def model():
     """Load the sentence-transformer model once per test module."""
@@ -69,6 +70,7 @@ def sample_texts() -> list[str]:
 # ---------------------------------------------------------------------------
 # Tests — Encoding dimensionality
 # ---------------------------------------------------------------------------
+
 
 class TestEncoding:
     """Verify that the model produces vectors with correct shape."""
@@ -111,6 +113,7 @@ class TestEncoding:
 # ---------------------------------------------------------------------------
 # Tests — FAISS vector store
 # ---------------------------------------------------------------------------
+
 
 class TestVectorStore:
     """Basic FAISS index operations: add, search, save, load."""
@@ -191,6 +194,7 @@ class TestVectorStore:
 # ---------------------------------------------------------------------------
 # Tests — Metadata store (simple JSON sidecar pattern)
 # ---------------------------------------------------------------------------
+
 
 class TestMetadataStore:
     """The vector store should pair each vector with retrievable metadata."""

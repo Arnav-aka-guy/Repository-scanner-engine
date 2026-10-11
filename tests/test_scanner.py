@@ -17,6 +17,7 @@ from backend.core.models import FileInfo, RepositoryInfo
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def sample_repo(tmp_path: Path) -> Path:
     """Create a small fake repository under *tmp_path*."""
@@ -86,6 +87,7 @@ def repo_with_gitignore(tmp_path: Path) -> Path:
 # Tests — File discovery
 # ---------------------------------------------------------------------------
 
+
 class TestFileDiscovery:
     """Verify that the scanner finds the expected files."""
 
@@ -97,9 +99,7 @@ class TestFileDiscovery:
 
     def test_discovers_all_file_types(self, sample_repo: Path) -> None:
         """Scanner should report files regardless of extension."""
-        all_files = [
-            p for p in sample_repo.rglob("*") if p.is_file()
-        ]
+        all_files = [p for p in sample_repo.rglob("*") if p.is_file()]
         # 5 .py + README.md + config.json = 7
         assert len(all_files) == 7
 
@@ -155,15 +155,14 @@ class TestLanguageDetection:
 # Tests — .gitignore filtering
 # ---------------------------------------------------------------------------
 
+
 class TestGitignoreRespect:
     """Files matching .gitignore patterns must be excluded from scan results."""
 
     def test_pycache_excluded(self, repo_with_gitignore: Path) -> None:
         """__pycache__ contents should not appear in results."""
         py_files = [
-            p
-            for p in repo_with_gitignore.rglob("*.py")
-            if "__pycache__" not in str(p) and "build" not in str(p)
+            p for p in repo_with_gitignore.rglob("*.py") if "__pycache__" not in str(p) and "build" not in str(p)
         ]
         # Only app.py and lib.py
         assert len(py_files) == 2
@@ -183,6 +182,7 @@ class TestGitignoreRespect:
 # ---------------------------------------------------------------------------
 # Tests — RepositoryInfo model
 # ---------------------------------------------------------------------------
+
 
 class TestRepositoryInfoModel:
     """Basic validation of the RepositoryInfo Pydantic model."""

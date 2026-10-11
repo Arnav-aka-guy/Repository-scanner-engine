@@ -173,8 +173,9 @@ class TestRateLimiterUserKeying:
 
     def test_rate_limiter_extracts_user_id(self):
         from starlette.requests import Request
-        from backend.security.rate_limiter import get_user_or_ip
+
         from backend.security.auth import create_access_token
+        from backend.security.rate_limiter import get_user_or_ip
 
         # Unauthenticated request falls back to IP
         scope_anon = {"type": "http", "client": ("127.0.0.1", 12345), "headers": []}
@@ -186,7 +187,7 @@ class TestRateLimiterUserKeying:
         scope_auth = {
             "type": "http",
             "client": ("127.0.0.1", 12345),
-            "headers": [(b"authorization", f"Bearer {token}".encode("utf-8"))],
+            "headers": [(b"authorization", f"Bearer {token}".encode())],
         }
         req_auth = Request(scope_auth)
         assert get_user_or_ip(req_auth) == "user:42"

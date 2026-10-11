@@ -90,23 +90,20 @@ def parsed_tree() -> ast.Module:
 # Tests — Import extraction
 # ---------------------------------------------------------------------------
 
+
 class TestImportExtraction:
     """Verify that imports are correctly identified from source."""
 
     def test_regular_imports(self, parsed_tree: ast.Module) -> None:
         """'import os' and 'import sys' should appear."""
-        imports = [
-            node for node in ast.walk(parsed_tree) if isinstance(node, ast.Import)
-        ]
+        imports = [node for node in ast.walk(parsed_tree) if isinstance(node, ast.Import)]
         names = [alias.name for node in imports for alias in node.names]
         assert "os" in names
         assert "sys" in names
 
     def test_from_imports(self, parsed_tree: ast.Module) -> None:
         """'from pathlib import Path' etc. should be captured."""
-        from_imports = [
-            node for node in ast.walk(parsed_tree) if isinstance(node, ast.ImportFrom)
-        ]
+        from_imports = [node for node in ast.walk(parsed_tree) if isinstance(node, ast.ImportFrom)]
         modules = [node.module for node in from_imports if node.module]
         assert "pathlib" in modules
         assert "collections" in modules
@@ -129,15 +126,13 @@ class TestImportExtraction:
 # Tests — Class extraction
 # ---------------------------------------------------------------------------
 
+
 class TestClassExtraction:
     """Verify class definitions are properly parsed."""
 
     def test_finds_all_classes(self, parsed_tree: ast.Module) -> None:
         """Two classes should be found in the sample."""
-        classes = [
-            node for node in ast.walk(parsed_tree)
-            if isinstance(node, ast.ClassDef)
-        ]
+        classes = [node for node in ast.walk(parsed_tree) if isinstance(node, ast.ClassDef)]
         assert len(classes) == 2
         names = {c.name for c in classes}
         assert names == {"Calculator", "AdvancedCalculator"}
@@ -145,13 +140,9 @@ class TestClassExtraction:
     def test_class_methods(self, parsed_tree: ast.Module) -> None:
         """Calculator should have __init__, add, and subtract methods."""
         calc_class = next(
-            node for node in ast.walk(parsed_tree)
-            if isinstance(node, ast.ClassDef) and node.name == "Calculator"
+            node for node in ast.walk(parsed_tree) if isinstance(node, ast.ClassDef) and node.name == "Calculator"
         )
-        methods = [
-            node.name for node in calc_class.body
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        ]
+        methods = [node.name for node in calc_class.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
         assert "__init__" in methods
         assert "add" in methods
         assert "subtract" in methods
@@ -159,12 +150,11 @@ class TestClassExtraction:
     def test_class_inheritance(self, parsed_tree: ast.Module) -> None:
         """AdvancedCalculator should list Calculator as a base."""
         adv = next(
-            node for node in ast.walk(parsed_tree)
+            node
+            for node in ast.walk(parsed_tree)
             if isinstance(node, ast.ClassDef) and node.name == "AdvancedCalculator"
         )
-        bases = [
-            base.id for base in adv.bases if isinstance(base, ast.Name)
-        ]
+        bases = [base.id for base in adv.bases if isinstance(base, ast.Name)]
         assert "Calculator" in bases
 
     def test_class_info_model(self) -> None:
@@ -185,8 +175,7 @@ class TestClassExtraction:
     def test_class_docstring(self, parsed_tree: ast.Module) -> None:
         """Classes with docstrings should have them extractable."""
         calc_class = next(
-            node for node in ast.walk(parsed_tree)
-            if isinstance(node, ast.ClassDef) and node.name == "Calculator"
+            node for node in ast.walk(parsed_tree) if isinstance(node, ast.ClassDef) and node.name == "Calculator"
         )
         docstring = ast.get_docstring(calc_class)
         assert docstring == "A simple calculator class."
@@ -196,27 +185,22 @@ class TestClassExtraction:
 # Tests — Function extraction
 # ---------------------------------------------------------------------------
 
+
 class TestFunctionExtraction:
     """Verify top-level functions and their internal calls."""
 
     def test_finds_top_level_functions(self, parsed_tree: ast.Module) -> None:
         """Two top-level functions should be found."""
-        funcs = [
-            node for node in parsed_tree.body
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        ]
+        funcs = [node for node in parsed_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
         names = {f.name for f in funcs}
         assert names == {"helper_function", "another_function"}
 
     def test_function_calls_detected(self, parsed_tree: ast.Module) -> None:
         """another_function calls Calculator(), calc.add(), and helper_function()."""
         func = next(
-            node for node in parsed_tree.body
-            if isinstance(node, ast.FunctionDef) and node.name == "another_function"
+            node for node in parsed_tree.body if isinstance(node, ast.FunctionDef) and node.name == "another_function"
         )
-        calls = [
-            node for node in ast.walk(func) if isinstance(node, ast.Call)
-        ]
+        calls = [node for node in ast.walk(func) if isinstance(node, ast.Call)]
         call_names: list[str] = []
         for call in calls:
             if isinstance(call.func, ast.Name):
@@ -242,8 +226,7 @@ class TestFunctionExtraction:
     def test_function_docstring(self, parsed_tree: ast.Module) -> None:
         """helper_function should have its docstring extractable."""
         func = next(
-            node for node in parsed_tree.body
-            if isinstance(node, ast.FunctionDef) and node.name == "helper_function"
+            node for node in parsed_tree.body if isinstance(node, ast.FunctionDef) and node.name == "helper_function"
         )
         docstring = ast.get_docstring(func)
         assert docstring == "A standalone helper function."
@@ -252,6 +235,7 @@ class TestFunctionExtraction:
 # ---------------------------------------------------------------------------
 # Tests — ParsedFile model
 # ---------------------------------------------------------------------------
+
 
 class TestParsedFileModel:
     """End-to-end: build a ParsedFile from extracted data."""

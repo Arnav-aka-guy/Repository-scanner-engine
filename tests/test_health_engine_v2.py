@@ -12,14 +12,13 @@ Validates all criteria from .agents/skills/health-scoring/SKILL.md:
 from __future__ import annotations
 
 import copy
+
 from backend.health.cognitive_complexity import (
-    calculate_cognitive_complexity,
     calculate_python_cognitive_complexity,
 )
 from backend.health.coupling import compute_local_coupling
-from backend.health.models import HealthReport
 from backend.health.scoring import calculate_grade
-from backend.health.secrets import mask_secret, scan_for_secrets
+from backend.health.secrets import scan_for_secrets
 from backend.health.service import compute_health_report
 from backend.parser.models import FunctionInfo, ImportInfo, ParsedFile
 
@@ -83,10 +82,50 @@ def test_rule_13_flat_long_function_incurs_zero_deduction() -> None:
 def test_scale_invariance_1x_vs_20x_replicated_repository() -> None:
     """A repository duplicated 20 times must give the same score band within ±3 points."""
     # 1x Repo with 5 functions: 4 good, 1 complex
-    f_good_1 = FunctionInfo(name="g1", args=[], return_type=None, decorators=[], start_line=1, end_line=15, docstring="ok", source_code="def g1(): return 1", calls=[])
-    f_good_2 = FunctionInfo(name="g2", args=[], return_type=None, decorators=[], start_line=1, end_line=15, docstring="ok", source_code="def g2(): return 2", calls=[])
-    f_good_3 = FunctionInfo(name="g3", args=[], return_type=None, decorators=[], start_line=1, end_line=15, docstring="ok", source_code="def g3(): return 3", calls=[])
-    f_good_4 = FunctionInfo(name="g4", args=[], return_type=None, decorators=[], start_line=1, end_line=15, docstring="ok", source_code="def g4(): return 4", calls=[])
+    f_good_1 = FunctionInfo(
+        name="g1",
+        args=[],
+        return_type=None,
+        decorators=[],
+        start_line=1,
+        end_line=15,
+        docstring="ok",
+        source_code="def g1(): return 1",
+        calls=[],
+    )
+    f_good_2 = FunctionInfo(
+        name="g2",
+        args=[],
+        return_type=None,
+        decorators=[],
+        start_line=1,
+        end_line=15,
+        docstring="ok",
+        source_code="def g2(): return 2",
+        calls=[],
+    )
+    f_good_3 = FunctionInfo(
+        name="g3",
+        args=[],
+        return_type=None,
+        decorators=[],
+        start_line=1,
+        end_line=15,
+        docstring="ok",
+        source_code="def g3(): return 3",
+        calls=[],
+    )
+    f_good_4 = FunctionInfo(
+        name="g4",
+        args=[],
+        return_type=None,
+        decorators=[],
+        start_line=1,
+        end_line=15,
+        docstring="ok",
+        source_code="def g4(): return 4",
+        calls=[],
+    )
 
     # 1 deeply complex function
     complex_src = """
@@ -100,7 +139,17 @@ def complex_fn(a, b, c, d):
                             break
     return 0
 """
-    f_bad = FunctionInfo(name="bad", args=[], return_type=None, decorators=[], start_line=1, end_line=25, docstring="ok", source_code=complex_src, calls=[])
+    f_bad = FunctionInfo(
+        name="bad",
+        args=[],
+        return_type=None,
+        decorators=[],
+        start_line=1,
+        end_line=25,
+        docstring="ok",
+        source_code=complex_src,
+        calls=[],
+    )
 
     repo_1x = {
         "src/mod_a.py": ParsedFile(file_path="src/mod_a.py", language="Python", functions=[f_good_1, f_good_2]),
@@ -111,8 +160,16 @@ def complex_fn(a, b, c, d):
     # 20x replicated repo
     repo_20x: dict[str, ParsedFile] = {}
     for i in range(20):
-        repo_20x[f"src/mod_a_{i}.py"] = ParsedFile(file_path=f"src/mod_a_{i}.py", language="Python", functions=[copy.deepcopy(f_good_1), copy.deepcopy(f_good_2)])
-        repo_20x[f"src/mod_b_{i}.py"] = ParsedFile(file_path=f"src/mod_b_{i}.py", language="Python", functions=[copy.deepcopy(f_good_3), copy.deepcopy(f_good_4), copy.deepcopy(f_bad)])
+        repo_20x[f"src/mod_a_{i}.py"] = ParsedFile(
+            file_path=f"src/mod_a_{i}.py",
+            language="Python",
+            functions=[copy.deepcopy(f_good_1), copy.deepcopy(f_good_2)],
+        )
+        repo_20x[f"src/mod_b_{i}.py"] = ParsedFile(
+            file_path=f"src/mod_b_{i}.py",
+            language="Python",
+            functions=[copy.deepcopy(f_good_3), copy.deepcopy(f_good_4), copy.deepcopy(f_bad)],
+        )
 
     report_20x = compute_health_report(repo_20x)
 
@@ -128,7 +185,7 @@ def test_coupling_excludes_stdlib_and_self_imports() -> None:
         ImportInfo(module="os.path"),
         ImportInfo(module="logging"),
         ImportInfo(module="src.service"),  # local import to itself!
-        ImportInfo(module="src.helper"),   # genuine other local import
+        ImportInfo(module="src.helper"),  # genuine other local import
     ]
     files = {
         "src/service.py": ParsedFile(file_path="src/service.py", language="Python", imports=imports),

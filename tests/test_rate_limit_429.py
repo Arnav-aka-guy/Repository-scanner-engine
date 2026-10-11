@@ -60,7 +60,8 @@ def low_limit_client():
         patch.object(rl, "SCAN_RATE", "1/minute"),
         patch.object(rl, "SEARCH_RATE", "1/minute"),
         patch.object(rl, "CHAT_RATE", "1/minute"),
-        patch.object(rl, "FILE_RATE", "1/minute"),TestClient(app, raise_server_exceptions=False) as client
+        patch.object(rl, "FILE_RATE", "1/minute"),
+        TestClient(app, raise_server_exceptions=False) as client,
     ):
         yield client
 
@@ -90,8 +91,7 @@ class TestRateLimit429:
                     hit_429 = True
                     break
             assert hit_429, (
-                "Expected HTTP 429 after exceeding scan rate limit (5/minute). "
-                f"Last status: {r.status_code}"
+                f"Expected HTTP 429 after exceeding scan rate limit (5/minute). Last status: {r.status_code}"
             )
 
     def test_search_returns_429_after_limit(self, tmp_path):
@@ -109,8 +109,7 @@ class TestRateLimit429:
                     hit_429 = True
                     break
             assert hit_429, (
-                "Expected HTTP 429 after exceeding search rate limit (30/minute). "
-                f"Last status: {r.status_code}"
+                f"Expected HTTP 429 after exceeding search rate limit (30/minute). Last status: {r.status_code}"
             )
 
     def test_chat_returns_429_after_limit(self, tmp_path):
@@ -131,8 +130,7 @@ class TestRateLimit429:
                     hit_429 = True
                     break
             assert hit_429, (
-                "Expected HTTP 429 after exceeding chat rate limit (20/minute). "
-                f"Last status: {r.status_code}"
+                f"Expected HTTP 429 after exceeding chat rate limit (20/minute). Last status: {r.status_code}"
             )
 
     def test_scan_first_request_not_429(self, tmp_path):
@@ -154,9 +152,7 @@ class TestRateLimit429:
                 json={"path": str(tmp_path), "force": False},
                 headers={"X-Forwarded-For": "192.168.100.1"},
             )
-            assert r.status_code != 429, (
-                f"First request returned 429 unexpectedly: {r.text}"
-            )
+            assert r.status_code != 429, f"First request returned 429 unexpectedly: {r.text}"
 
     def test_health_endpoint_never_rate_limited(self):
         """Health check must never be rate-limited regardless of request count."""
@@ -166,6 +162,4 @@ class TestRateLimit429:
                     "/health",
                     headers={"X-Forwarded-For": "10.1.0.99"},
                 )
-                assert r.status_code == 200, (
-                    f"Health check returned {r.status_code} at request #{i + 1}"
-                )
+                assert r.status_code == 200, f"Health check returned {r.status_code} at request #{i + 1}"

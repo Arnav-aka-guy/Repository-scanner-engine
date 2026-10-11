@@ -12,7 +12,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -35,11 +35,18 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application startup / shutdown lifecycle."""
+    settings = get_settings()
+
     # 1. Initialise structured logging
-    setup_logging(level="INFO")
+    setup_logging(level=settings.log_level, format_type=settings.log_format)
+    logger.info(
+        "Configuration validated: app_mode=%s, auth_enabled=%s, database_enabled=%s",
+        settings.app_mode,
+        settings.auth_enabled,
+        settings.database_enabled,
+    )
 
     # 2. Ensure configuration and data directories are ready
-    settings = get_settings()
     settings.ensure_directories()
 
     # 3. Initialise database tables (no-op when DATABASE_ENABLED=false)
@@ -152,6 +159,25 @@ async def health_check() -> dict[str, str]:
     }
 
 
+@app.get("/livez", tags=["health"])
+async def livez_endpoint() -> dict[str, str]:
+    """Fast liveness probe: confirms process is alive."""
+    from backend.core.health import check_liveness
+
+    return await check_liveness()
+
+
+@app.get("/readyz", tags=["health"])
+async def readyz_endpoint(response: Response) -> dict[str, Any]:
+    """Readiness probe: validates database, storage, and models."""
+    from backend.core.health import check_readiness
+
+    is_ready, details = await check_readiness()
+    if not is_ready:
+        response.status_code = 503
+    return details
+
+
 # ── Mount API routers ───────────────────────────────────────────────────
 
 from fastapi import Depends  # noqa: E402
@@ -216,7 +242,7 @@ app.include_router(compare_router, dependencies=_auth_deps)
 async def serve_spa_route(full_path: str, request: Request) -> Any:
     """Fallback handler to support client-side SPA routing."""
     clean_path = full_path.strip("/")
-    if clean_path == "api" or full_path.startswith("api/") or clean_path == "health":
+    if clean_path in ("api", "health", "livez", "readyz") or full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="Endpoint not found")
     index_file = _dist_dir / "index.html"
     if index_file.exists():

@@ -91,9 +91,13 @@ class TestHealthScore:
                 _make_function("func2", docstring="Does other things"),
             ],
             classes=[
-                _make_class("MyClass", docstring="A class", methods=[
-                    _make_function("method1", docstring="A method"),
-                ]),
+                _make_class(
+                    "MyClass",
+                    docstring="A class",
+                    methods=[
+                        _make_function("method1", docstring="A method"),
+                    ],
+                ),
             ],
             module_docstring="Module docs",
         )

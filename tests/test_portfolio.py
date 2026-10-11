@@ -12,9 +12,15 @@ from backend.parser.models import ClassInfo, FunctionInfo, ImportInfo, ParsedFil
 
 def _func(name: str = "f", start: int = 1, end: int = 10, docstring: str = "", source: str = "") -> FunctionInfo:
     return FunctionInfo(
-        name=name, args=[], return_type=None, decorators=[],
-        start_line=start, end_line=end, docstring=docstring,
-        source_code=source, calls=[],
+        name=name,
+        args=[],
+        return_type=None,
+        decorators=[],
+        start_line=start,
+        end_line=end,
+        docstring=docstring,
+        source_code=source,
+        calls=[],
     )
 
 
@@ -68,14 +74,8 @@ class TestRepoComparison:
         """Repo with documented code should score better."""
         from backend.services.repo_comparison import compare_repositories
 
-        documented = dict([
-            _pf("d.py", [
-                _func(f"f{i}", docstring=f"Does thing {i}") for i in range(5)
-            ])
-        ])
-        undocumented = dict([
-            _pf("u.py", [_func(f"f{i}") for i in range(10)])
-        ])
+        documented = dict([_pf("d.py", [_func(f"f{i}", docstring=f"Does thing {i}") for i in range(5)])])
+        undocumented = dict([_pf("u.py", [_func(f"f{i}") for i in range(10)])])
 
         result = compare_repositories(documented, undocumented, "Good", "Bad")
         assert result.repo_a.health_grade != "?"
@@ -86,9 +86,7 @@ class TestRepoComparison:
         from backend.services.repo_comparison import compare_repositories
 
         good = dict([_pf("g.py", [_func("f", docstring="doc")])])
-        bad = dict([
-            _pf("b.py", [_func(f"long_func_{i}", start=i * 100, end=i * 100 + 90) for i in range(5)])
-        ])
+        bad = dict([_pf("b.py", [_func(f"long_func_{i}", start=i * 100, end=i * 100 + 90) for i in range(5)])])
 
         result = compare_repositories(good, bad, "Good", "Bad", "/good", "/bad")
         assert result.winner == "/good" or result.winner == "/bad"
@@ -126,15 +124,19 @@ class TestDependencyRisk:
         from backend.services.dependency_risk import analyse_dependency_risk
 
         pkg = tmp_path / "package.json"
-        pkg.write_text(json.dumps({
-            "dependencies": {
-                "react": "^19.0.0",
-                "react-dom": "^19.0.0",
-            },
-            "devDependencies": {
-                "vite": "^6.0.0",
-            },
-        }))
+        pkg.write_text(
+            json.dumps(
+                {
+                    "dependencies": {
+                        "react": "^19.0.0",
+                        "react-dom": "^19.0.0",
+                    },
+                    "devDependencies": {
+                        "vite": "^6.0.0",
+                    },
+                }
+            )
+        )
 
         report = analyse_dependency_risk(str(tmp_path))
         assert report.node_deps == 3
@@ -155,9 +157,13 @@ class TestDependencyRisk:
         from backend.services.dependency_risk import analyse_dependency_risk
 
         pkg = tmp_path / "package.json"
-        pkg.write_text(json.dumps({
-            "dependencies": {"bad-pkg": "*"},
-        }))
+        pkg.write_text(
+            json.dumps(
+                {
+                    "dependencies": {"bad-pkg": "*"},
+                }
+            )
+        )
 
         report = analyse_dependency_risk(str(tmp_path))
         assert report.risk_summary.get("high", 0) >= 1

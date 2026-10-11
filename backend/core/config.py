@@ -102,6 +102,10 @@ class Settings(BaseSettings):
     # are stored on the local filesystem only).
     database_enabled: bool = False
 
+    # ── Observability & Logging ─────────────────────────────────────────
+    log_level: str = "INFO"
+    log_format: str = "text"  # "text" | "json"
+
     # ── Application Mode ───────────────────────────────────────────────
     app_mode: str = "local"  # "local" | "cloud"
 

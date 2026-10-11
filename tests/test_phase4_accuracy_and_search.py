@@ -1,9 +1,7 @@
-import pytest
-from backend.health.models import DimensionScore, MeasuredMetric, ScorePenalty
+from backend.embeddings.reranker import SearchReranker
 from backend.health.scoring import calculate_grade
 from backend.health.service import compute_health_report
-from backend.parser.models import ParsedFile, FunctionInfo, ClassInfo
-from backend.embeddings.reranker import SearchReranker
+from backend.parser.models import FunctionInfo, ParsedFile
 
 
 def test_grade_cannot_be_good_if_any_dimension_is_at_risk():

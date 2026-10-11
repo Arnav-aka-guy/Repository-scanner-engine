@@ -41,9 +41,7 @@ class TestGroqProvider:
                 mock_resp.text = '{"error":{"message":"The model does not exist","code":"model_not_found"}}'
             else:
                 mock_resp.status_code = 200
-                mock_resp.json.return_value = {
-                    "choices": [{"message": {"content": "Fallback succeeded"}}]
-                }
+                mock_resp.json.return_value = {"choices": [{"message": {"content": "Fallback succeeded"}}]}
             return mock_resp
 
         with patch.object(provider, "_get_client") as mock_client_factory:
@@ -86,9 +84,7 @@ class TestGroqProvider:
                 mock_resp.text = '{"error":{"message":"Rate limit reached","code":"rate_limit_exceeded"}}'
             else:
                 mock_resp.status_code = 200
-                mock_resp.json.return_value = {
-                    "choices": [{"message": {"content": "Fallback succeeded after 429"}}]
-                }
+                mock_resp.json.return_value = {"choices": [{"message": {"content": "Fallback succeeded after 429"}}]}
             return mock_resp
 
         with patch.object(provider, "_get_client") as mock_client_factory:

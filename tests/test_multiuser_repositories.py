@@ -15,6 +15,7 @@ from backend.main import app
 def client():
     """Create a test client for the FastAPI app."""
     from backend.security.rate_limiter import limiter
+
     try:
         limiter.reset()
     except Exception:
@@ -165,12 +166,12 @@ class TestRepositoryQuotaAndManagement:
                 "/api/repositories",
                 headers=auth_headers,
                 json={
-                    "name": f"Repo {i+1}",
+                    "name": f"Repo {i + 1}",
                     "source_path": str(repo_dir),
                     "source_type": "local",
                 },
             )
-            assert resp.status_code == 201, f"Failed at repo {i+1}: {resp.text}"
+            assert resp.status_code == 201, f"Failed at repo {i + 1}: {resp.text}"
             repo_ids.append(resp.json()["id"])
 
         # Check quota is full
@@ -310,8 +311,10 @@ class TestUserDataIsolation:
         assert "instructions have been sent" in forgot_resp.json()["message"]
 
         # Generate valid reset token for this user
-        from backend.security.auth import create_access_token
         from datetime import timedelta
+
+        from backend.security.auth import create_access_token
+
         user_id = reg_resp.json()["user"]["id"]
         token = create_access_token(
             data={"sub": str(user_id), "type": "password_reset", "email": email},

@@ -33,7 +33,7 @@ class Base(DeclarativeBase):
 # ── Module-level singletons (created on first import) ───────────────────
 
 _engine = None
-_session_factory = None
+_session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def _get_engine():
@@ -61,7 +61,7 @@ def _get_engine():
     return _engine
 
 
-def _get_session_factory():
+def _get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Return the global session factory, creating it on first call."""
     global _session_factory  # noqa: PLW0603
     if _session_factory is None:
@@ -71,6 +71,11 @@ def _get_session_factory():
             expire_on_commit=False,
         )
     return _session_factory
+
+
+def get_async_session() -> async_sessionmaker[AsyncSession]:
+    """Return the global async session factory."""
+    return _get_session_factory()
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

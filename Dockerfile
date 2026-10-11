@@ -19,6 +19,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
+# Create non-root user
+RUN groupadd -g 10001 appgroup && \
+    useradd -u 10001 -g appgroup -s /bin/bash -m appuser
+
 # Copy backend and alembic migrations
 COPY backend/ ./backend/
 COPY alembic/ ./alembic/
@@ -27,15 +31,18 @@ COPY alembic.ini ./alembic.ini
 # Copy built frontend
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create data directories
-RUN mkdir -p data/graphs data/embeddings data/docs data/cache
+# Create data directories and adjust ownership for non-root user
+RUN mkdir -p data/graphs data/embeddings data/docs data/cache && \
+    chown -R appuser:appgroup /app
+
+USER appuser
 
 # Expose port
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/livez')"
 
 # Run with automatic migration when database is configured
 CMD ["sh", "-c", "if [ \"$DATABASE_ENABLED\" = \"true\" ]; then alembic upgrade head; fi && python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000"]

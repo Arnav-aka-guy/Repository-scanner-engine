@@ -73,9 +73,7 @@ class TestFileReadSecurity:
             f"/api/repository/file/{outside_file}",
             params={"repo_path": str(repo_dir)},
         )
-        assert response.status_code == 403, (
-            "File outside repo_root must be forbidden"
-        )
+        assert response.status_code == 403, "File outside repo_root must be forbidden"
 
     def test_path_traversal_blocked(self, client: TestClient, tmp_path: Path):
         """Path traversal via ../ must be blocked."""
@@ -463,4 +461,3 @@ class TestMockEmbeddingEncoder:
         assert encoder._is_mock()
         vec = encoder.encode_single("sample")
         assert vec.shape == (384,)
-

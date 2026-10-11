@@ -31,7 +31,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         path = request.url.path
 
         # Skip noisy health checks from log
-        is_health = path in ("/", "/health")
+        is_health = path in ("/", "/health", "/api/health", "/livez", "/readyz")
 
         if not is_health:
             logger.info("--> %s %s", method, path)

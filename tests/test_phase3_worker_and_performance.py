@@ -1,7 +1,6 @@
-import asyncio
-import json
 import pytest
 from httpx import ASGITransport, AsyncClient
+
 from backend.main import app
 
 
@@ -40,9 +39,9 @@ async def test_scan_job_lifecycle_and_sse_events(tmp_path):
 @pytest.mark.asyncio
 async def test_compute_once_read_many_analysis_cache(tmp_path):
     from backend.storage.persistence import (
+        invalidate_analysis_cache,
         load_analysis_cache,
         save_analysis_cache,
-        invalidate_analysis_cache,
     )
 
     repo_path = str(tmp_path)
