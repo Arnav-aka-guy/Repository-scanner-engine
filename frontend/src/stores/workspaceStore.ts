@@ -10,10 +10,15 @@ import { sendChatMessageStream, getChatHistory, clearChatHistoryApi } from '../s
 import { generateDocumentation, GenerateDocsResponse } from '../services/documentation';
 import { useToastStore } from './toastStore';
 
+import { CodeEntity } from '../types/repository';
+import { GraphData } from '../types/graph';
+import { SearchResult } from '../types/chat';
+import { HealthScore } from '../components/health/HealthTypes';
+
 interface FileDetail {
   content: string;
   language: string;
-  entities: any[];
+  entities: CodeEntity[];
 }
 
 interface WorkspaceState {
@@ -30,14 +35,14 @@ interface WorkspaceState {
   recentRepositories: string[];
 
   // ── Graph ──────────────────────────────────────────────────────────
-  graphData: any;
+  graphData: GraphData | null;
   graphType: 'dependency' | 'call' | 'symbol';
   graphLoading: boolean;
   graphError: string | null;
   analysisResult: AnalysisResult | null;
 
   // ── Search ─────────────────────────────────────────────────────────
-  searchResults: any[];
+  searchResults: SearchResult[];
   searchTotal: number;
   lastSearchQuery: string;
   searchLoading: boolean;
@@ -56,8 +61,8 @@ interface WorkspaceState {
   docsError: string | null;
 
   // ── Health Cache ──────────────────────────────────────────────────
-  cachedHealthScore: Record<string, any>;
-  setCachedHealthScore: (repoPath: string, score: any) => void;
+  cachedHealthScore: Record<string, HealthScore>;
+  setCachedHealthScore: (repoPath: string, score: HealthScore) => void;
 
   // ── Actions ────────────────────────────────────────────────────────
   scanRepo: (path: string) => Promise<void>;
@@ -173,7 +178,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       // ── Health Cache ────────────────────────────────────────────────
       cachedHealthScore: {},
-      setCachedHealthScore: (repoPath: string, score: any) =>
+      setCachedHealthScore: (repoPath: string, score: HealthScore) =>
         set((s) => ({
           cachedHealthScore: { ...s.cachedHealthScore, [repoPath]: score },
         })),
@@ -222,12 +227,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             title: isGitHub ? 'GitHub Repository Cloned & Indexed' : 'Repository Indexed',
             message: `${info.total_files} files indexed (${info.total_lines.toLocaleString()} lines)`,
           });
-        } catch (err: any) {
-          set({ scanStatus: 'error', scanError: err.message || 'Failed to scan repository.' });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to scan repository.';
+          set({ scanStatus: 'error', scanError: msg });
           useToastStore.getState().addToast({
             type: 'error',
             title: 'Scan Failed',
-            message: err.message || 'Failed to scan repository.',
+            message: msg,
           });
         }
       },
@@ -252,8 +258,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             },
             fileLoading: false,
           });
-        } catch (err: any) {
-          set({ fileLoading: false, scanError: `Failed to read file: ${err.message}` });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          set({ fileLoading: false, scanError: `Failed to read file: ${msg}` });
         }
       },
 
@@ -272,8 +279,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             data = await getSymbolGraph(repoPath);
           }
           set({ graphData: data, graphLoading: false });
-        } catch (err: any) {
-          set({ graphError: err.message || `Failed to fetch ${type} graph.`, graphLoading: false });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : `Failed to fetch ${type} graph.`;
+          set({ graphError: msg, graphLoading: false });
         }
       },
 
@@ -284,8 +292,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         try {
           const result = await getAnalysis(repoPath);
           set({ analysisResult: result, graphLoading: false });
-        } catch (err: any) {
-          set({ graphError: err.message || 'Failed to analyze repository.', graphLoading: false });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to analyze repository.';
+          set({ graphError: msg, graphLoading: false });
         }
       },
 
@@ -296,13 +305,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const repoPath = get().activeRepository || undefined;
           const response: SearchResponse = await semanticSearch(query, topK, repoPath);
           set({
-
             searchResults: response.results,
             searchTotal: response.total,
             searchLoading: false,
           });
-        } catch (err: any) {
-          set({ searchError: err.message || 'Search failed.', searchLoading: false });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Search failed.';
+          set({ searchError: msg, searchLoading: false });
         }
       },
 
@@ -362,15 +371,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             },
             convId
           );
-        } catch (err: any) {
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Error during streaming.';
           set((state) => {
-            const next = state.chatMessages.map((msg) =>
-              msg.id === assistantMsgId
-                ? { ...msg, content: msg.content + '\n\n*Error: Failed to stream response.*' }
-                : msg
+            const next = state.chatMessages.map((msgItem) =>
+              msgItem.id === assistantMsgId
+                ? { ...msgItem, content: msgItem.content + '\n\n*Error: Failed to stream response.*' }
+                : msgItem
             );
             return {
-              chatError: err.message || 'Error during streaming.',
+              chatError: msg,
               chatLoading: false,
               chatMessages: next,
               chatMessagesByRepo: {
@@ -442,12 +452,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             title: 'Documentation Compiled',
             message: `${docs.modules || 0} module references generated.`,
           });
-        } catch (err: any) {
-          set({ docsError: err.message || 'Failed to generate documentation.', docsLoading: false });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to generate docs.';
+          set({ docsError: msg, docsLoading: false });
           useToastStore.getState().addToast({
             type: 'error',
             title: 'Documentation Failed',
-            message: err.message || 'Failed to generate docs.',
+            message: msg,
           });
         }
       },
@@ -486,8 +497,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             if (path) {
               await get().scanRepo(path);
             }
-          } catch (err: any) {
-            set({ scanError: err.message || 'Failed to select directory.' });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed to select directory.';
+            set({ scanError: msg });
           }
         } else {
           try {
@@ -495,8 +507,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             if (res && res.path) {
               await get().scanRepo(res.path);
             }
-          } catch (err: any) {
-            set({ scanError: err.message || 'Failed to select directory.' });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed to select directory.';
+            set({ scanError: msg });
           }
         }
       },

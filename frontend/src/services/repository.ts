@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from './api';
-import { RepositoryInfo, FileInfo } from '../types/repository';
+import { RepositoryInfo, FileInfo, SavedRepository, RepositoryListResponse, CodeEntity } from '../types/repository';
 
 export async function scanRepository(path: string): Promise<RepositoryInfo> {
   return apiPost<RepositoryInfo>('/repository/scan', { path });
@@ -51,7 +51,7 @@ export async function getFile(
   file_path: string;
   content: string;
   language: string;
-  entities: any[];
+  entities: CodeEntity[];
 }> {
   // Don't use encodeURIComponent — it encodes slashes (%2F) which breaks
   // FastAPI's {file_path:path} parameter. Just pass the raw path.
@@ -59,7 +59,12 @@ export async function getFile(
   if (repoPath) {
     params.repo_path = repoPath;
   }
-  return apiGet<any>(`/repository/file/${filePath}`, params);
+  return apiGet<{
+    file_path: string;
+    content: string;
+    language: string;
+    entities: CodeEntity[];
+  }>(`/repository/file/${filePath}`, params);
 }
 
 export interface RepoOnboardingGuide {
@@ -79,7 +84,6 @@ export async function getOnboardingGuide(repoPath: string): Promise<RepoOnboardi
 
 // ── Multi-user Repository Management ────────────────────────────────────
 
-import { SavedRepository, RepositoryListResponse } from '../types/repository';
 import { apiDelete } from './api';
 
 export async function getUserRepositories(): Promise<RepositoryListResponse> {

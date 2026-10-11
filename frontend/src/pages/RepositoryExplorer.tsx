@@ -176,7 +176,7 @@ export const RepositoryExplorer: React.FC = () => {
     // Parse graphData edges if available
     if (graphData && graphData.edges) {
       for (const edge of graphData.edges) {
-        const edgeData = edge.data || edge;
+        const edgeData = (edge && 'data' in edge && edge.data ? edge.data : edge) as { source?: string; target?: string };
         const src = (edgeData.source || '').replace(/\\/g, '/');
         const tgt = (edgeData.target || '').replace(/\\/g, '/');
 

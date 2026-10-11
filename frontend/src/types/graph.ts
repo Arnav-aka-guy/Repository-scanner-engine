@@ -3,19 +3,35 @@ export interface GraphNode {
   label: string;
   node_type: 'file' | 'class' | 'function' | 'method' | 'import' | 'reference' | string;
   file_path: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface GraphEdge {
   source: string;
   target: string;
   edge_type: 'defines' | 'imports' | 'calls' | 'references' | 'inherits' | 'implements' | 'uses' | 'contains' | string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
+}
+
+export interface GraphElement {
+  data: {
+    id?: string;
+    label?: string;
+    source?: string;
+    target?: string;
+    node_type?: string;
+    edge_type?: string;
+    type?: string;
+    file_path?: string;
+    [key: string]: unknown;
+  };
+  group?: 'nodes' | 'edges' | string;
 }
 
 export interface GraphData {
-  nodes: { data: GraphNode }[];
-  edges: { data: GraphEdge }[];
+  nodes?: Array<GraphNode | { data: GraphNode } | { id: string; label: string; [key: string]: unknown }>;
+  edges?: Array<GraphEdge | { data: GraphEdge } | { source: string; target: string; [key: string]: unknown }>;
+  elements?: GraphElement[];
 }
 
 export interface DeadCodeConfidenceItem {

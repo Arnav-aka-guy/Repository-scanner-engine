@@ -156,8 +156,8 @@ export const useAuthStore = create<AuthState>()(
             loginError: null,
           });
           return { success: true };
-        } catch (err: any) {
-          const msg = err.message || 'Network error during registration.';
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Network error during registration.';
           set({ isLoggingIn: false, loginError: msg });
           return { success: false, error: msg };
         }

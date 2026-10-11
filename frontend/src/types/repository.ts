@@ -9,12 +9,14 @@ export interface FileInfo {
 
 export interface CodeEntity {
   name: string;
-  entity_type: 'class' | 'function' | 'method';
-  file_path: string;
-  start_line: number;
-  end_line: number;
-  docstring: string;
-  source_code: string;
+  entity_type: 'class' | 'function' | 'method' | string;
+  file_path?: string;
+  start_line?: number;
+  end_line?: number;
+  line_start?: number;
+  line_end?: number;
+  docstring?: string;
+  source_code?: string;
 }
 
 export interface RepositoryInfo {

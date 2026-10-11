@@ -1,16 +1,16 @@
 import { apiGet } from './api';
-import { AnalysisResult, ImpactAnalysisResult } from '../types/graph';
+import { AnalysisResult, GraphData, ImpactAnalysisResult } from '../types/graph';
 
-export async function getDependencyGraph(repoPath: string): Promise<any> {
-  return apiGet<any>('/graph/dependency', { repo_path: repoPath });
+export async function getDependencyGraph(repoPath: string): Promise<GraphData> {
+  return apiGet<GraphData>('/graph/dependency', { repo_path: repoPath });
 }
 
-export async function getCallGraph(repoPath: string): Promise<any> {
-  return apiGet<any>('/graph/call', { repo_path: repoPath });
+export async function getCallGraph(repoPath: string): Promise<GraphData> {
+  return apiGet<GraphData>('/graph/call', { repo_path: repoPath });
 }
 
-export async function getSymbolGraph(repoPath: string): Promise<any> {
-  return apiGet<any>('/graph/symbol', { repo_path: repoPath });
+export async function getSymbolGraph(repoPath: string): Promise<GraphData> {
+  return apiGet<GraphData>('/graph/symbol', { repo_path: repoPath });
 }
 
 export async function getChangeImpact(repoPath: string, targetFile: string): Promise<ImpactAnalysisResult> {

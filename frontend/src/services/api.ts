@@ -101,7 +101,7 @@ export async function apiGet<T>(path: string, params?: Record<string, string>): 
   return response.json() as Promise<T>;
 }
 
-export async function apiPost<T>(path: string, body: any): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
@@ -150,7 +150,7 @@ export async function apiPost<T>(path: string, body: any): Promise<T> {
 
 export async function apiPostStream(
   path: string,
-  body: any,
+  body: unknown,
   onChunk: (chunk: string) => void,
   onClose?: () => void
 ): Promise<void> {
@@ -232,7 +232,7 @@ export async function apiPostStream(
   }
 }
 
-export async function apiDelete<T = any>(path: string, params?: Record<string, string>): Promise<T> {
+export async function apiDelete<T = unknown>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${API_BASE}${path}`, window.location.origin);
   if (params) {
     Object.entries(params).forEach(([key, val]) => url.searchParams.append(key, val));

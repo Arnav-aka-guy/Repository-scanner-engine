@@ -486,7 +486,7 @@ export const DependencyGraph: React.FC = () => {
                 Building graph relationships from syntax tree...
               </span>
             </div>
-          ) : graphData && (graphData.elements?.length > 0 || graphData.nodes?.length > 0 || graphData.length > 0) ? (
+          ) : graphData && ((graphData.elements && graphData.elements.length > 0) || (graphData.nodes && graphData.nodes.length > 0) || (Array.isArray(graphData) && (graphData as unknown[]).length > 0)) ? (
             <FlowGraphView
               graphData={graphData}
               onNodeClick={setSelectedNode}
