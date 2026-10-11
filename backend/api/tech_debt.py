@@ -59,6 +59,16 @@ async def get_tech_debt(
     remediation suggestions.
     """
 
+    from backend.storage.persistence import load_analysis_cache, save_analysis_cache
+
+    norm_path = str(path)
+    cached_data = load_analysis_cache(norm_path, "tech_debt")
+    if cached_data is not None:
+        try:
+            return TechDebtResponse(**cached_data)
+        except Exception:
+            pass
+
     try:
         parsed = await parser.parse_repository(str(path))
     except Exception as exc:
@@ -96,7 +106,7 @@ async def get_tech_debt(
             }
         )
 
-    return TechDebtResponse(
+    resp = TechDebtResponse(
         total_debt_score=report.total_debt_score,
         debt_rating=report.debt_rating,
         total_smells=report.total_smells,
@@ -129,3 +139,5 @@ async def get_tech_debt(
         ],
         grouped_by_symbol=grouped,
     )
+    save_analysis_cache(norm_path, "tech_debt", resp.model_dump())
+    return resp

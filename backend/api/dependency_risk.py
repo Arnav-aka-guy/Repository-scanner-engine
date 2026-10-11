@@ -46,9 +46,19 @@ async def get_dependency_risk(path: Path = Depends(get_owned_repository)) -> Dep
     known risky packages, and overall dependency health.
     """
 
+    from backend.storage.persistence import load_analysis_cache, save_analysis_cache
+
+    norm_path = str(path)
+    cached_data = load_analysis_cache(norm_path, "dependency_risk")
+    if cached_data is not None:
+        try:
+            return DependencyRiskResponse(**cached_data)
+        except Exception:
+            pass
+
     report = analyse_dependency_risk(str(path))
 
-    return DependencyRiskResponse(
+    resp = DependencyRiskResponse(
         total_dependencies=report.total_dependencies,
         python_deps=report.python_deps,
         node_deps=report.node_deps,
@@ -66,3 +76,5 @@ async def get_dependency_risk(path: Path = Depends(get_owned_repository)) -> Dep
             for d in report.dependencies
         ],
     )
+    save_analysis_cache(norm_path, "dependency_risk", resp.model_dump())
+    return resp

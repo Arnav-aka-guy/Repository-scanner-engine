@@ -50,6 +50,16 @@ async def get_health_score(
     complexity, architecture, maintainability, and security.
     """
 
+    from backend.storage.persistence import load_analysis_cache, save_analysis_cache
+
+    norm_path = str(path)
+    cached_data = load_analysis_cache(norm_path, "health_score")
+    if cached_data is not None:
+        try:
+            return HealthScoreResponse(**cached_data)
+        except Exception:
+            pass
+
     try:
         parsed = await parser.parse_repository(str(path))
     except Exception as exc:
@@ -65,7 +75,7 @@ async def get_health_score(
 
     report = compute_health_score(parsed, analysis)
 
-    return HealthScoreResponse(
+    resp = HealthScoreResponse(
         total_score=report.total_score,
         grade=report.grade,
         summary=report.summary,
@@ -97,3 +107,5 @@ async def get_health_score(
             for d in report.dimensions
         ],
     )
+    save_analysis_cache(norm_path, "health_score", resp.model_dump())
+    return resp

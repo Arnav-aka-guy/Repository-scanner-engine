@@ -33,6 +33,63 @@ def _get_chat_path() -> str:
     return os.path.join(settings.data_dir, "chat_conversations.json")
 
 
+def _get_analysis_cache_path(repo_path: str, cache_type: str) -> str:
+    import hashlib
+
+    settings = get_settings()
+    norm_path = repo_path.replace("\\", "/").rstrip("/")
+    h = hashlib.sha256(norm_path.encode()).hexdigest()[:16]
+    cache_dir = os.path.join(settings.cache_dir, "analysis_cache", h)
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, f"{cache_type}.json")
+
+
+def load_analysis_cache(repo_path: str, cache_type: str) -> dict[str, Any] | None:
+    """Load cached analysis report (e.g. 'health_score', 'tech_debt') from disk."""
+    path = _get_analysis_cache_path(repo_path, cache_type)
+    with _lock:
+        if not os.path.exists(path):
+            return None
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception as exc:
+            logger.debug("Could not read analysis cache %s: %s", path, exc)
+    return None
+
+
+def save_analysis_cache(repo_path: str, cache_type: str, data: dict[str, Any]) -> None:
+    """Save computed analysis report to disk for compute-once-read-many performance."""
+    path = _get_analysis_cache_path(repo_path, cache_type)
+    with _lock:
+        try:
+            tmp_path = f"{path}.tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, default=str)
+            os.replace(tmp_path, path)
+        except Exception as exc:
+            logger.warning("Failed saving analysis cache %s: %s", path, exc)
+
+
+def invalidate_analysis_cache(repo_path: str) -> None:
+    """Invalidate all analysis caches for a repository."""
+    import hashlib
+    import shutil
+
+    settings = get_settings()
+    norm_path = repo_path.replace("\\", "/").rstrip("/")
+    h = hashlib.sha256(norm_path.encode()).hexdigest()[:16]
+    cache_dir = os.path.join(settings.cache_dir, "analysis_cache", h)
+    with _lock:
+        if os.path.exists(cache_dir):
+            try:
+                shutil.rmtree(cache_dir, ignore_errors=True)
+            except Exception as exc:
+                logger.debug("Failed deleting analysis cache directory %s: %s", cache_dir, exc)
+
+
 # ── Scan Jobs Persistence ─────────────────────────────────────────────────────
 
 

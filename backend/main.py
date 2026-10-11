@@ -12,9 +12,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
@@ -176,6 +176,19 @@ app.include_router(repositories_router)
 _auth_deps = [Depends(get_current_user)]
 
 app.include_router(repository_router, dependencies=_auth_deps)
+
+# Alias /api/scans/{job_id}/events directly for standard REST SSE client compatibility
+scans_alias_router = APIRouter(prefix="/api/scans", tags=["repository"])
+
+
+@scans_alias_router.get("/{job_id}/events")
+async def stream_scan_events_alias(job_id: str) -> StreamingResponse:
+    from backend.api.repository import stream_scan_job_events
+
+    return await stream_scan_job_events(job_id)
+
+
+app.include_router(scans_alias_router, dependencies=_auth_deps)
 app.include_router(graph_router, dependencies=_auth_deps)
 app.include_router(search_router, dependencies=_auth_deps)
 app.include_router(chat_router, dependencies=_auth_deps)

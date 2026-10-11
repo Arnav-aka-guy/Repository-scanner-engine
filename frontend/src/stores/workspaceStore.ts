@@ -3,7 +3,15 @@ import { persist } from 'zustand/middleware';
 import { RepositoryInfo, FileInfo, FileTreeNode } from '../types/repository';
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
-import { scanRepository, scanGitHubRepository, browseFolder, listFiles, getFile } from '../services/repository';
+import {
+  scanRepository,
+  scanGitHubRepository,
+  scanRepositoryAsync,
+  subscribeScanEvents,
+  browseFolder,
+  listFiles,
+  getFile,
+} from '../services/repository';
 import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph';
 import { semanticSearch, SearchResponse } from '../services/search';
 import { sendChatMessageStream, getChatHistory, clearChatHistoryApi } from '../services/chat';
@@ -31,6 +39,8 @@ interface WorkspaceState {
   selectedFilePath: string | null;
   selectedFileDetail: FileDetail | null;
   scanStatus: 'idle' | 'scanning' | 'indexed' | 'error';
+  scanProgress: number;
+  scanMessage: string;
   scanError: string | null;
   fileLoading: boolean;
   recentRepositories: string[];
@@ -152,6 +162,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       selectedFilePath: null,
       selectedFileDetail: null,
       scanStatus: 'idle',
+      scanProgress: 0,
+      scanMessage: '',
       scanError: null,
       fileLoading: false,
       recentRepositories: [],
@@ -202,15 +214,54 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (get().scanStatus === 'scanning') return;
 
         const normInputPath = path.trim().replace(/\\/g, '/').replace(/\/+$/, '');
-        set({ scanStatus: 'scanning', scanError: null });
+        set({
+          scanStatus: 'scanning',
+          scanProgress: 0.1,
+          scanMessage: 'Starting scan job...',
+          scanError: null,
+        });
+
         try {
           const isGitHub =
             normInputPath.startsWith('http://') ||
             normInputPath.startsWith('https://') ||
             normInputPath.includes('github.com');
-          const info = isGitHub
-            ? await scanGitHubRepository(normInputPath)
-            : await scanRepository(normInputPath);
+
+          let info: RepositoryInfo;
+
+          if (isGitHub) {
+            info = await scanGitHubRepository(normInputPath);
+          } else {
+            // Queue async background job with SSE progress streaming
+            const job = await scanRepositoryAsync(normInputPath);
+            info = await new Promise<RepositoryInfo>((resolve, reject) => {
+              const unsubscribe = subscribeScanEvents(
+                job.job_id,
+                (progressJob) => {
+                  set({
+                    scanProgress: progressJob.progress,
+                    scanMessage: progressJob.message,
+                  });
+                  if (progressJob.status === 'completed' && progressJob.result) {
+                    unsubscribe();
+                    resolve(progressJob.result);
+                  } else if (progressJob.status === 'failed') {
+                    unsubscribe();
+                    reject(new Error(progressJob.error || progressJob.message || 'Scan failed'));
+                  }
+                },
+                (status) => {
+                  if (status !== 'completed' && status !== 'done') {
+                    reject(new Error(`Scan terminated with status: ${status}`));
+                  }
+                },
+                (err) => {
+                  console.warn('SSE progress error, falling back to synchronous scan info check', err);
+                }
+              );
+            });
+          }
+
           const targetPath = (info.path || normInputPath).replace(/\\/g, '/').replace(/\/+$/, '');
           const fileList = await listFiles(targetPath);
           const tree = buildTree(fileList, targetPath);
@@ -228,6 +279,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             files: fileList,
             fileTree: tree,
             scanStatus: 'indexed',
+            scanProgress: 1.0,
+            scanMessage: 'Scan complete.',
             scanError: null,
             selectedFilePath: null,
             selectedFileDetail: null,
@@ -245,7 +298,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           });
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Failed to scan repository.';
-          set({ scanStatus: 'error', scanError: msg });
+          set({
+            scanStatus: 'error',
+            scanProgress: 0,
+            scanMessage: '',
+            scanError: msg,
+          });
           useToastStore.getState().addToast({
             type: 'error',
             title: 'Scan Failed',

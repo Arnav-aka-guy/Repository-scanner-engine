@@ -1,26 +1,37 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout } from './layouts/MainLayout';
-import { Overview } from './pages/Overview';
-import { RepositoryExplorer } from './pages/RepositoryExplorer';
-import { DependencyGraph } from './pages/DependencyGraph';
-import { ArchitectureViewer } from './pages/ArchitectureViewer';
-import { SemanticSearch } from './pages/SemanticSearch';
-import { AIChat } from './pages/AIChat';
-import { DocumentationGenerator } from './pages/DocumentationGenerator';
-import { HealthDashboard } from './pages/HealthDashboard';
-import { Settings } from './pages/Settings';
-import { LandingPage } from './pages/LandingPage';
-import { Login } from './pages/Login';
-import { Signup } from './pages/Signup';
-import { ForgotPassword } from './pages/ForgotPassword';
-import { ResetPassword } from './pages/ResetPassword';
-import { MyRepositories } from './pages/MyRepositories';
-import { NotFound } from './pages/NotFound';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/ToastContainer';
 import { useAuthStore } from './stores/authStore';
+
+// Lazy-loaded pages for optimal initial bundle size (< 300KB)
+const Overview = lazy(() => import('./pages/Overview').then((m) => ({ default: m.Overview })));
+const RepositoryExplorer = lazy(() => import('./pages/RepositoryExplorer').then((m) => ({ default: m.RepositoryExplorer })));
+const DependencyGraph = lazy(() => import('./pages/DependencyGraph').then((m) => ({ default: m.DependencyGraph })));
+const ArchitectureViewer = lazy(() => import('./pages/ArchitectureViewer').then((m) => ({ default: m.ArchitectureViewer })));
+const SemanticSearch = lazy(() => import('./pages/SemanticSearch').then((m) => ({ default: m.SemanticSearch })));
+const AIChat = lazy(() => import('./pages/AIChat').then((m) => ({ default: m.AIChat })));
+const DocumentationGenerator = lazy(() => import('./pages/DocumentationGenerator').then((m) => ({ default: m.DocumentationGenerator })));
+const HealthDashboard = lazy(() => import('./pages/HealthDashboard').then((m) => ({ default: m.HealthDashboard })));
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
+const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
+const Signup = lazy(() => import('./pages/Signup').then((m) => ({ default: m.Signup })));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then((m) => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })));
+const MyRepositories = lazy(() => import('./pages/MyRepositories').then((m) => ({ default: m.MyRepositories })));
+const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m.NotFound })));
+
+const PageFallback: React.FC = () => (
+  <div className="flex-1 flex items-center justify-center min-h-[200px]">
+    <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+      <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+      <span>Loading module...</span>
+    </div>
+  </div>
+);
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -40,8 +51,9 @@ function AnimatedRoutes() {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+    <Suspense fallback={<PageFallback />}>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
         {/* Public Pages */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
@@ -225,6 +237,7 @@ function AnimatedRoutes() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AnimatePresence>
+  </Suspense>
   );
 }
 

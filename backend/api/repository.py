@@ -1,11 +1,13 @@
 """Repository scanning and file exploration endpoints."""
 
 import asyncio
+import json
 import logging
 import time
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -125,8 +127,11 @@ async def scan_repository(
     path = validate_repository_path(sanitized.path)
 
     if body.force:
+        from backend.storage.persistence import invalidate_analysis_cache
+
         parser.invalidate_cache(str(path), clear_manifest=True)
         embeddings.invalidate_repo(str(path), clear_cache=True)
+        invalidate_analysis_cache(str(path))
 
     try:
         repo_info: RepositoryInfo = await parser.scan_repository(str(path))
@@ -306,8 +311,11 @@ async def scan_repository_async(
     save_scan_job(job_id, _scan_jobs[job_id])
 
     # Invalidate cache for fresh scan
+    from backend.storage.persistence import invalidate_analysis_cache
+
     parser.invalidate_cache(str(path))
     embeddings.invalidate_repo(str(path))
+    invalidate_analysis_cache(str(path))
 
     background_tasks.add_task(_run_scan_job, job_id, str(path), parser, embeddings)
 
@@ -341,6 +349,66 @@ async def get_scan_job_status(job_id: str) -> ScanJobResponse:
         else:
             raise HTTPException(status_code=404, detail="Scan job not found.")
     return ScanJobResponse(**_scan_jobs[job_id])
+
+
+@router.get("/scan/jobs/{job_id}/events")
+async def stream_scan_job_events(job_id: str) -> StreamingResponse:
+    """Stream real-time Server-Sent Events (SSE) for scan job progress and status."""
+
+    async def event_generator():
+        last_progress = -1.0
+        last_status = ""
+        last_message = ""
+        while True:
+            job = _scan_jobs.get(job_id)
+            if not job:
+                disk_jobs = load_scan_jobs()
+                if job_id in disk_jobs:
+                    job = disk_jobs[job_id]
+                    _scan_jobs[job_id] = job
+
+            if not job:
+                payload = json.dumps({"error": "Job not found", "job_id": job_id})
+                yield f"event: error\ndata: {payload}\n\n"
+                break
+
+            current_progress = float(job.get("progress", 0.0))
+            current_status = str(job.get("status", "pending"))
+            current_message = str(job.get("message", ""))
+
+            # Emit event when progress, status, or message changes
+            if current_progress != last_progress or current_status != last_status or current_message != last_message:
+                last_progress = current_progress
+                last_status = current_status
+                last_message = current_message
+
+                # Serialize safely with JSON-compatible primitives (e.g. ISO datetimes)
+                job_resp = ScanJobResponse(
+                    job_id=job["job_id"],
+                    status=job["status"],
+                    progress=current_progress,
+                    message=current_message,
+                    result=job.get("result"),
+                    error=job.get("error"),
+                )
+                payload = json.dumps(job_resp.model_dump(mode="json"))
+                yield f"event: progress\ndata: {payload}\n\n"
+
+            if current_status in ("completed", "failed"):
+                yield f"event: done\ndata: {json.dumps({'status': current_status})}\n\n"
+                break
+
+            await asyncio.sleep(0.4)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/files", response_model=list[FileInfo])

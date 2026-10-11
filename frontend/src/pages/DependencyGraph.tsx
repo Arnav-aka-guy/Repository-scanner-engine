@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { FlowGraphView } from '../components/graph/FlowGraphView';
+import { getChangeImpact } from '../services/graph';
 import {
   Play,
   Share2,
@@ -90,8 +91,7 @@ export const DependencyGraph: React.FC = () => {
     if (selectedNode && repoPath) {
       const targetPath = selectedNode.file_path || selectedNode.id;
       setImpactLoading(true);
-      import('../services/graph')
-        .then((svc) => svc.getChangeImpact(repoPath, targetPath))
+      getChangeImpact(repoPath, targetPath)
         .then((res) => {
           if (isCurrent) setImpactResult(res);
         })

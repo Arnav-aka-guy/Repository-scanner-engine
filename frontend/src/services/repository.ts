@@ -44,6 +44,43 @@ export async function listScanJobs(repoPath?: string): Promise<ScanJob[]> {
   return apiGet<ScanJob[]>('/repository/scan/jobs', params);
 }
 
+export function subscribeScanEvents(
+  jobId: string,
+  onProgress: (job: ScanJob) => void,
+  onDone?: (status: string) => void,
+  onError?: (err: unknown) => void
+): () => void {
+  const eventSource = new EventSource(`/api/scans/${jobId}/events`);
+
+  eventSource.addEventListener('progress', (e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data) as ScanJob;
+      onProgress(data);
+    } catch (err) {
+      console.warn('Failed parsing progress event', err);
+    }
+  });
+
+  eventSource.addEventListener('done', (e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (onDone) onDone(data.status);
+    } catch {
+      if (onDone) onDone('completed');
+    }
+    eventSource.close();
+  });
+
+  eventSource.addEventListener('error', (err) => {
+    if (onError) onError(err);
+    eventSource.close();
+  });
+
+  return () => {
+    eventSource.close();
+  };
+}
+
 export async function getFile(
   filePath: string,
   repoPath?: string
