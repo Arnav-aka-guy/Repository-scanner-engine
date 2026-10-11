@@ -586,6 +586,9 @@ def compute_health_report(
 
     total_sec_penalties = sum(p.points_deducted for p in sec_penalties)
     sec_score = max(0.0, round(20.0 - total_sec_penalties, 1))
+    sec_status = (
+        "At Risk" if len(secrets_found) > 0 or sec_score < 12.0 else "Needs Review" if sec_score < 16.0 else "Healthy"
+    )
 
     dimensions.append(
         DimensionScore(
@@ -594,7 +597,7 @@ def compute_health_report(
             score=sec_score,
             max_score=20.0,
             weight=0.20,
-            status="Healthy" if sec_score >= 16.0 else "Needs Review" if sec_score >= 12.0 else "At Risk",
+            status=sec_status,
             starting_score=20.0,
             total_penalties=total_sec_penalties,
             formula=f"20.0 - {total_sec_penalties:.1f} penalty points",
@@ -607,7 +610,8 @@ def compute_health_report(
 
     # ── Final Score & Grade ───────────────────────────────────────────────
     total_score = round(sum(d.score for d in dimensions), 1)
-    grade = calculate_grade(total_score)
+    dimension_statuses = [d.status for d in dimensions]
+    grade = calculate_grade(total_score, dimension_statuses=dimension_statuses)
 
     summary = (
         f"Overall code health score is {total_score:.1f}/100 (Grade {grade}). "

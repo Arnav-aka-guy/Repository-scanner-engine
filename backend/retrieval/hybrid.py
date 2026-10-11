@@ -107,10 +107,77 @@ class HybridRetriever:
                 seen_entities.add(key)
                 merged_entities.append(res)
 
-        # 5. Build final context text string
+        # 5. Build final context text string with architectural grounding
+        grounding_block = self._get_grounding_context(repo_path, parsed_files)
         context_str = self._build_context(merged_entities)
+        if grounding_block:
+            context_str = f"{grounding_block}\n\n{context_str}"
 
         return {"vector_results": vector_results, "graph_results": graph_results, "merged_context": context_str}
+
+    def _get_grounding_context(self, repo_path: str | None, parsed_files: dict[str, ParsedFile]) -> str:
+        """Extract high-level grounding context: README, package manifests, and architectural entry points."""
+        if not repo_path:
+            return ""
+
+        grounding_parts: list[str] = []
+        root = Path(repo_path)
+
+        # 1. README summary
+        for readme_name in ("README.md", "readme.md", "README.rst", "README.txt"):
+            readme_path = root / readme_name
+            if readme_path.exists():
+                try:
+                    content = readme_path.read_text(encoding="utf-8", errors="ignore")
+                    lines = [ln for ln in content.splitlines() if ln.strip()][:30]
+                    truncated_readme = "\n".join(lines)
+                    grounding_parts.append(f"### Repository README Overview:\n{truncated_readme}")
+                    break
+                except Exception:
+                    pass
+
+        # 2. Package Manifests
+        manifest_files = [
+            ("requirements.txt", "Python Requirements"),
+            ("pyproject.toml", "PyProject Manifest"),
+            ("package.json", "Node Package Manifest"),
+        ]
+        for m_name, label in manifest_files:
+            m_path = root / m_name
+            if m_path.exists():
+                try:
+                    m_content = m_path.read_text(encoding="utf-8", errors="ignore")
+                    m_lines = [ln for ln in m_content.splitlines() if ln.strip() and not ln.strip().startswith("#")][
+                        :15
+                    ]
+                    grounding_parts.append(f"### {label} ({m_name}):\n" + "\n".join(m_lines))
+                    break
+                except Exception:
+                    pass
+
+        # 3. Architectural Entry Points
+        entry_candidates = [
+            p
+            for p in parsed_files
+            if any(
+                p.replace("\\", "/").endswith(entry)
+                for entry in ("main.py", "app.py", "index.ts", "main.ts", "index.js", "App.tsx", "server.py")
+            )
+        ]
+        if entry_candidates:
+            rel_entries = [
+                p.replace("\\", "/").split(repo_path.replace("\\", "/"))[-1].lstrip("/") for p in entry_candidates[:4]
+            ]
+            grounding_parts.append("### Architectural Entry Points:\n" + ", ".join(rel_entries))
+
+        if not grounding_parts:
+            return ""
+
+        return (
+            "=== [High-Level Repository Grounding Context] ===\n"
+            + "\n\n".join(grounding_parts)
+            + "\n================================================"
+        )
 
     def _build_context(self, entities: list[dict[str, Any]]) -> str:
         """Format retrieved code entities into a formatted prompt context block."""

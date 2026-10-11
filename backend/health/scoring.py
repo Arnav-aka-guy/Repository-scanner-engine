@@ -24,8 +24,19 @@ def load_baselines() -> dict[str, Any]:
         return cast(dict[str, Any], json.load(f))
 
 
-def calculate_grade(score: float) -> str:
-    """Calculate grade letter. Strictly bands A through E; never Grade F."""
+def calculate_grade(score: float, dimension_statuses: list[str] | None = None) -> str:
+    """Calculate grade letter. Strictly bands A through E; never Grade F.
+
+    Phase 4 Rule: Overall grade cannot be "Good" (A or B) if any dimension is "At Risk".
+    """
+    if dimension_statuses and any(status == "At Risk" for status in dimension_statuses):
+        # Cap at C when any individual dimension is critical / At Risk
+        if score >= 70.0:
+            return "C"
+        if score >= 60.0:
+            return "D"
+        return "E"
+
     if score >= 90.0:
         return "A"
     if score >= 80.0:

@@ -221,7 +221,7 @@ class EmbeddingsService:
 
         # 3. Reciprocal Rank Fusion (RRF)
         if vector_results and keyword_results:
-            return self.reranker.rerank(vector_results, keyword_results, top_k=top_k)
+            return self.reranker.rerank(vector_results, keyword_results, top_k=top_k, query=query)
         elif vector_results:
             results = []
             for r in vector_results[:top_k]:

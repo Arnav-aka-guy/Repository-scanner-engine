@@ -23,6 +23,7 @@ class SearchReranker:
         vector_results: list[dict[str, Any]],
         keyword_results: list[dict[str, Any]],
         top_k: int = 10,
+        query: str = "",
     ) -> list[dict[str, Any]]:
         """Merge vector and keyword results using Reciprocal Rank Fusion.
 
@@ -45,7 +46,9 @@ class SearchReranker:
             if "score" in result:
                 vec_scores[key] = float(result["score"])
             if key not in result_map:
-                result_map[key] = result
+                item_copy = dict(result)
+                item_copy["_query"] = query
+                result_map[key] = item_copy
 
         # Process keyword results
         for rank, result in enumerate(keyword_results):
@@ -55,7 +58,9 @@ class SearchReranker:
             if "keyword_score" in result:
                 kw_scores[key] = float(result["keyword_score"])
             if key not in result_map:
-                result_map[key] = result
+                item_copy = dict(result)
+                item_copy["_query"] = query
+                result_map[key] = item_copy
 
         # Sort by combined RRF score
         ranked_keys = sorted(rrf_scores.keys(), key=lambda k: rrf_scores[k], reverse=True)
@@ -74,18 +79,44 @@ class SearchReranker:
             is_vec = key in in_vector
             is_kw = key in in_keyword
 
+            match_reasons: list[str] = []
+            if is_vec:
+                match_reasons.append("semantic similarity")
+            if is_kw:
+                match_reasons.append("keyword match")
+
+            entity_name = str(meta.get("entity_name", "")).strip().lower()
+            file_path = str(meta.get("file_path", "")).strip().lower()
+            docstring = str(meta.get("docstring", "")).strip()
+
+            # Boost exact symbol or filename matches
+            boost = 1.0
+            query_words = [w.lower() for w in result_map[key].get("_query", "").split() if len(w) > 1]
+            if entity_name and any(w == entity_name for w in query_words):
+                boost += 0.35
+                match_reasons.insert(0, f"exact symbol name '{meta.get('entity_name')}'")
+            elif entity_name and any(w in entity_name for w in query_words):
+                boost += 0.15
+                match_reasons.append(f"symbol '{meta.get('entity_name')}' match")
+
+            file_basename = file_path.split("/")[-1].split("\\")[-1]
+            if file_basename and any(w in file_basename for w in query_words):
+                boost += 0.15
+                match_reasons.append(f"file path match '{file_basename}'")
+
+            if docstring and any(w in docstring.lower() for w in query_words):
+                match_reasons.append("docstring match")
+
             if is_vec and is_kw:
                 match_type = "hybrid"
-                match_reasons = ["semantic similarity", "keyword match"]
             elif is_kw:
                 match_type = "keyword"
-                match_reasons = ["keyword match"]
             else:
                 match_type = "semantic"
-                match_reasons = ["semantic similarity"]
 
+            calculated_score = min(1.0, (rrf_scores[key] / max_possible) * boost)
             item: dict[str, Any] = {
-                "score": min(rrf_scores[key] / max_possible, 1.0),
+                "score": calculated_score,
                 "rrf_score": rrf_scores[key],
                 "match_type": match_type,
                 "match_reasons": match_reasons,

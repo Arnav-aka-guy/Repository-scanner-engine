@@ -29,11 +29,11 @@ _EXAMPLES_PATTERNS = [
 ]
 
 _MIGRATION_PATTERNS = [
-    re.compile(r"(?:^|/)(?:migrations?|alembic/versions)/", re.I),
+    re.compile(r"(?:^|/)(?:migrations?|alembic/versions|db/migrate)/", re.I),
 ]
 
 _VENDOR_PATTERNS = [
-    re.compile(r"(?:^|/)(?:vendor|node_modules|\.venv|venv|dist|build)/", re.I),
+    re.compile(r"(?:^|/)(?:vendor|node_modules|\.venv|venv|dist|build|target|out|\.next|\.nuxt)/", re.I),
 ]
 
 _GENERATED_PATTERNS = [
