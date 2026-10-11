@@ -10,10 +10,9 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from backend.api.dependencies import get_graph, get_parser
+from backend.api.dependencies import get_graph, get_owned_repository, get_parser
 from backend.graph.models import GraphData
 from backend.parser.models import ParsedFile
-from backend.security.path_validator import validate_repository_path
 
 if TYPE_CHECKING:
     from backend.graph.service import GraphService
@@ -154,7 +153,7 @@ def _layers_to_mermaid(layers: list[ArchitectureLayer]) -> str:
 
 @router.get("/mermaid", response_model=MermaidResponse)
 async def mermaid_diagram(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    path: Path = Depends(get_owned_repository),
     graph_type: str = Query(
         default="dependency",
         description="Type of graph to render: 'dependency' or 'call'",
@@ -168,8 +167,6 @@ async def mermaid_diagram(
             status_code=400,
             detail=f"Invalid graph_type '{graph_type}'. Accepted: {sorted(_VALID_GRAPH_TYPES)}",
         )
-
-    path = validate_repository_path(repo_path)
 
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
@@ -199,12 +196,11 @@ async def mermaid_diagram(
 
 @router.get("/architecture", response_model=ArchitectureResponse)
 async def architecture_diagram(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    path: Path = Depends(get_owned_repository),
     parser: ParserService = Depends(get_parser),
     graph_svc: GraphService = Depends(get_graph),
 ) -> ArchitectureResponse:
     """Return a high-level architecture overview with a Mermaid diagram."""
-    path = validate_repository_path(repo_path)
 
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))

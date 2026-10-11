@@ -8,10 +8,12 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.dependencies import get_docs
+from backend.api.dependencies import get_docs, get_owned_repository, verify_repo_ownership
 from backend.core.config import get_settings
-from backend.security.path_validator import validate_repository_path
+from backend.db.database import get_db
+from backend.security.auth import get_current_user
 
 if TYPE_CHECKING:
     from backend.documentation.service import DocumentationService
@@ -53,6 +55,8 @@ class GenerateResponse(BaseModel):
 async def generate_docs(
     body: GenerateRequest,
     docs_svc: DocumentationService = Depends(get_docs),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> GenerateResponse:
     """Generate documentation for the entire repository.
 
@@ -65,7 +69,7 @@ async def generate_docs(
             detail=f"Invalid format '{body.format}'. Accepted: {sorted(_VALID_FORMATS)}",
         )
 
-    path = validate_repository_path(body.repo_path)
+    path = await verify_repo_ownership(body.repo_path, current_user, db)
     settings = get_settings()
 
     try:
@@ -103,7 +107,7 @@ async def generate_docs(
 
 @router.get("/export", response_model=GenerateResponse)
 async def export_docs(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    path: Path = Depends(get_owned_repository),
     format: str = Query(
         default="markdown",
         description="Output format: 'markdown' or 'html'",
@@ -121,7 +125,6 @@ async def export_docs(
             detail=f"Invalid format '{format}'. Accepted: {sorted(_VALID_FORMATS)}",
         )
 
-    path = validate_repository_path(repo_path)
     settings = get_settings()
 
     try:
@@ -149,7 +152,7 @@ async def export_docs(
         ) from exc
 
     return GenerateResponse(
-        repo_path=repo_path,
+        repo_path=str(path),
         format=format,
         modules=len(docs.get("modules", docs)),
         output_dir=str(output_dir),

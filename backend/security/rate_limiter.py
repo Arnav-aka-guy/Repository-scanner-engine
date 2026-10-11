@@ -7,16 +7,53 @@ constants that API routers can import directly.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from starlette.requests import Request
 
 logger = logging.getLogger(__name__)
 
+
+def get_user_or_ip(request: Request | Any) -> str:
+    """Return user identifier if authenticated (from state, token header, or cookie), else IP."""
+    user = getattr(request.state, "user", None)
+    if isinstance(user, dict) and user.get("user_id"):
+        return f"user:{user['user_id']}"
+
+    auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+        try:
+            import jwt
+
+            unverified = jwt.decode(token, options={"verify_signature": False})
+            uid = unverified.get("user_id") or unverified.get("sub")
+            if uid:
+                return f"user:{uid}"
+        except Exception:
+            pass
+
+    access_token = request.cookies.get("access_token")
+    if access_token:
+        try:
+            import jwt
+
+            unverified = jwt.decode(access_token, options={"verify_signature": False})
+            uid = unverified.get("user_id") or unverified.get("sub")
+            if uid:
+                return f"user:{uid}"
+        except Exception:
+            pass
+
+    return get_remote_address(request)
+
+
 # ── Limiter singleton ──────────────────────────────────────────────────
 
-limiter = Limiter(key_func=get_remote_address)
-"""Global rate limiter keyed on the client's remote IP address."""
+limiter = Limiter(key_func=get_user_or_ip)
+"""Global rate limiter keyed on user_id when authenticated, IP address otherwise."""
 
 # ── Per-route rate strings ─────────────────────────────────────────────
 

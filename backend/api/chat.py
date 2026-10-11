@@ -15,6 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.api.dependencies import get_llm, get_parser, get_retrieval
 from backend.db.database import get_db
 from backend.db.models import Repository
+from backend.db.repositories import (
+    delete_chat_messages,
+    list_user_chat_conversations,
+    save_chat_message,
+)
+from backend.db.repositories import (
+    get_chat_history as db_get_chat_history,
+)
 from backend.llm.service import LLMService
 from backend.parser.service import ParserService
 from backend.retrieval.service import RetrievalService
@@ -226,6 +234,31 @@ async def chat(
             conversation_id=body.conversation_id,
         )
 
+        # Persist message to database
+        db_user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+        db_repo_id = repo.id if repo else None
+        try:
+            await save_chat_message(
+                db,
+                repository_id=db_repo_id,
+                user_id=db_user_id,
+                conversation_id=body.conversation_id or "default",
+                role="user",
+                content=sanitized.question,
+            )
+            await save_chat_message(
+                db,
+                repository_id=db_repo_id,
+                user_id=db_user_id,
+                conversation_id=body.conversation_id or "default",
+                role="assistant",
+                content=full_answer,
+                sources=verified_sources[:6],
+            )
+            await db.commit()
+        except Exception as exc:
+            logger.debug("Database chat persistence skipped or failed: %s", exc)
+
         done_payload = json.dumps(
             {
                 "type": "done",
@@ -250,18 +283,73 @@ async def chat(
 async def get_history(
     repo_path: str | None = None,
     conversation_id: str | None = None,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> list[ChatHistoryEntry]:
-    """Return conversation history, optionally filtered by repository or conversation."""
+    """Return conversation history from database or file storage, scoped by repository/user."""
+    user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+    repo_id: int | None = None
+
+    if repo_path:
+        sanitized = SanitizedRepoPath(path=repo_path)
+        path = validate_repository_path(sanitized.path)
+        norm_path = str(path).replace("\\", "/").rstrip("/")
+        if user_id:
+            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
+            res = await db.execute(stmt)
+            repo = res.scalar_one_or_none()
+            if repo:
+                if repo.user_id is not None and repo.user_id != user_id:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Access denied: You do not have permission to access this repository.",
+                    )
+                repo_id = repo.id
+
+    # Check database chat records first
+    try:
+        db_messages = await db_get_chat_history(
+            db,
+            repository_id=repo_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        if db_messages:
+            entries: list[ChatHistoryEntry] = []
+            curr_q: str | None = None
+            curr_time: str | None = None
+            curr_conv: str | None = None
+            for m in db_messages:
+                if m.role == "user":
+                    curr_q = m.content
+                    curr_time = m.created_at.isoformat() if m.created_at else datetime.now(tz=UTC).isoformat()
+                    curr_conv = m.conversation_id
+                elif m.role == "assistant" and curr_q is not None:
+                    entries.append(
+                        ChatHistoryEntry(
+                            timestamp=curr_time or datetime.now(tz=UTC).isoformat(),
+                            question=curr_q,
+                            answer=m.content,
+                            conversation_id=curr_conv,
+                        )
+                    )
+                    curr_q = None
+            if entries:
+                return entries
+    except Exception as exc:
+        logger.debug("DB chat history query failed: %s", exc)
+
+    # Fallback to local file storage
     data = load_chat_data()
     if conversation_id:
         conv = data.get("conversations", {}).get(conversation_id, {})
-        entries = conv.get("messages", [])
+        entries_raw = conv.get("messages", [])
     elif repo_path:
         sanitized = SanitizedRepoPath(path=repo_path)
         path = validate_repository_path(sanitized.path)
-        entries = data.get("by_repo", {}).get(str(path), [])
+        entries_raw = data.get("by_repo", {}).get(str(path), [])
     else:
-        entries = data.get("global", [])
+        entries_raw = data.get("global", [])
 
     return [
         ChatHistoryEntry(
@@ -270,7 +358,7 @@ async def get_history(
             answer=entry["answer"],
             conversation_id=entry.get("conversation_id"),
         )
-        for entry in entries
+        for entry in entries_raw
     ]
 
 
@@ -278,13 +366,46 @@ async def get_history(
 async def clear_chat_history(
     repo_path: str | None = None,
     conversation_id: str | None = None,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
-    """Clear chat conversation history from persistent storage."""
+    """Clear chat conversation history from persistent DB and file storage."""
     global _conversation_history, _repo_conversation_history
+
+    user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+    repo_id: int | None = None
+
+    if repo_path:
+        sanitized = SanitizedRepoPath(path=repo_path)
+        path = validate_repository_path(sanitized.path)
+        norm_path = str(path).replace("\\", "/").rstrip("/")
+        if user_id:
+            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
+            res = await db.execute(stmt)
+            repo = res.scalar_one_or_none()
+            if repo:
+                if repo.user_id is not None and repo.user_id != user_id:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Access denied: You do not have permission to access this repository.",
+                    )
+                repo_id = repo.id
+
+    # Delete from database
+    try:
+        await delete_chat_messages(
+            db,
+            repository_id=repo_id,
+            user_id=user_id,
+            conversation_id=conversation_id,
+        )
+        await db.commit()
+    except Exception as exc:
+        logger.debug("DB chat history delete failed: %s", exc)
+
     delete_chat_history(repo_path=repo_path, conversation_id=conversation_id)
 
     if conversation_id:
-        # Filter in-memory
         _conversation_history = [e for e in _conversation_history if e.get("conversation_id") != conversation_id]
         for rk in _repo_conversation_history:
             _repo_conversation_history[rk] = [
@@ -302,8 +423,39 @@ async def clear_chat_history(
 
 
 @router.get("/conversations")
-async def list_conversations(repo_path: str | None = None) -> list[dict]:
-    """List persistent chat conversations."""
+async def list_conversations(
+    repo_path: str | None = None,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """List persistent chat conversations from database and file cache."""
+    user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+    repo_id: int | None = None
+
+    if repo_path:
+        sanitized = SanitizedRepoPath(path=repo_path)
+        path = validate_repository_path(sanitized.path)
+        norm_path = str(path).replace("\\", "/").rstrip("/")
+        if user_id:
+            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
+            res = await db.execute(stmt)
+            repo = res.scalar_one_or_none()
+            if repo:
+                if repo.user_id is not None and repo.user_id != user_id:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Access denied: You do not have permission to access this repository.",
+                    )
+                repo_id = repo.id
+
+    # Check DB conversations first
+    try:
+        cids = await list_user_chat_conversations(db, repository_id=repo_id, user_id=user_id)
+        if cids:
+            return [{"id": cid, "conversation_id": cid, "title": f"Conversation {cid}"} for cid in cids]
+    except Exception as exc:
+        logger.debug("DB chat conversations lookup failed: %s", exc)
+
     data = load_chat_data()
     convs = list(data.get("conversations", {}).values())
     if repo_path:

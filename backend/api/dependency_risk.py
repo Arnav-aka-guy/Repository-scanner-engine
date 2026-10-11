@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from backend.security.path_validator import validate_repository_path
+from backend.api.dependencies import get_owned_repository
 from backend.services.dependency_risk import analyse_dependency_risk
 
 logger = logging.getLogger(__name__)
@@ -38,13 +39,12 @@ class DependencyRiskResponse(BaseModel):
 
 
 @router.get("", response_model=DependencyRiskResponse)
-async def get_dependency_risk(repo_path: str) -> DependencyRiskResponse:
+async def get_dependency_risk(path: Path = Depends(get_owned_repository)) -> DependencyRiskResponse:
     """Analyse dependency risk for a repository.
 
     Checks requirements.txt and package.json for pinning quality,
     known risky packages, and overall dependency health.
     """
-    path = validate_repository_path(repo_path)
 
     report = analyse_dependency_risk(str(path))
 

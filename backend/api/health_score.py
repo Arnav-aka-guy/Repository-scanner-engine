@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.api.dependencies import get_graph, get_parser
+from backend.api.dependencies import get_graph, get_owned_repository, get_parser
 from backend.graph.service import GraphService
 from backend.parser.service import ParserService
-from backend.security.path_validator import validate_repository_path
 from backend.services.health_score import compute_health_score
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class HealthScoreResponse(BaseModel):
 
 @router.get("", response_model=HealthScoreResponse)
 async def get_health_score(
-    repo_path: str,
+    path: Path = Depends(get_owned_repository),
     parser: ParserService = Depends(get_parser),
     graph_svc: GraphService = Depends(get_graph),
 ) -> HealthScoreResponse:
@@ -49,7 +49,6 @@ async def get_health_score(
     Analyses code quality across 5 dimensions: documentation,
     complexity, architecture, maintainability, and security.
     """
-    path = validate_repository_path(repo_path)
 
     try:
         parsed = await parser.parse_repository(str(path))

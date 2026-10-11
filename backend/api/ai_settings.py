@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
@@ -49,6 +51,21 @@ async def list_providers() -> ProvidersResponse:
     )
 
 
+_API_KEY_PATTERNS = [
+    re.compile(r"gsk_[a-zA-Z0-9_\-]{10,}"),
+    re.compile(r"sk-[a-zA-Z0-9_\-]{10,}"),
+    re.compile(r"Bearer\s+[a-zA-Z0-9_\-\.]{10,}", re.IGNORECASE),
+    re.compile(r"(?:api[-_]?key|secret)[=:\s]+[a-zA-Z0-9_\-]{10,}", re.IGNORECASE),
+]
+
+
+def _mask_secrets(msg: str) -> str:
+    cleaned = msg
+    for pattern in _API_KEY_PATTERNS:
+        cleaned = pattern.sub("[REDACTED]", cleaned)
+    return cleaned
+
+
 @router.get("/ai-health", response_model=HealthResponse)
 async def ai_health_check() -> HealthResponse:
     """Test connectivity to the active AI provider."""
@@ -68,5 +85,5 @@ async def ai_health_check() -> HealthResponse:
         return HealthResponse(
             status="error",
             provider=llm.manager.active_provider_name,
-            message=str(exc),
+            message=_mask_secrets(str(exc)),
         )

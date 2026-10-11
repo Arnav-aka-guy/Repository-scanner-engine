@@ -23,6 +23,7 @@ from backend.core.container import get_container
 from backend.core.logging import setup_logging
 from backend.db.database import close_db, init_db
 from backend.middleware.request_logging import RequestLoggingMiddleware
+from backend.middleware.security_headers import SecurityHeadersMiddleware
 from backend.security.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,10 @@ app = FastAPI(
 # 1. Request logging (outermost — logs every request)
 app.add_middleware(RequestLoggingMiddleware)
 
-# 2. CORS (restricted to configured origins)
+# 2. Defense-in-depth security headers (CSP, X-Frame-Options, X-Content-Type-Options)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. CORS (restricted to configured origins)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_settings.cors_origins,

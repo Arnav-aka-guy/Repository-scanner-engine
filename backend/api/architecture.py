@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api.dependencies import get_owned_repository, verify_repo_ownership
 from backend.core.container import get_container
+from backend.db.database import get_db
 from backend.graph.architecture_analyzer import ArchitectureAnalyzer
-from backend.security.path_validator import validate_repository_path
+from backend.security.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +42,13 @@ class ArchitectureReportResponse(BaseModel):
 
 
 @router.post("/report", response_model=ArchitectureReportResponse)
-async def get_architecture_report(request: ArchitectureRequest) -> ArchitectureReportResponse:
+async def get_architecture_report(
+    request: ArchitectureRequest,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ArchitectureReportResponse:
     """Run full architecture analysis on a repository."""
-    path = validate_repository_path(request.repo_path)
+    path = await verify_repo_ownership(request.repo_path, current_user, db)
 
     container = get_container()
     parser = container.parser_service
@@ -64,10 +72,10 @@ async def get_architecture_report(request: ArchitectureRequest) -> ArchitectureR
 
 
 @router.get("/layers")
-async def get_architecture_layers(repo_path: str) -> dict[str, Any]:
+async def get_architecture_layers(
+    path: Path = Depends(get_owned_repository),
+) -> dict[str, Any]:
     """Quick endpoint to just get detected layers."""
-    path = validate_repository_path(repo_path)
-
     container = get_container()
     parser = container.parser_service
 

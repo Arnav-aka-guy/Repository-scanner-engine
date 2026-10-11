@@ -43,6 +43,11 @@ AUTH_TOKEN_RATE = "10/minute"
 EMAIL_REGEX = re.compile(r"^[\w\.-]+@[\w\.-]+\.\w+$")
 
 
+def _is_secure_cookie(request: Request) -> bool:
+    settings = get_settings()
+    return getattr(settings, "app_mode", "local").lower() == "cloud" or request.url.scheme == "https"
+
+
 # ── Schemas ─────────────────────────────────────────────────────────────
 
 
@@ -166,7 +171,7 @@ async def register_user(
         value=refresh_token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=_is_secure_cookie(request),
         expires=int(expires_at.timestamp()),
         path="/api/auth",
     )
@@ -282,7 +287,7 @@ async def login_user(
         value=raw_refresh,
         httponly=True,
         samesite="lax",
-        secure=False,  # Set True in HTTPS production
+        secure=_is_secure_cookie(request),
         expires=int(expires_at.timestamp()),
         path="/api/auth",
     )
@@ -374,7 +379,7 @@ async def refresh_access_token(
         value=new_raw_refresh,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=_is_secure_cookie(request),
         expires=int(new_expires_at.timestamp()),
         path="/api/auth",
     )

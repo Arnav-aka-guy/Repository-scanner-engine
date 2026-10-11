@@ -133,6 +133,16 @@ def validate_repository_path(path: str) -> Path:
 
     # Check configured allowed roots (allowlist)
     allowed_roots = [Path(r).resolve() for r in settings.allowed_roots if str(r).strip()]
+
+    # In cloud mode, reject arbitrary local filesystem paths outside managed data/clone dirs
+    if getattr(settings, "app_mode", "local").lower() == "cloud":
+        data_root = Path(settings.data_dir).resolve()
+        is_managed = (resolved == data_root) or (data_root in resolved.parents)
+        if allowed_roots:
+            is_managed = is_managed or any(resolved == root or (root in resolved.parents) for root in allowed_roots)
+        if not is_managed:
+            raise _reject("Local directory scanning is disabled in cloud mode. Please import repositories from GitHub.")
+
     if allowed_roots:
         is_allowed = any(resolved == root or (root in resolved.parents) for root in allowed_roots)
         if not is_allowed:

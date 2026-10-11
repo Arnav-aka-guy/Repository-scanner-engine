@@ -127,15 +127,21 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    repository_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
+    repository_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    conversation_id: Mapped[str] = mapped_column(String(64), default="default", nullable=False, index=True)
     role: Mapped[str] = mapped_column(Enum("user", "assistant", name="message_role"), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    sources_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
-    repository: Mapped[Repository] = relationship("Repository", back_populates="chat_messages")
+    repository: Mapped[Repository | None] = relationship("Repository", back_populates="chat_messages")
+    user: Mapped[User | None] = relationship("User")
 
 
 class GeneratedDoc(Base):

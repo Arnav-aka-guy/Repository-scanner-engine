@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.api.dependencies import get_graph, get_parser
+from backend.api.dependencies import get_graph, get_owned_repository, get_parser
 from backend.graph.models import AnalysisResult
 from backend.parser.models import ParsedFile
-from backend.security.path_validator import validate_repository_path
 
 if TYPE_CHECKING:
     from backend.graph.service import GraphService
@@ -26,13 +26,11 @@ router = APIRouter(prefix="/api/graph", tags=["graph"])
 
 @router.get("/dependency")
 async def dependency_graph(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    path: Path = Depends(get_owned_repository),
     parser: ParserService = Depends(get_parser),
     graph_svc: GraphService = Depends(get_graph),
 ) -> dict:
     """Build and return the dependency (import) graph in Cytoscape JSON format."""
-    path = validate_repository_path(repo_path)
-
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
@@ -54,13 +52,11 @@ async def dependency_graph(
 
 @router.get("/call")
 async def call_graph(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    path: Path = Depends(get_owned_repository),
     parser: ParserService = Depends(get_parser),
     graph_svc: GraphService = Depends(get_graph),
 ) -> dict:
     """Build and return the call graph in Cytoscape JSON format."""
-    path = validate_repository_path(repo_path)
-
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
@@ -82,13 +78,11 @@ async def call_graph(
 
 @router.get("/analysis", response_model=AnalysisResult)
 async def analysis(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    path: Path = Depends(get_owned_repository),
     parser: ParserService = Depends(get_parser),
     graph_svc: GraphService = Depends(get_graph),
 ) -> AnalysisResult:
     """Run full graph analysis and return dead-code, cycles and complexity metrics."""
-    path = validate_repository_path(repo_path)
-
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
@@ -110,13 +104,11 @@ async def analysis(
 
 @router.get("/symbol")
 async def symbol_graph(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    path: Path = Depends(get_owned_repository),
     parser: ParserService = Depends(get_parser),
     graph_svc: GraphService = Depends(get_graph),
 ) -> dict:
     """Build and return symbol-level graph (DEFINES, IMPORTS, CALLS, INHERITS, USES) in Cytoscape format."""
-    path = validate_repository_path(repo_path)
-
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:
@@ -138,14 +130,12 @@ async def symbol_graph(
 
 @router.get("/impact")
 async def change_impact(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
     target_file: str = Query(..., description="Target file path to analyze change impact for"),
+    path: Path = Depends(get_owned_repository),
     parser: ParserService = Depends(get_parser),
     graph_svc: GraphService = Depends(get_graph),
 ):
     """Analyze change impact for a specific file or symbol: direct/indirect dependents and risk level."""
-    path = validate_repository_path(repo_path)
-
     try:
         parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(path))
     except Exception as exc:

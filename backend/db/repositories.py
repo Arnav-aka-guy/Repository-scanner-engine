@@ -277,27 +277,85 @@ async def update_scan_record(
 async def save_chat_message(
     db: AsyncSession,
     *,
-    repository_id: int,
+    repository_id: int | None = None,
+    user_id: int | None = None,
+    conversation_id: str = "default",
     role: str,
     content: str,
+    sources: list[str] | None = None,
 ) -> ChatMessage:
     """Save a chat message to the database."""
-    msg = ChatMessage(repository_id=repository_id, role=role, content=content)
+    sources_json = json.dumps(sources) if sources else None
+    msg = ChatMessage(
+        repository_id=repository_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        role=role,
+        content=content,
+        sources_json=sources_json,
+    )
     db.add(msg)
     await db.flush()
     return msg
 
 
-async def get_chat_history(db: AsyncSession, repository_id: int, *, limit: int = 100) -> list[ChatMessage]:
-    """Retrieve recent chat messages for a repository."""
-    stmt = (
-        select(ChatMessage)
-        .where(ChatMessage.repository_id == repository_id)
-        .order_by(ChatMessage.created_at.asc())
-        .limit(limit)
-    )
+async def get_chat_history(
+    db: AsyncSession,
+    repository_id: int | None = None,
+    *,
+    user_id: int | None = None,
+    conversation_id: str | None = None,
+    limit: int = 100,
+) -> list[ChatMessage]:
+    """Retrieve recent chat messages for a repository/user/conversation."""
+    stmt = select(ChatMessage)
+    if repository_id is not None:
+        stmt = stmt.where(ChatMessage.repository_id == repository_id)
+    if user_id is not None:
+        stmt = stmt.where(ChatMessage.user_id == user_id)
+    if conversation_id:
+        stmt = stmt.where(ChatMessage.conversation_id == conversation_id)
+    stmt = stmt.order_by(ChatMessage.created_at.asc()).limit(limit)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+async def delete_chat_messages(
+    db: AsyncSession,
+    *,
+    repository_id: int | None = None,
+    user_id: int | None = None,
+    conversation_id: str | None = None,
+) -> int:
+    """Delete chat messages matching criteria."""
+    from sqlalchemy import delete
+
+    stmt = delete(ChatMessage)
+    if repository_id is not None:
+        stmt = stmt.where(ChatMessage.repository_id == repository_id)
+    if user_id is not None:
+        stmt = stmt.where(ChatMessage.user_id == user_id)
+    if conversation_id:
+        stmt = stmt.where(ChatMessage.conversation_id == conversation_id)
+    result = await db.execute(stmt)
+    await db.flush()
+    return getattr(result, "rowcount", 0)
+
+
+async def list_user_chat_conversations(
+    db: AsyncSession,
+    *,
+    repository_id: int | None = None,
+    user_id: int | None = None,
+) -> list[str]:
+    """List distinct conversation IDs for a user and/or repository."""
+    stmt = select(ChatMessage.conversation_id).distinct()
+    if repository_id is not None:
+        stmt = stmt.where(ChatMessage.repository_id == repository_id)
+    if user_id is not None:
+        stmt = stmt.where(ChatMessage.user_id == user_id)
+    result = await db.execute(stmt)
+    return [c for c in result.scalars().all() if c]
 
 
 # ── Generated Docs ──────────────────────────────────────────────────────

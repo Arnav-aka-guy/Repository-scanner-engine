@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from backend.api.dependencies import get_parser
+from backend.api.dependencies import get_owned_repository, get_parser
 from backend.parser.service import ParserService
-from backend.security.path_validator import validate_repository_path
 from backend.services.tech_debt import analyse_tech_debt
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class TechDebtResponse(BaseModel):
 
 @router.get("", response_model=TechDebtResponse)
 async def get_tech_debt(
-    repo_path: str,
+    path: Path = Depends(get_owned_repository),
     parser: ParserService = Depends(get_parser),
 ) -> TechDebtResponse:
     """Analyse technical debt in a repository.
@@ -58,7 +58,6 @@ async def get_tech_debt(
     Returns code smells categorised by severity with
     remediation suggestions.
     """
-    path = validate_repository_path(repo_path)
 
     try:
         parsed = await parser.parse_repository(str(path))

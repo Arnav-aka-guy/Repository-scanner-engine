@@ -102,6 +102,9 @@ class Settings(BaseSettings):
     # are stored on the local filesystem only).
     database_enabled: bool = False
 
+    # ── Application Mode ───────────────────────────────────────────────
+    app_mode: str = "local"  # "local" | "cloud"
+
     # ── Authentication ────────────────────────────────────────────────
     local_mode: bool = False
     auth_enabled: bool = False
@@ -167,6 +170,24 @@ class Settings(BaseSettings):
         if self.database_url in ("sqlite+aiosqlite:///data/antigravity.db", "sqlite+aiosqlite:///antigravity.db"):
             sqlite_db_path = Path(self.data_dir) / "antigravity.db"
             self.database_url = f"sqlite+aiosqlite:///{sqlite_db_path.as_posix()}"
+
+        mode = self.app_mode.lower().strip()
+        if mode == "cloud":
+            self.auth_enabled = True
+            self.database_enabled = True
+            self.local_mode = False
+            secret = self.jwt_secret_key
+            if not secret or secret.lower() in _INSECURE_SECRETS:
+                raise ValueError(
+                    "APP_MODE=cloud requires a secure JWT_SECRET_KEY. "
+                    "The current value is a known insecure placeholder. "
+                    'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
+                )
+            if len(secret) < _MIN_SECRET_LENGTH:
+                raise ValueError(
+                    f"APP_MODE=cloud requires JWT_SECRET_KEY of at least "
+                    f"{_MIN_SECRET_LENGTH} characters (got {len(secret)})."
+                )
 
         if self.auth_enabled:
             secret = self.jwt_secret_key
