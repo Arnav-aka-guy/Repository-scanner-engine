@@ -91,26 +91,28 @@ export const AIChat: React.FC = () => {
     }
   };
 
-  // Extract all sources referenced across conversation
+  // Extract sources grounded in the latest assistant response
   const contextUsed = useMemo(() => {
     const filesUsed: Set<string> = new Set();
     const symbolsUsed: Set<string> = new Set();
 
-    messages.forEach((m) => {
-      if (m.sources) {
-        m.sources.forEach((s) => {
+    const lastAssistantMsg = [...messages].reverse().find((m) => m.role === 'assistant');
+    if (lastAssistantMsg) {
+      if (lastAssistantMsg.sources && lastAssistantMsg.sources.length > 0) {
+        lastAssistantMsg.sources.forEach((s) => {
           if (s.file_path) filesUsed.add(s.file_path);
           if (s.entity_name) symbolsUsed.add(s.entity_name);
         });
+      } else {
+        // Pattern match file paths in text
+        const matches = lastAssistantMsg.content.match(/\b([a-zA-Z0-9_\-./]+\.(?:ts|tsx|js|jsx|py|json|md))\b/g);
+        if (matches) {
+          matches.forEach((p) => {
+            if (p.includes('/') || p.includes('.')) filesUsed.add(p);
+          });
+        }
       }
-      // Pattern match file paths in text
-      const matches = m.content.match(/\b([a-zA-Z0-9_\-./]+\.(?:ts|tsx|js|jsx|py|json|md))\b/g);
-      if (matches) {
-        matches.forEach((p) => {
-          if (p.includes('/') || p.includes('.')) filesUsed.add(p);
-        });
-      }
-    });
+    }
 
     return {
       files: Array.from(filesUsed).slice(0, 10),

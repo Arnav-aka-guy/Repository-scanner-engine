@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/docs", tags=["documentation"])
+router = APIRouter(prefix="/api/documentation", tags=["documentation"])
 
 
 # ── Request / Response schemas ──────────────────────────────────────────

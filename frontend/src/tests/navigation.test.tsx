@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
+import { useWorkspaceStore } from '../stores/workspaceStore';
 
 describe('Phase 1 Navigation & Shell Structure', () => {
   it('renders all required category headers and navigation items in Sidebar', () => {
@@ -42,5 +43,18 @@ describe('Phase 1 Navigation & Shell Structure', () => {
     expect(html).toContain('lines');
     expect(html).toContain('42');
     expect(html).toContain('1,234');
+  });
+
+  it('does not trigger scanRepo when navigating between routes', () => {
+    const scanSpy = vi.fn();
+    useWorkspaceStore.setState({
+      activeRepository: 'd:/projects/summer-project-1',
+      activeRepositoryId: 1,
+      scanRepo: scanSpy,
+    });
+
+    // Simulate switching active repository route without rescan
+    useWorkspaceStore.getState().setActiveRepository('d:/projects/summer-project-1', 1);
+    expect(scanSpy).not.toHaveBeenCalled();
   });
 });

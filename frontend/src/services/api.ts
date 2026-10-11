@@ -152,7 +152,8 @@ export async function apiPostStream(
   path: string,
   body: unknown,
   onChunk: (chunk: string) => void,
-  onClose?: () => void
+  onClose?: () => void,
+  onDone?: (payload?: { sources?: unknown[]; content?: string }) => void
 ): Promise<void> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
@@ -204,6 +205,7 @@ export async function apiPostStream(
             const parsed = JSON.parse(data);
             // Handle backend's done signal
             if (parsed.type === 'done') {
+              if (onDone) onDone(parsed);
               if (onClose) onClose();
               return;
             }

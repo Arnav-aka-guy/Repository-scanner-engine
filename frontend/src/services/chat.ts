@@ -20,13 +20,15 @@ export async function sendChatMessageStream(
   repoPath: string,
   onChunk: (chunk: string) => void,
   onClose?: () => void,
-  conversationId?: string
+  conversationId?: string,
+  onDone?: (payload?: { sources?: unknown[]; content?: string }) => void
 ): Promise<void> {
   return apiPostStream(
     '/chat/',
     { question, repo_path: repoPath, conversation_id: conversationId },
     onChunk,
-    onClose
+    onClose,
+    onDone
   );
 }
 

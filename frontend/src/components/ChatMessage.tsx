@@ -27,6 +27,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const isUser = message.role === 'user';
   const isEmptyAssistant = !isUser && !message.content;
 
+  // Clean raw LLM citation markers (e.g. 【1†L58-L69】 or 【1†source】) from visible markdown
+  const cleanedContent = useMemo(() => {
+    if (!message.content) return '';
+    return message.content.replace(/【\d+†[^】]*】/g, '');
+  }, [message.content]);
+
   // Extract structured sources from message or text pattern fallback
   const sources = useMemo(() => {
     if (message.sources && message.sources.length > 0) {
@@ -137,7 +143,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             </p>
           ) : (
             <div className="prose-chat select-text">
-              <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
+              <Markdown remarkPlugins={[remarkGfm]}>{cleanedContent}</Markdown>
             </div>
           )}
 

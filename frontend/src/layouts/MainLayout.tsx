@@ -43,20 +43,29 @@ export const MainLayout: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
+  const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
+  const setActiveRepository = useWorkspaceStore((s) => s.setActiveRepository);
+
   // Sync URL repositoryId if present
   useEffect(() => {
     const match = location.pathname.match(/\/app\/repositories\/(\d+)/);
     if (match) {
       const repoId = parseInt(match[1], 10);
-      getUserRepository(repoId)
-        .then((repo) => {
-          if (repo && repo.source_path && repo.source_path !== activeRepository) {
-            scanRepo(repo.source_path);
-          }
-        })
-        .catch(() => {});
+      if (repoId !== activeRepositoryId) {
+        getUserRepository(repoId)
+          .then((repo) => {
+            if (repo && repo.source_path) {
+              const normRepoPath = repo.source_path.replace(/\\/g, '/').replace(/\/+$/, '');
+              const normActive = activeRepository ? activeRepository.replace(/\\/g, '/').replace(/\/+$/, '') : null;
+              if (normRepoPath !== normActive) {
+                setActiveRepository(normRepoPath, repo.id);
+              }
+            }
+          })
+          .catch(() => {});
+      }
     }
-  }, [location.pathname]);
+  }, [location.pathname, activeRepositoryId, activeRepository, setActiveRepository]);
 
   // On mount, only request scan info if active repository exists and we are not scanning
   useEffect(() => {

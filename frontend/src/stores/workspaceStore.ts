@@ -24,6 +24,7 @@ interface FileDetail {
 interface WorkspaceState {
   // ── Repository ─────────────────────────────────────────────────────
   activeRepository: string | null;
+  activeRepositoryId: number | null;
   repositoryInfo: RepositoryInfo | null;
   files: FileInfo[];
   fileTree: FileTreeNode[];
@@ -65,7 +66,8 @@ interface WorkspaceState {
   setCachedHealthScore: (repoPath: string, score: HealthScore) => void;
 
   // ── Actions ────────────────────────────────────────────────────────
-  scanRepo: (path: string) => Promise<void>;
+  setActiveRepository: (path: string, repoId?: number | null) => void;
+  scanRepo: (path: string, repoId?: number | null) => Promise<void>;
   setSelectedFile: (path: string | null) => void;
   loadFileDetail: (path: string) => Promise<void>;
   fetchGraph: (type: 'dependency' | 'call' | 'symbol') => Promise<void>;
@@ -143,6 +145,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     (set, get) => ({
       // ── Initial state ──────────────────────────────────────────────
       activeRepository: null,
+      activeRepositoryId: null,
       repositoryInfo: null,
       files: [],
       fileTree: [],
@@ -185,29 +188,42 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       // ── Actions ────────────────────────────────────────────────────
 
-      scanRepo: async (path: string) => {
+      setActiveRepository: (path: string, repoId: number | null = null) => {
+        const normPath = path ? path.replace(/\\/g, '/').replace(/\/+$/, '') : null;
+        set({
+          activeRepository: normPath,
+          activeRepositoryId: repoId,
+        });
+      },
+
+      scanRepo: async (path: string, repoId: number | null = null) => {
         if (!path) return;
+        // In-flight guard: prevent duplicate concurrent scans
+        if (get().scanStatus === 'scanning') return;
+
+        const normInputPath = path.trim().replace(/\\/g, '/').replace(/\/+$/, '');
         set({ scanStatus: 'scanning', scanError: null });
         try {
           const isGitHub =
-            path.trim().startsWith('http://') ||
-            path.trim().startsWith('https://') ||
-            path.trim().includes('github.com');
+            normInputPath.startsWith('http://') ||
+            normInputPath.startsWith('https://') ||
+            normInputPath.includes('github.com');
           const info = isGitHub
-            ? await scanGitHubRepository(path.trim())
-            : await scanRepository(path.trim());
-          const targetPath = info.path;
+            ? await scanGitHubRepository(normInputPath)
+            : await scanRepository(normInputPath);
+          const targetPath = (info.path || normInputPath).replace(/\\/g, '/').replace(/\/+$/, '');
           const fileList = await listFiles(targetPath);
           const tree = buildTree(fileList, targetPath);
 
           // Update recent repositories
           const recent = get().recentRepositories.filter((r) => r !== path && r !== targetPath);
-          recent.unshift(path);
+          recent.unshift(targetPath);
           if (recent.length > 10) recent.pop();
 
           const repoChat = get().chatMessagesByRepo[targetPath] || [];
           set({
             activeRepository: targetPath,
+            activeRepositoryId: repoId ?? get().activeRepositoryId,
             repositoryInfo: info,
             files: fileList,
             fileTree: tree,
@@ -369,7 +385,23 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             () => {
               set({ chatLoading: false });
             },
-            convId
+            convId,
+            (donePayload) => {
+              if (donePayload && donePayload.sources && Array.isArray(donePayload.sources)) {
+                set((state) => {
+                  const next = state.chatMessages.map((msg) =>
+                    msg.id === assistantMsgId ? { ...msg, sources: donePayload.sources as SearchResult[] } : msg
+                  );
+                  return {
+                    chatMessages: next,
+                    chatMessagesByRepo: {
+                      ...state.chatMessagesByRepo,
+                      [repoPath]: next.slice(-100),
+                    },
+                  };
+                });
+              }
+            }
           );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Error during streaming.';
@@ -519,6 +551,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       // Only persist these keys (not loading states or transient data)
       partialize: (state) => ({
         activeRepository: state.activeRepository,
+        activeRepositoryId: state.activeRepositoryId,
         recentRepositories: state.recentRepositories,
         chatMessagesByRepo: state.chatMessagesByRepo,
         graphType: state.graphType,
