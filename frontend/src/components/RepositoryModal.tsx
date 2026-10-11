@@ -4,7 +4,6 @@ import {
   FolderOpen,
   Globe,
   Clock,
-  X,
   ArrowRight,
   RefreshCw,
   AlertCircle,
@@ -13,8 +12,14 @@ import {
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { browseFolder } from '../services/repository';
-import { colors, radius, font } from '../design-system/tokens';
-import { Button } from '../design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from './ui/Dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 
 function getRepoBasename(path: string): string {
   const normalized = path.replace(/\\/g, '/');
@@ -43,7 +48,6 @@ export const RepositoryModal: React.FC = () => {
 
   const isScanning = scanStatus === 'scanning';
 
-  // Focus input when modal opens
   useEffect(() => {
     if (isOpen) {
       setLocalError(null);
@@ -52,19 +56,6 @@ export const RepositoryModal: React.FC = () => {
       }
     }
   }, [isOpen, activeTab]);
-
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        setOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, setOpen]);
-
-  if (!isOpen) return null;
 
   const handleBrowseFolder = async () => {
     setLocalError(null);
@@ -78,17 +69,13 @@ export const RepositoryModal: React.FC = () => {
           setOpen(false);
         }
       } else {
-        // Call backend native OS picker
         const res = await browseFolder();
         if (res && res.path) {
           setLocalPath(res.path);
           await scanRepo(res.path);
           setOpen(false);
-        } else {
-          // If native dialog returned empty or unavailable, click hidden file input as fallback
-          if (fileInputRef.current) {
-            fileInputRef.current.click();
-          }
+        } else if (fileInputRef.current) {
+          fileInputRef.current.click();
         }
       }
     } catch (err: any) {
@@ -101,14 +88,13 @@ export const RepositoryModal: React.FC = () => {
   const handleWebkitDirectoryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // In web browser, webkitdirectory provides files with webkitRelativePath
       const first = files[0];
       const relativePath = (first as any).webkitRelativePath || '';
       const rootFolder = relativePath.split('/')[0] || '';
       if (rootFolder) {
         setLocalPath(rootFolder);
         setLocalError(
-          `Selected "${rootFolder}". Note: For full local filesystem scanning, provide the full path on disk (e.g. D:\\projects\\${rootFolder}) or use the Browse Folder button.`
+          `Selected "${rootFolder}". Note: Enter the full path on disk (e.g. D:\\projects\\${rootFolder}) or use Browse Folder.`
         );
       }
     }
@@ -153,23 +139,7 @@ export const RepositoryModal: React.FC = () => {
   ];
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(3px)',
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isScanning) {
-          setOpen(false);
-        }
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isScanning && setOpen(false)}>
       {/* Hidden fallback webkitdirectory input */}
       <input
         ref={fileInputRef}
@@ -182,237 +152,72 @@ export const RepositoryModal: React.FC = () => {
         onChange={handleWebkitDirectoryChange}
       />
 
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '580px',
-          backgroundColor: colors.bg.surface,
-          border: `1px solid ${colors.border.default}`,
-          borderRadius: radius.lg,
-          boxShadow: '0 16px 40px rgba(0,0,0,0.6)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          animation: 'ds-fade-in 0.15s ease-out',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ── Modal Header ── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '16px 20px',
-            borderBottom: `1px solid ${colors.border.default}`,
-            backgroundColor: colors.bg.surfaceSecondary,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
-              style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: radius.md,
-                backgroundColor: 'rgba(91, 141, 239, 0.12)',
-                border: '1px solid rgba(91, 141, 239, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: colors.accent.blue,
-              }}
-            >
-              <FolderOpen size={16} />
+      <DialogContent className="max-w-[580px]">
+        <DialogHeader>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-[4px] border border-[#F2A93B]/30 bg-[#F2A93B]/10 text-[#F2A93B]">
+              <FolderOpen size={15} />
             </div>
             <div>
-              <h2
-                style={{
-                  fontSize: font.size.base,
-                  fontWeight: font.weight.semibold,
-                  color: colors.text.primary,
-                  fontFamily: font.sans,
-                  margin: 0,
-                  lineHeight: '1.2',
-                }}
-              >
-                Switch or Open Repository
-              </h2>
-              <span
-                style={{
-                  fontSize: font.size.xs,
-                  color: colors.text.muted,
-                  fontFamily: font.sans,
-                }}
-              >
+              <DialogTitle>Switch or Open Repository</DialogTitle>
+              <DialogDescription>
                 Scan local code from your PC or load any public GitHub repository
-              </span>
+              </DialogDescription>
             </div>
           </div>
+        </DialogHeader>
 
-          <button
-            onClick={() => setOpen(false)}
-            disabled={isScanning}
-            aria-label="Close"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              padding: '6px',
-              borderRadius: radius.sm,
-              cursor: isScanning ? 'not-allowed' : 'pointer',
-              color: colors.text.muted,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* ── Currently Active Repository Notice ── */}
         {activeRepository && (
-          <div
-            style={{
-              padding: '10px 20px',
-              backgroundColor: 'rgba(91, 141, 239, 0.06)',
-              borderBottom: `1px solid ${colors.border.subtle}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-              <Folder size={14} style={{ color: colors.accent.blue, flexShrink: 0 }} />
-              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: font.sans }}>
+          <div className="flex items-center justify-between gap-3 rounded-[4px] border border-[#262B28] bg-[#1C201D] px-3 py-2 text-[12px] mb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Folder size={14} className="text-[#F2A93B] shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-[#8A928B]">
                   Current workspace:
                 </span>
                 <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: font.weight.medium,
-                    color: colors.text.primary,
-                    fontFamily: font.mono,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
+                  className="font-mono text-[12px] font-medium text-[#E9ECE6] truncate"
                   title={activeRepository}
                 >
                   {getRepoBasename(activeRepository)}
                 </span>
               </div>
             </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Trash2 size={12} />}
+            <button
               onClick={handleUnloadWorkspace}
-              title="Close current workspace and reset views"
-              style={{ color: colors.status.danger, fontSize: '11px' }}
+              title="Close current workspace"
+              className="inline-flex items-center gap-1 rounded-[4px] px-2 py-1 text-[11px] font-medium text-[#E5654B] hover:bg-[#E5654B]/10"
             >
-              Unload
-            </Button>
+              <Trash2 size={12} />
+              <span>Unload</span>
+            </button>
           </div>
         )}
 
-        {/* ── Tabs Navigation ── */}
-        <div
-          style={{
-            display: 'flex',
-            padding: '0 20px',
-            borderBottom: `1px solid ${colors.border.default}`,
-            gap: '16px',
-            backgroundColor: colors.bg.surface,
-          }}
-        >
-          <button
-            onClick={() => setActiveTab('local')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '12px 2px',
-              border: 'none',
-              background: 'transparent',
-              fontSize: font.size.sm,
-              fontWeight: activeTab === 'local' ? font.weight.semibold : font.weight.normal,
-              color: activeTab === 'local' ? colors.accent.blue : colors.text.secondary,
-              borderBottom: `2px solid ${activeTab === 'local' ? colors.accent.blue : 'transparent'}`,
-              cursor: 'pointer',
-              fontFamily: font.sans,
-            }}
-          >
-            <FolderOpen size={14} />
-            Local Folder
-          </button>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="local" className="gap-1.5">
+              <FolderOpen size={13} />
+              <span>Local Folder</span>
+            </TabsTrigger>
+            <TabsTrigger value="github" className="gap-1.5">
+              <Globe size={13} />
+              <span>Public GitHub</span>
+            </TabsTrigger>
+            <TabsTrigger value="recents" className="gap-1.5">
+              <Clock size={13} />
+              <span>Recents ({recentRepositories.length})</span>
+            </TabsTrigger>
+          </TabsList>
 
-          <button
-            onClick={() => setActiveTab('github')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '12px 2px',
-              border: 'none',
-              background: 'transparent',
-              fontSize: font.size.sm,
-              fontWeight: activeTab === 'github' ? font.weight.semibold : font.weight.normal,
-              color: activeTab === 'github' ? colors.accent.blue : colors.text.secondary,
-              borderBottom: `2px solid ${activeTab === 'github' ? colors.accent.blue : 'transparent'}`,
-              cursor: 'pointer',
-              fontFamily: font.sans,
-            }}
-          >
-            <Globe size={14} />
-            Public GitHub
-          </button>
-
-          <button
-            onClick={() => setActiveTab('recents')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '12px 2px',
-              border: 'none',
-              background: 'transparent',
-              fontSize: font.size.sm,
-              fontWeight: activeTab === 'recents' ? font.weight.semibold : font.weight.normal,
-              color: activeTab === 'recents' ? colors.accent.blue : colors.text.secondary,
-              borderBottom: `2px solid ${activeTab === 'recents' ? colors.accent.blue : 'transparent'}`,
-              cursor: 'pointer',
-              fontFamily: font.sans,
-            }}
-          >
-            <Clock size={14} />
-            Recents ({recentRepositories.length})
-          </button>
-        </div>
-
-        {/* ── Tab Content ── */}
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* TAB 1: LOCAL DIRECTORY */}
-          {activeTab === 'local' && (
-            <form onSubmit={handleLocalSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* TAB 1: LOCAL */}
+          <TabsContent value="local">
+            <form onSubmit={handleLocalSubmit} className="flex flex-col gap-3.5 pt-2">
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: font.size.xs,
-                    fontWeight: font.weight.semibold,
-                    color: colors.text.muted,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    marginBottom: '6px',
-                    fontFamily: font.sans,
-                  }}
-                >
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#8A928B] mb-1.5">
                   Local Repository Directory
                 </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="flex gap-2">
                   <input
                     ref={localInputRef}
                     type="text"
@@ -420,125 +225,74 @@ export const RepositoryModal: React.FC = () => {
                     onChange={(e) => setLocalPath(e.target.value)}
                     placeholder="e.g. D:\projects\summer-project-1 or /home/user/my-app"
                     disabled={isScanning}
-                    style={{
-                      flex: 1,
-                      height: '36px',
-                      padding: '0 12px',
-                      backgroundColor: colors.bg.primary,
-                      border: `1px solid ${colors.border.default}`,
-                      borderRadius: radius.md,
-                      fontSize: font.size.sm,
-                      color: colors.text.primary,
-                      fontFamily: font.mono,
-                      outline: 'none',
-                    }}
+                    className="flex-1 h-[34px] rounded-[4px] border border-[#262B28] bg-[#0D0F0E] px-3 font-mono text-[12px] text-[#E9ECE6] outline-none transition-colors focus:border-[#F2A93B]"
                   />
-
-                  <Button
+                  <button
                     type="button"
-                    variant="secondary"
                     onClick={handleBrowseFolder}
                     disabled={isScanning || isBrowsing}
-                    loading={isBrowsing}
-                    icon={<FolderOpen size={14} />}
-                    title="Open native folder picker"
+                    className="inline-flex h-[34px] items-center gap-1.5 rounded-[4px] border border-[#262B28] bg-[#1C201D] px-3 text-[12px] font-medium text-[#E9ECE6] transition-colors hover:border-[#F2A93B] disabled:opacity-40"
                   >
-                    Browse Folder
-                  </Button>
+                    {isBrowsing ? (
+                      <RefreshCw size={13} className="animate-spin text-[#F2A93B]" />
+                    ) : (
+                      <FolderOpen size={13} className="text-[#F2A93B]" />
+                    )}
+                    <span>Browse</span>
+                  </button>
                 </div>
               </div>
 
-              <div
-                style={{
-                  fontSize: font.size.xs,
-                  color: colors.text.muted,
-                  fontFamily: font.sans,
-                  lineHeight: '1.5',
-                  backgroundColor: colors.bg.surfaceSecondary,
-                  padding: '10px 12px',
-                  borderRadius: radius.sm,
-                  border: `1px solid ${colors.border.subtle}`,
-                }}
-              >
-                Click <strong>Browse Folder</strong> to open your operating system's native folder picker, or type/paste any absolute directory path from your computer.
+              <div className="rounded-[4px] border border-[#262B28] bg-[#1C201D] p-2.5 text-[11px] text-[#8A928B] leading-relaxed">
+                Click <strong>Browse</strong> to select any project folder, or paste its full path directly.
               </div>
 
               {localError && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 12px',
-                    backgroundColor: 'rgba(201, 90, 90, 0.1)',
-                    border: '1px solid rgba(201, 90, 90, 0.25)',
-                    borderRadius: radius.sm,
-                    color: colors.status.danger,
-                    fontSize: font.size.xs,
-                  }}
-                >
-                  <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                <div className="flex items-center gap-2 rounded-[4px] border border-[#E5654B]/30 bg-[#E5654B]/10 p-2.5 text-[12px] text-[#E5654B]">
+                  <AlertCircle size={14} className="shrink-0" />
                   <span>{localError}</span>
                 </div>
               )}
 
               {scanError && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 12px',
-                    backgroundColor: 'rgba(201, 90, 90, 0.1)',
-                    border: '1px solid rgba(201, 90, 90, 0.25)',
-                    borderRadius: radius.sm,
-                    color: colors.status.danger,
-                    fontSize: font.size.xs,
-                  }}
-                >
-                  <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                <div className="flex items-center gap-2 rounded-[4px] border border-[#E5654B]/30 bg-[#E5654B]/10 p-2.5 text-[12px] text-[#E5654B]">
+                  <AlertCircle size={14} className="shrink-0" />
                   <span>{scanError}</span>
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
-                <Button
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-[#262B28]">
+                <button
                   type="button"
-                  variant="ghost"
                   onClick={() => setOpen(false)}
                   disabled={isScanning}
+                  className="h-[32px] rounded-[4px] px-3 text-[12px] font-medium text-[#8A928B] hover:text-[#E9ECE6]"
                 >
                   Cancel
-                </Button>
-                <Button
+                </button>
+                <button
                   type="submit"
-                  variant="primary"
                   disabled={!localPath.trim() || isScanning}
-                  loading={isScanning}
-                  icon={<RefreshCw size={14} />}
+                  className="inline-flex h-[32px] items-center gap-1.5 rounded-[4px] bg-[#F2A93B] px-4 text-[12px] font-semibold text-[#0D0F0E] transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
-                  {isScanning ? 'Scanning Repository...' : 'Scan Repository'}
-                </Button>
+                  {isScanning ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      <span>Scanning...</span>
+                    </>
+                  ) : (
+                    'Scan Repository'
+                  )}
+                </button>
               </div>
             </form>
-          )}
+          </TabsContent>
 
-          {/* TAB 2: PUBLIC GITHUB REPO */}
-          {activeTab === 'github' && (
-            <form onSubmit={handleGitHubSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* TAB 2: GITHUB */}
+          <TabsContent value="github">
+            <form onSubmit={handleGitHubSubmit} className="flex flex-col gap-3.5 pt-2">
               <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: font.size.xs,
-                    fontWeight: font.weight.semibold,
-                    color: colors.text.muted,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    marginBottom: '6px',
-                    fontFamily: font.sans,
-                  }}
-                >
+                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#8A928B] mb-1.5">
                   Public GitHub Repository URL
                 </label>
                 <input
@@ -547,55 +301,21 @@ export const RepositoryModal: React.FC = () => {
                   onChange={(e) => setGithubUrl(e.target.value)}
                   placeholder="https://github.com/owner/repository"
                   disabled={isScanning}
-                  style={{
-                    width: '100%',
-                    height: '36px',
-                    padding: '0 12px',
-                    backgroundColor: colors.bg.primary,
-                    border: `1px solid ${colors.border.default}`,
-                    borderRadius: radius.md,
-                    fontSize: font.size.sm,
-                    color: colors.text.primary,
-                    fontFamily: font.mono,
-                    outline: 'none',
-                  }}
+                  className="w-full h-[34px] rounded-[4px] border border-[#262B28] bg-[#0D0F0E] px-3 font-mono text-[12px] text-[#E9ECE6] outline-none transition-colors focus:border-[#F2A93B]"
                 />
               </div>
 
-              {/* Sample Quick Links */}
               <div>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    color: colors.text.muted,
-                    fontFamily: font.sans,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    marginBottom: '6px',
-                  }}
-                >
-                  <Sparkles size={11} style={{ color: colors.accent.blue }} /> Quick popular samples:
+                <span className="flex items-center gap-1 text-[11px] text-[#8A928B] mb-1.5">
+                  <Sparkles size={11} className="text-[#F2A93B]" /> Quick popular repositories:
                 </span>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <div className="flex flex-wrap gap-1.5">
                   {sampleRepos.map((sample) => (
                     <button
                       key={sample.url}
                       type="button"
                       onClick={() => setGithubUrl(sample.url)}
-                      style={{
-                        padding: '3px 8px',
-                        backgroundColor: colors.bg.surfaceSecondary,
-                        border: `1px solid ${colors.border.subtle}`,
-                        borderRadius: radius.sm,
-                        fontSize: '11px',
-                        fontFamily: font.sans,
-                        color: colors.text.secondary,
-                        cursor: 'pointer',
-                        transition: 'background-color 0.1s ease',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bg.elevated)}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = colors.bg.surfaceSecondary)}
+                      className="rounded-[4px] border border-[#262B28] bg-[#1C201D] px-2.5 py-1 text-[11px] text-[#8A928B] transition-colors hover:border-[#F2A93B] hover:text-[#E9ECE6]"
                     >
                       {sample.name}
                     </button>
@@ -603,197 +323,110 @@ export const RepositoryModal: React.FC = () => {
                 </div>
               </div>
 
-              <div
-                style={{
-                  fontSize: font.size.xs,
-                  color: colors.text.muted,
-                  fontFamily: font.sans,
-                  lineHeight: '1.5',
-                  backgroundColor: colors.bg.surfaceSecondary,
-                  padding: '10px 12px',
-                  borderRadius: radius.sm,
-                  border: `1px solid ${colors.border.subtle}`,
-                }}
-              >
-                Clones the public repository to a safe temporary workspace on your machine, extracts AST symbols, builds dependency graphs, and prepares semantic search index.
+              <div className="rounded-[4px] border border-[#262B28] bg-[#1C201D] p-2.5 text-[11px] text-[#8A928B] leading-relaxed">
+                Clones into an isolated local cache, generates syntax & dependency trees, and prepares semantic search.
               </div>
 
               {scanError && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 12px',
-                    backgroundColor: 'rgba(201, 90, 90, 0.1)',
-                    border: '1px solid rgba(201, 90, 90, 0.25)',
-                    borderRadius: radius.sm,
-                    color: colors.status.danger,
-                    fontSize: font.size.xs,
-                  }}
-                >
-                  <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                <div className="flex items-center gap-2 rounded-[4px] border border-[#E5654B]/30 bg-[#E5654B]/10 p-2.5 text-[12px] text-[#E5654B]">
+                  <AlertCircle size={14} className="shrink-0" />
                   <span>{scanError}</span>
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px' }}>
-                <Button
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-[#262B28]">
+                <button
                   type="button"
-                  variant="ghost"
                   onClick={() => setOpen(false)}
                   disabled={isScanning}
+                  className="h-[32px] rounded-[4px] px-3 text-[12px] font-medium text-[#8A928B] hover:text-[#E9ECE6]"
                 >
                   Cancel
-                </Button>
-                <Button
+                </button>
+                <button
                   type="submit"
-                  variant="primary"
                   disabled={!githubUrl.trim() || isScanning}
-                  loading={isScanning}
-                  icon={<Globe size={14} />}
+                  className="inline-flex h-[32px] items-center gap-1.5 rounded-[4px] bg-[#F2A93B] px-4 text-[12px] font-semibold text-[#0D0F0E] transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
-                  {isScanning ? 'Cloning & Indexing...' : 'Clone & Index'}
-                </Button>
+                  {isScanning ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      <span>Cloning...</span>
+                    </>
+                  ) : (
+                    'Clone & Index'
+                  )}
+                </button>
               </div>
             </form>
-          )}
+          </TabsContent>
 
           {/* TAB 3: RECENTS */}
-          {activeTab === 'recents' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <TabsContent value="recents">
+            <div className="flex flex-col gap-2 pt-2">
               {recentRepositories.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    padding: '28px 16px',
-                    color: colors.text.muted,
-                    fontSize: font.size.sm,
-                    fontFamily: font.sans,
-                  }}
-                >
+                <div className="py-8 text-center font-mono text-[12px] text-[#8A928B]">
                   No recent repositories found.
                 </div>
               ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    maxHeight: '260px',
-                    overflowY: 'auto',
-                  }}
-                >
+                <div className="flex flex-col gap-1.5 max-h-[240px] overflow-y-auto">
                   {recentRepositories.map((repo) => {
                     const isCurrent = repo === activeRepository;
                     return (
                       <div
                         key={repo}
                         onClick={() => !isScanning && handleSelectRecent(repo)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          backgroundColor: isCurrent ? 'rgba(91, 141, 239, 0.08)' : colors.bg.surfaceSecondary,
-                          border: `1px solid ${isCurrent ? 'rgba(91, 141, 239, 0.3)' : colors.border.subtle}`,
-                          borderRadius: radius.md,
-                          cursor: isScanning ? 'not-allowed' : 'pointer',
-                          transition: 'background-color 0.1s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isCurrent) e.currentTarget.style.backgroundColor = colors.bg.elevated;
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isCurrent) e.currentTarget.style.backgroundColor = colors.bg.surfaceSecondary;
-                        }}
+                        className={`flex items-center justify-between rounded-[4px] border p-2.5 transition-colors cursor-pointer ${
+                          isCurrent
+                            ? 'border-[#F2A93B]/40 bg-[#F2A93B]/10'
+                            : 'border-[#262B28] bg-[#1C201D] hover:border-[#3A423D] hover:bg-[#262B28]'
+                        }`}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                          <Folder size={15} style={{ color: colors.accent.blue, flexShrink: 0 }} />
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                            <span
-                              style={{
-                                fontSize: font.size.sm,
-                                fontWeight: font.weight.medium,
-                                color: colors.text.primary,
-                                fontFamily: font.sans,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Folder size={14} className="text-[#F2A93B] shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-sans text-[12px] font-medium text-[#E9ECE6] truncate">
                               {getRepoBasename(repo)}
                             </span>
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                color: colors.text.muted,
-                                fontFamily: font.mono,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
+                            <span className="font-mono text-[10px] text-[#8A928B] truncate">
                               {repo}
                             </span>
                           </div>
                         </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                          {isCurrent ? (
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                color: colors.accent.blue,
-                                fontWeight: 600,
-                                textTransform: 'uppercase',
-                                padding: '2px 6px',
-                                backgroundColor: 'rgba(91, 141, 239, 0.12)',
-                                borderRadius: radius.sm,
-                              }}
-                            >
-                              Active
-                            </span>
-                          ) : (
-                            <ArrowRight size={14} style={{ color: colors.text.muted }} />
-                          )}
-                        </div>
+                        {isCurrent ? (
+                          <span className="rounded-[2px] bg-[#F2A93B]/20 px-1.5 py-0.5 font-mono text-[10px] uppercase font-semibold text-[#F2A93B]">
+                            Active
+                          </span>
+                        ) : (
+                          <ArrowRight size={13} className="text-[#8A928B]" />
+                        )}
                       </div>
                     );
                   })}
                 </div>
               )}
 
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  paddingTop: '8px',
-                  borderTop: `1px solid ${colors.border.subtle}`,
-                }}
-              >
-                <Button
+              <div className="flex justify-between items-center pt-3 border-t border-[#262B28]">
+                <button
                   type="button"
-                  variant="ghost"
                   onClick={handleUnloadWorkspace}
-                  icon={<Trash2 size={13} />}
-                  style={{ color: colors.status.danger, fontSize: '12px' }}
+                  className="inline-flex items-center gap-1.5 text-[11px] text-[#E5654B] hover:underline"
                 >
-                  Clear All Workspace Data
-                </Button>
-                <Button
+                  <Trash2 size={12} />
+                  <span>Clear All Workspace Data</span>
+                </button>
+                <button
                   type="button"
-                  variant="secondary"
                   onClick={() => setOpen(false)}
+                  className="h-[30px] rounded-[4px] border border-[#262B28] bg-[#1C201D] px-3 text-[12px] font-medium text-[#E9ECE6] hover:bg-[#262B28]"
                 >
                   Close
-                </Button>
+                </button>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 };

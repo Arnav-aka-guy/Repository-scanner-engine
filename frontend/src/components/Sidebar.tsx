@@ -17,7 +17,12 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
-import { colors, radius, font } from '../design-system/tokens';
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from './ui/Tooltip';
 
 interface NavItem {
   name: string;
@@ -33,7 +38,7 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: 'WORKSPACE',
+    title: '01 — WORKSPACE',
     items: [
       { name: 'Overview', path: '/overview', icon: Compass },
       { name: 'Explorer', path: '/explorer', icon: FolderTree },
@@ -42,7 +47,7 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: 'ANALYSIS',
+    title: '02 — ANALYSIS',
     items: [
       { name: 'Dependencies', path: '/graph', icon: Share2 },
       { name: 'Architecture', path: '/architecture', icon: Tv },
@@ -50,13 +55,13 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: 'OUTPUT',
+    title: '03 — OUTPUT',
     items: [
       { name: 'Documentation', path: '/documentation', icon: FileText },
     ],
   },
   {
-    title: 'SYSTEM',
+    title: '04 — SYSTEM',
     items: [
       { name: 'Settings', path: '/settings', icon: Settings },
     ],
@@ -107,91 +112,45 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
   const getStatusBadge = () => {
     switch (scanStatus) {
       case 'indexed':
-        return { text: 'Indexed', color: colors.status.success };
+        return { text: 'Indexed', color: '#7FB77E' };
       case 'scanning':
-        return { text: 'Scanning...', color: colors.accent.blue };
+        return { text: 'Scanning...', color: '#F2A93B' };
       case 'error':
-        return { text: 'Scan error', color: colors.status.danger };
+        return { text: 'Scan error', color: '#E5654B' };
       default:
-        return { text: 'Ready', color: colors.text.muted };
+        return { text: 'Ready', color: '#8A928B' };
     }
   };
 
   const statusBadge = getStatusBadge();
 
   return (
-    <>
+    <TooltipProvider delayDuration={200}>
       {/* Mobile Backdrop Overlay */}
       {isMobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="md:hidden fixed inset-0 bg-black/60 z-40"
+          className="md:hidden fixed inset-0 bg-[#0D0F0E]/80 z-40"
         />
       )}
 
       {/* Main Sidebar Container */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col transition-transform duration-200 ease-in-out md:translate-x-0 ${
+        className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col w-[240px] min-w-[240px] h-full bg-[#151816] border-r border-[#262B28] select-none shrink-0 transition-transform duration-200 ease-in-out md:translate-x-0 ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{
-          width: '240px',
-          minWidth: '240px',
-          height: '100%',
-          backgroundColor: colors.bg.surface,
-          borderRight: `1px solid ${colors.border.default}`,
-          userSelect: 'none',
-          flexShrink: 0,
-        }}
       >
         {/* ── 1. Top Application Branding ── */}
-        <div
-          style={{
-            padding: '14px 16px',
-            borderBottom: `1px solid ${colors.border.default}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            height: '48px',
-          }}
-        >
+        <div className="flex items-center justify-between h-[44px] px-4 border-b border-[#262B28] bg-[#151816]">
           <Link
             to="/app"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              textDecoration: 'none',
-              cursor: 'pointer',
-            }}
+            className="flex items-center gap-2.5 text-decoration-none group cursor-pointer"
           >
-            <div
-              style={{
-                width: '22px',
-                height: '22px',
-                borderRadius: radius.sm,
-                backgroundColor: colors.accent.blue,
-                color: '#fff',
-                fontSize: '12px',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: font.sans,
-              }}
-            >
+            <div className="flex h-5 w-5 items-center justify-center rounded-[3px] bg-[#F2A93B] text-[11px] font-bold text-[#0D0F0E] font-mono">
               R
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span
-                style={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: colors.text.primary,
-                  fontFamily: font.sans,
-                  lineHeight: '1.2',
-                }}
-              >
+            <div className="flex flex-col">
+              <span className="font-sans text-[12px] font-semibold text-[#E9ECE6] tracking-tight leading-none group-hover:text-[#F2A93B] transition-colors">
                 Repository Scanner
               </span>
             </div>
@@ -201,8 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
           {onCloseMobile && (
             <button
               onClick={onCloseMobile}
-              className="md:hidden p-1 rounded hover:bg-[#1B2028]"
-              style={{ color: colors.text.muted }}
+              className="md:hidden p-1 rounded hover:bg-[#1C201D] text-[#8A928B]"
               aria-label="Close menu"
             >
               <X size={16} />
@@ -213,135 +171,77 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
         {/* ── 2. Active Repository Identity Card ── */}
         <div
           onClick={() => setRepoModalOpen(true)}
-          style={{
-            padding: '12px 14px',
-            borderBottom: `1px solid ${colors.border.subtle}`,
-            backgroundColor: colors.bg.surfaceSecondary,
-            cursor: 'pointer',
-            transition: 'background-color 0.12s ease',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bg.elevated)}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = colors.bg.surfaceSecondary)}
+          className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-[#262B28] bg-[#1C201D] cursor-pointer hover:bg-[#262B28] transition-colors"
           title={activeRepository ? `${activeRepository} — Click to switch repository` : 'Click to open or switch repository'}
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-              <Folder size={14} style={{ color: colors.accent.blue, flexShrink: 0 }} />
-              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <Folder size={14} className="text-[#F2A93B] shrink-0" />
+            <div className="flex flex-col min-w-0">
+              <span
+                className="font-mono text-[11px] font-medium text-[#E9ECE6] truncate"
+                title={activeRepository || 'No workspace opened'}
+              >
+                {repoName || 'No repository'}
+              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
                 <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: colors.text.primary,
-                    fontFamily: font.mono,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                  title={activeRepository || 'No workspace opened'}
-                >
-                  {repoName || 'No repository'}
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: statusBadge.color }}
+                />
+                <span className="font-mono text-[10px] text-[#8A928B]">
+                  {activeRepository ? statusBadge.text : 'Open codebase'}
                 </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
-                  <span
-                    style={{
-                      width: '5px',
-                      height: '5px',
-                      borderRadius: '50%',
-                      backgroundColor: statusBadge.color,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      color: colors.text.muted,
-                      fontFamily: font.sans,
-                    }}
-                  >
-                    {activeRepository ? statusBadge.text : 'Click to open repo'}
-                  </span>
-                </div>
               </div>
             </div>
+          </div>
 
-            {/* Quick Action buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRepoModalOpen(true);
-                }}
-                title="Switch repository"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: '4px',
-                  borderRadius: radius.sm,
-                  cursor: 'pointer',
-                  color: colors.text.muted,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <FolderOpen size={12} style={{ color: colors.accent.blue }} />
-              </button>
-
-              {activeRepository && (
+          {/* Quick Action buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <button
-                  onClick={handleRescan}
-                  disabled={isScanning}
-                  title="Rescan repository"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    padding: '4px',
-                    borderRadius: radius.sm,
-                    cursor: isScanning ? 'not-allowed' : 'pointer',
-                    color: isScanning ? colors.accent.blue : colors.text.muted,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRepoModalOpen(true);
                   }}
+                  className="p-1 rounded-[3px] text-[#8A928B] hover:text-[#E9ECE6] hover:bg-[#151816]"
+                  aria-label="Switch repository"
                 >
-                  <RefreshCw
-                    size={12}
-                    style={{
-                      animation: isScanning ? 'ds-spin 1s linear infinite' : 'none',
-                    }}
-                  />
+                  <FolderOpen size={13} className="text-[#F2A93B]" />
                 </button>
-              )}
-            </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">Switch repository</TooltipContent>
+            </Tooltip>
+
+            {activeRepository && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handleRescan}
+                    disabled={isScanning}
+                    className="p-1 rounded-[3px] text-[#8A928B] hover:text-[#E9ECE6] hover:bg-[#151816] disabled:opacity-40"
+                    aria-label="Rescan repository"
+                  >
+                    <RefreshCw
+                      size={13}
+                      className={isScanning ? 'animate-spin text-[#F2A93B]' : ''}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Rescan repository</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
 
         {/* ── 3. Categorized Navigation Sections ── */}
-        <nav
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '12px 10px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          }}
-        >
+        <nav className="flex-1 overflow-y-auto px-2 py-3 flex flex-col gap-4">
           {NAV_SECTIONS.map((section) => (
-            <div key={section.title} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {/* Section Header */}
-              <div
-                style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  letterSpacing: '0.08em',
-                  color: colors.text.muted,
-                  padding: '4px 10px',
-                  textTransform: 'uppercase',
-                  fontFamily: font.sans,
-                }}
-              >
+            <div key={section.title} className="flex flex-col gap-0.5">
+              {/* Section Header with Survey Map Mono Style */}
+              <div className="px-2.5 py-1 font-mono text-[10px] font-semibold tracking-wider text-[#5E645F] uppercase">
                 {section.title}
               </div>
 
@@ -349,65 +249,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const targetPath = repoPrefix ? `${repoPrefix}${item.path}` : item.path;
-                const isActive = location.pathname === targetPath || (item.path === '/overview' && location.pathname === repoPrefix);
+                const isActive =
+                  location.pathname === targetPath ||
+                  (item.path === '/overview' && location.pathname === repoPrefix);
 
                 return (
                   <NavLink
                     key={item.path}
                     to={targetPath}
                     onClick={() => handleItemClick(item.path)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '6px 10px',
-                      borderRadius: radius.md,
-                      textDecoration: 'none',
-                      fontSize: '13px',
-                      fontFamily: font.sans,
-                      fontWeight: isActive ? 500 : 400,
-                      color: isActive ? colors.text.primary : colors.text.secondary,
-                      backgroundColor: isActive ? colors.bg.surfaceSecondary : 'transparent',
-                      borderLeft: isActive
-                        ? `2px solid ${colors.accent.blue}`
-                        : '2px solid transparent',
-                      transition: `background-color ${colors.border.subtle} 0.1s ease`,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = colors.bg.surfaceSecondary;
-                        e.currentTarget.style.color = colors.text.primary;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                        e.currentTarget.style.color = colors.text.secondary;
-                      }
-                    }}
+                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-[4px] text-[12px] font-sans transition-colors ${
+                      isActive
+                        ? 'bg-[#1C201D] text-[#E9ECE6] font-medium border-l-2 border-[#F2A93B]'
+                        : 'text-[#8A928B] hover:bg-[#1C201D] hover:text-[#E9ECE6] border-l-2 border-transparent'
+                    }`}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="flex items-center gap-2.5">
                       <Icon
-                        size={15}
-                        style={{
-                          color: isActive ? colors.accent.blue : colors.text.muted,
-                          flexShrink: 0,
-                        }}
+                        size={14}
+                        className={`shrink-0 ${
+                          isActive ? 'text-[#F2A93B]' : 'text-[#5E645F]'
+                        }`}
                       />
                       <span>{item.name}</span>
                     </div>
 
                     {item.badge && (
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          color: colors.text.muted,
-                          backgroundColor: colors.bg.elevated,
-                          padding: '1px 5px',
-                          borderRadius: radius.sm,
-                          fontFamily: font.mono,
-                        }}
-                      >
+                      <span className="font-mono text-[10px] text-[#8A928B] bg-[#262B28] px-1.5 py-0.5 rounded-[2px]">
                         {item.badge}
                       </span>
                     )}
@@ -419,22 +287,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
         </nav>
 
         {/* ── 4. Bottom Footer Info ── */}
-        <div
-          style={{
-            padding: '10px 14px',
-            borderTop: `1px solid ${colors.border.subtle}`,
-            fontSize: '11px',
-            color: colors.text.muted,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontFamily: font.mono,
-          }}
-        >
+        <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-[#262B28] bg-[#151816] font-mono text-[10px] text-[#5E645F]">
           <span>Antigravity v2.0</span>
-          <span>HUD Dark</span>
+          <span>Survey Map</span>
         </div>
       </aside>
-    </>
+    </TooltipProvider>
   );
 };

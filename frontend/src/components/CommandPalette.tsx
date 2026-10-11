@@ -16,7 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
-import { colors, radius, font } from '../design-system/tokens';
+import { Dialog, DialogContent } from './ui/Dialog';
 
 interface CommandItem {
   id: string;
@@ -53,7 +53,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Open Overview',
       subtitle: 'Workspace summary, language breakdown & telemetry',
       category: 'Navigation',
-      icon: <Compass size={16} />,
+      icon: <Compass size={15} />,
       shortcut: 'G O',
       run: () => {
         setSelectedFile(null);
@@ -65,7 +65,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Open File Explorer',
       subtitle: 'Browse source tree, files, and AST code entities',
       category: 'Navigation',
-      icon: <FolderTree size={16} />,
+      icon: <FolderTree size={15} />,
       shortcut: 'G E',
       run: () => navigate('/explorer'),
     },
@@ -74,7 +74,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Search Codebase',
       subtitle: 'Semantic vector search across symbols & docstrings',
       category: 'Navigation',
-      icon: <Search size={16} />,
+      icon: <Search size={15} />,
       shortcut: 'G S',
       run: () => navigate('/search'),
     },
@@ -83,7 +83,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Ask AI Assistant',
       subtitle: 'Repository-aware intelligence and explanation chat',
       category: 'Navigation',
-      icon: <MessageSquare size={16} />,
+      icon: <MessageSquare size={15} />,
       shortcut: 'G A',
       run: () => navigate('/chat'),
     },
@@ -92,7 +92,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Analyze Dependencies',
       subtitle: 'Visualize module relationships and call graph',
       category: 'Navigation',
-      icon: <Share2 size={16} />,
+      icon: <Share2 size={15} />,
       shortcut: 'G D',
       run: () => navigate('/graph'),
     },
@@ -101,7 +101,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Analyze Architecture',
       subtitle: 'System layer decomposition and module topology',
       category: 'Navigation',
-      icon: <Tv size={16} />,
+      icon: <Tv size={15} />,
       shortcut: 'G C',
       run: () => navigate('/architecture'),
     },
@@ -110,7 +110,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'View Code Health',
       subtitle: 'Risk factors, technical debt and complexity scores',
       category: 'Navigation',
-      icon: <Activity size={16} />,
+      icon: <Activity size={15} />,
       shortcut: 'G H',
       run: () => navigate('/health-dashboard'),
     },
@@ -119,7 +119,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Generate Documentation',
       subtitle: 'Architecture summaries and module doc generators',
       category: 'Navigation',
-      icon: <FileText size={16} />,
+      icon: <FileText size={15} />,
       shortcut: 'G M',
       run: () => navigate('/documentation'),
     },
@@ -128,7 +128,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Open Settings',
       subtitle: 'Provider status, model preferences, and telemetry',
       category: 'Navigation',
-      icon: <Settings size={16} />,
+      icon: <Settings size={15} />,
       shortcut: 'G ,',
       run: () => navigate('/settings'),
     },
@@ -139,7 +139,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Rescan Current Repository',
       subtitle: activeRepository ? `Re-index: ${activeRepository}` : 'No active repository to scan',
       category: 'Actions',
-      icon: <RefreshCw size={16} />,
+      icon: <RefreshCw size={15} />,
       shortcut: 'R',
       run: () => {
         if (activeRepository) {
@@ -154,7 +154,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Switch or Open Repository...',
       subtitle: 'Open repository switcher (local PC folder or public GitHub URL)',
       category: 'Actions',
-      icon: <FolderOpen size={16} />,
+      icon: <FolderOpen size={15} />,
       shortcut: 'O',
       run: () => {
         setRepoModalOpen(true);
@@ -165,7 +165,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Browse Local Folder from PC...',
       subtitle: 'Trigger native OS folder picker to choose local directory',
       category: 'Actions',
-      icon: <FolderOpen size={16} />,
+      icon: <FolderOpen size={15} />,
       shortcut: 'B',
       run: () => {
         selectLocalDirectory();
@@ -176,7 +176,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       title: 'Clear AI Chat History',
       subtitle: 'Reset conversation messages for current workspace',
       category: 'Actions',
-      icon: <Trash2 size={16} />,
+      icon: <Trash2 size={15} />,
       run: () => clearChatHistory(),
     },
   ];
@@ -222,53 +222,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Command Palette"
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'center',
-        paddingTop: '12vh',
-        zIndex: 9999,
-        backdropFilter: 'blur(2px)',
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '100%',
-          maxWidth: '560px',
-          backgroundColor: colors.bg.surface,
-          border: `1px solid ${colors.border.strong}`,
-          borderRadius: radius.lg,
-          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '440px',
-        }}
-      >
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-[560px] p-0 overflow-hidden top-[25%] translate-y-[-25%]">
         {/* Search Input Bar */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '12px 16px',
-            borderBottom: `1px solid ${colors.border.default}`,
-            gap: '10px',
-            backgroundColor: colors.bg.surfaceSecondary,
-          }}
-        >
-          <Search size={16} style={{ color: colors.accent.blue, flexShrink: 0 }} />
+        <div className="flex items-center gap-2.5 border-b border-[#262B28] bg-[#1C201D] px-4 py-3">
+          <Search size={15} className="text-[#F2A93B] shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -276,48 +235,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a command or jump to feature..."
-            style={{
-              width: '100%',
-              backgroundColor: 'transparent',
-              border: 'none',
-              outline: 'none',
-              fontSize: font.size.base,
-              color: colors.text.primary,
-              fontFamily: font.sans,
-            }}
+            className="w-full bg-transparent text-[13px] text-[#E9ECE6] outline-none font-sans placeholder:text-[#5E645F]"
           />
-          <span
-            style={{
-              fontSize: '11px',
-              fontFamily: font.mono,
-              color: colors.text.muted,
-              backgroundColor: colors.bg.elevated,
-              padding: '2px 6px',
-              borderRadius: radius.sm,
-              flexShrink: 0,
-            }}
-          >
+          <kbd className="rounded-[3px] border border-[#262B28] bg-[#262B28] px-1.5 py-0.5 font-mono text-[10px] text-[#8A928B]">
             ESC
-          </span>
+          </kbd>
         </div>
 
         {/* Command List */}
-        <div
-          style={{
-            overflowY: 'auto',
-            padding: '8px 0',
-            flex: 1,
-          }}
-        >
+        <div className="max-h-[320px] overflow-y-auto py-1">
           {filtered.length === 0 ? (
-            <div
-              style={{
-                padding: '32px 16px',
-                textAlign: 'center',
-                color: colors.text.muted,
-                fontSize: font.size.sm,
-              }}
-            >
+            <div className="py-8 text-center text-[12px] font-mono text-[#8A928B]">
               No matching commands found.
             </div>
           ) : (
@@ -331,52 +259,22 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                     onClose();
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 16px',
-                    cursor: 'pointer',
-                    backgroundColor: isSelected ? colors.bg.surfaceSecondary : 'transparent',
-                    borderLeft: isSelected
-                      ? `2px solid ${colors.accent.blue}`
-                      : '2px solid transparent',
-                    transition: 'background-color 0.08s ease',
-                  }}
+                  className={`flex items-center justify-between px-4 py-2 text-[12px] cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'border-l-2 border-[#F2A93B] bg-[#1C201D]'
+                      : 'border-l-2 border-transparent hover:bg-[#1C201D]'
+                  }`}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                    <span
-                      style={{
-                        color: isSelected ? colors.accent.blue : colors.text.muted,
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={isSelected ? 'text-[#F2A93B]' : 'text-[#8A928B]'}>
                       {item.icon}
                     </span>
-                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                      <span
-                        style={{
-                          fontSize: font.size.md,
-                          fontWeight: font.weight.medium,
-                          color: isSelected ? colors.text.primary : colors.text.secondary,
-                          fontFamily: font.sans,
-                        }}
-                      >
+                    <div className="flex flex-col min-w-0">
+                      <span className={`font-medium truncate ${isSelected ? 'text-[#E9ECE6]' : 'text-[#8A928B]'}`}>
                         {item.title}
                       </span>
                       {item.subtitle && (
-                        <span
-                          style={{
-                            fontSize: font.size.xs,
-                            color: colors.text.muted,
-                            fontFamily: font.sans,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          }}
-                        >
+                        <span className="font-mono text-[10px] text-[#5E645F] truncate">
                           {item.subtitle}
                         </span>
                       )}
@@ -384,20 +282,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                   </div>
 
                   {item.shortcut && (
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontFamily: font.mono,
-                        color: colors.text.muted,
-                        backgroundColor: colors.bg.elevated,
-                        padding: '2px 6px',
-                        borderRadius: radius.sm,
-                        flexShrink: 0,
-                        marginLeft: '12px',
-                      }}
-                    >
+                    <kbd className="shrink-0 ml-3 rounded-[2px] border border-[#262B28] bg-[#262B28] px-1.5 py-0.5 font-mono text-[10px] text-[#8A928B]">
                       {item.shortcut}
-                    </span>
+                    </kbd>
                   )}
                 </div>
               );
@@ -406,30 +293,18 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         </div>
 
         {/* Footer shortcuts hint */}
-        <div
-          style={{
-            padding: '8px 16px',
-            borderTop: `1px solid ${colors.border.subtle}`,
-            backgroundColor: colors.bg.primary,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            fontSize: '11px',
-            color: colors.text.muted,
-            fontFamily: font.mono,
-          }}
-        >
-          <div style={{ display: 'flex', gap: '12px' }}>
+        <div className="flex items-center justify-between border-t border-[#262B28] bg-[#0D0F0E] px-4 py-2 font-mono text-[10px] text-[#5E645F]">
+          <div className="flex gap-3">
             <span>↑↓ navigate</span>
             <span>↵ select</span>
             <span>esc close</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Sparkles size={11} style={{ color: colors.accent.blue }} />
+          <div className="flex items-center gap-1 text-[#8A928B]">
+            <Sparkles size={10} className="text-[#F2A93B]" />
             <span>Antigravity Engine</span>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 };

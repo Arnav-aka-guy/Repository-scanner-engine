@@ -281,7 +281,7 @@ export const MainLayout: React.FC = () => {
                   cursor: isScanning ? 'not-allowed' : 'pointer',
                 }}
               >
-                <FolderOpen size={11} style={{ color: colors.accent.blue }} />
+                <FolderOpen size={11} style={{ color: '#F2A93B' }} />
                 <span>Switch Repo</span>
               </button>
 
@@ -298,7 +298,7 @@ export const MainLayout: React.FC = () => {
                     backgroundColor: colors.bg.surfaceSecondary,
                     border: `1px solid ${colors.border.default}`,
                     borderRadius: radius.md,
-                    color: isScanning ? colors.accent.blue : colors.text.secondary,
+                    color: isScanning ? '#F2A93B' : colors.text.secondary,
                     fontSize: '11px',
                     fontFamily: font.sans,
                     cursor: isScanning ? 'not-allowed' : 'pointer',

@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Cpu } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
-import { colors, font } from '../design-system/tokens';
+import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from './ui/Tooltip';
 
 interface StatusBarProps {
   repoPath?: string;
@@ -67,124 +72,88 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   }, []);
 
   const getRepoStatusText = () => {
-    if (!repoPath) return { text: 'No repository selected', color: colors.text.muted };
-    if (scanStatus === 'scanning') return { text: 'Scanning & indexing...', color: colors.accent.blue };
-    if (scanStatus === 'indexed') return { text: 'Repository indexed', color: colors.status.success };
-    if (scanStatus === 'error') return { text: scanError ? `Scan error: ${scanError}` : 'Scan failed', color: colors.status.danger };
-    return { text: 'Repository loaded', color: colors.text.secondary };
+    if (!repoPath) return { text: 'No repository selected', color: '#5E645F' };
+    if (scanStatus === 'scanning') return { text: 'Scanning & indexing...', color: '#F2A93B' };
+    if (scanStatus === 'indexed') return { text: 'Repository indexed', color: '#7FB77E' };
+    if (scanStatus === 'error') return { text: scanError ? `Scan error: ${scanError}` : 'Scan failed', color: '#E5654B' };
+    return { text: 'Repository loaded', color: '#8A928B' };
   };
 
   const repoStatus = getRepoStatusText();
 
   return (
-    <footer
-      style={{
-        height: '26px',
-        minHeight: '26px',
-        width: '100%',
-        borderTop: `1px solid ${colors.border.default}`,
-        backgroundColor: colors.bg.surface,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 16px',
-        userSelect: 'none',
-        flexShrink: 0,
-        fontSize: '11px',
-        fontFamily: font.sans,
-      }}
-    >
-      {/* ── Left section: Meaningful status disclosures ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', overflow: 'hidden' }}>
-        {/* Backend Connectivity Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-          <span
-            style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: isConnected ? colors.status.success : colors.status.danger,
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              color: isConnected ? colors.text.secondary : colors.status.danger,
-              fontFamily: font.sans,
-            }}
-          >
-            {isConnected ? 'Backend connected' : 'Backend unavailable — reconnecting...'}
-          </span>
-        </div>
+    <TooltipProvider delayDuration={200}>
+      <footer className="h-[26px] min-h-[26px] w-full border-t border-[#262B28] bg-[#151816] flex items-center justify-between px-3 text-[11px] font-sans select-none shrink-0 text-[#8A928B]">
+        {/* ── Left section: Meaningful status disclosures ── */}
+        <div className="flex items-center gap-3 overflow-hidden">
+          {/* Backend Connectivity Status */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 shrink-0 cursor-default">
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: isConnected ? '#7FB77E' : '#E5654B' }}
+                />
+                <span className={isConnected ? 'text-[#8A928B]' : 'text-[#E5654B]'}>
+                  {isConnected ? 'Backend connected' : 'Backend unavailable'}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {isConnected ? 'FastAPI daemon healthy' : 'Connection refused — retrying every 25s'}
+            </TooltipContent>
+          </Tooltip>
 
-        {/* Vertical divider */}
-        <span style={{ color: colors.border.strong }}>|</span>
+          <span className="text-[#262B28]">|</span>
 
-        {/* Repository State Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-          {repoPath && (
+          {/* Repository State Status */}
+          <div className="flex items-center gap-1.5 overflow-hidden">
+            {repoPath && (
+              <span
+                className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: repoStatus.color }}
+              />
+            )}
             <span
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: repoStatus.color,
-                flexShrink: 0,
-              }}
-            />
-          )}
-          <span
-            style={{
-              color: repoStatus.color,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {repoStatus.text}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Right section: Metrics & Model context ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
-        {repoPath && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: colors.text.muted, fontFamily: font.mono }}>
-            <span>
-              <strong style={{ color: colors.text.primary, fontWeight: 500 }}>
-                {totalFiles.toLocaleString()}
-              </strong>{' '}
-              files
-            </span>
-            <span>
-              <strong style={{ color: colors.text.primary, fontWeight: 500 }}>
-                {totalLines.toLocaleString()}
-              </strong>{' '}
-              lines
+              className="truncate"
+              style={{ color: repoStatus.color }}
+            >
+              {repoStatus.text}
             </span>
           </div>
-        )}
-
-        {/* Embedding Model Badge */}
-        <div
-          title={`Active Embedding Model: ${activeModel}`}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '1px 6px',
-            backgroundColor: colors.bg.surfaceSecondary,
-            border: `1px solid ${colors.border.subtle}`,
-            borderRadius: '3px',
-            color: colors.text.secondary,
-            fontSize: '10px',
-            fontFamily: font.mono,
-          }}
-        >
-          <Cpu size={10} style={{ color: colors.accent.blue, flexShrink: 0 }} />
-          <span>{activeModel}</span>
         </div>
-      </div>
-    </footer>
+
+        {/* ── Right section: Metrics & Model context ── */}
+        <div className="flex items-center gap-3 shrink-0">
+          {repoPath && (
+            <div className="flex items-center gap-2.5 font-mono text-[10px] tabular-nums text-[#8A928B]">
+              <span>
+                <strong className="font-semibold text-[#E9ECE6]">
+                  {totalFiles.toLocaleString()}
+                </strong>{' '}
+                files
+              </span>
+              <span>
+                <strong className="font-semibold text-[#E9ECE6]">
+                  {totalLines.toLocaleString()}
+                </strong>{' '}
+                lines
+              </span>
+            </div>
+          )}
+
+          {/* Embedding Model Badge */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] border border-[#262B28] bg-[#1C201D] text-[10px] font-mono text-[#8A928B] cursor-default">
+                <Cpu size={10} className="text-[#F2A93B] shrink-0" />
+                <span>{activeModel}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top">Active Vector Embedding Model</TooltipContent>
+          </Tooltip>
+        </div>
+      </footer>
+    </TooltipProvider>
   );
 };
