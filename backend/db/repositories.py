@@ -120,7 +120,7 @@ async def revoke_user_refresh_tokens(db: AsyncSession, user_id: int) -> int:
     stmt = update(RefreshToken).where(RefreshToken.user_id == user_id).values(revoked=True)
     res = await db.execute(stmt)
     await db.flush()
-    return res.rowcount or 0
+    return int(getattr(res, "rowcount", 0) or 0)
 
 
 # ── User-scoped Repository CRUD ─────────────────────────────────────────
@@ -339,7 +339,7 @@ async def delete_chat_messages(
         stmt = stmt.where(ChatMessage.conversation_id == conversation_id)
     result = await db.execute(stmt)
     await db.flush()
-    return getattr(result, "rowcount", 0)
+    return int(getattr(result, "rowcount", 0) or 0)
 
 
 async def list_user_chat_conversations(
