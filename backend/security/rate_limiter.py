@@ -10,44 +10,55 @@ import logging
 from typing import Any
 
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 from starlette.requests import Request
 
 logger = logging.getLogger(__name__)
 
 
 def get_user_or_ip(request: Request | Any) -> str:
-    """Return user identifier if authenticated (from state, token header, or cookie), else IP."""
+    """Return user identifier if authenticated (from state or cryptographically verified token), else trusted IP."""
     user = getattr(request.state, "user", None)
     if isinstance(user, dict) and user.get("user_id"):
         return f"user:{user['user_id']}"
 
     auth_header = request.headers.get("Authorization") or request.headers.get("authorization")
+    token: str | None = None
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header[7:].strip()
-        try:
-            import jwt
+    elif hasattr(request, "cookies") and request.cookies.get("access_token"):
+        token = request.cookies.get("access_token")
 
-            unverified = jwt.decode(token, options={"verify_signature": False})
-            uid = unverified.get("user_id") or unverified.get("sub")
+    if token:
+        try:
+            from backend.security.auth import verify_token
+
+            payload = verify_token(token, expected_type="access")
+            uid = payload.get("user_id") or payload.get("sub")
             if uid:
                 return f"user:{uid}"
         except Exception:
+            # Token invalid, forged, or expired — do NOT trust claims from it
             pass
 
-    access_token = request.cookies.get("access_token")
-    if access_token:
-        try:
-            import jwt
+    # Resolve client IP using trusted proxies check
+    client_host: str = "127.0.0.1"
+    if hasattr(request, "client") and request.client and request.client.host:
+        client_host = request.client.host
 
-            unverified = jwt.decode(access_token, options={"verify_signature": False})
-            uid = unverified.get("user_id") or unverified.get("sub")
-            if uid:
-                return f"user:{uid}"
-        except Exception:
-            pass
+    try:
+        from backend.core.config import get_settings
 
-    return get_remote_address(request)
+        settings = get_settings()
+        trusted = getattr(settings, "trusted_proxies", ["127.0.0.1", "::1"])
+
+        if client_host in trusted:
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                client_host = forwarded.split(",")[0].strip()
+    except Exception:
+        pass
+
+    return client_host
 
 
 # ── Limiter singleton ──────────────────────────────────────────────────

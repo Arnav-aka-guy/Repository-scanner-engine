@@ -86,10 +86,10 @@ def _is_under_blocked_path(resolved: Path) -> bool:
     return False
 
 
-def _reject(reason: str) -> HTTPException:
-    """Build a 403 HTTPException with a clear message."""
-    logger.warning("Path rejected: %s", reason)
-    return HTTPException(status_code=403, detail=reason)
+def _reject(reason: str, status_code: int = 403) -> HTTPException:
+    """Build an HTTPException with a clear message."""
+    logger.warning("Path rejected (%d): %s", status_code, reason)
+    return HTTPException(status_code=status_code, detail=reason)
 
 
 # ── Public API ──────────────────────────────────────────────────────────
@@ -99,14 +99,15 @@ def validate_repository_path(path: str) -> Path:
     """Validate and resolve a user-supplied repository path.
 
     Raises:
-        HTTPException(403): If the path is blocked, contains traversal
-            sequences, is outside allowed roots, or is not an existing directory.
+        HTTPException(400): If path is empty, malformed, or not a directory.
+        HTTPException(404): If path does not exist.
+        HTTPException(403): If path is blocked, sensitive, or outside allowed roots.
 
     Returns:
         The resolved, absolute ``Path`` object.
     """
     if not path or not path.strip():
-        raise _reject("Repository path must not be empty.")
+        raise _reject("Repository path must not be empty.", status_code=400)
 
     path = path.strip()
 
@@ -167,10 +168,10 @@ def validate_repository_path(path: str) -> Path:
 
     # Must exist and be a directory
     if not resolved.exists():
-        raise _reject(f"Path does not exist: {resolved}")
+        raise _reject(f"Path does not exist: {resolved}", status_code=403)
 
     if not resolved.is_dir():
-        raise _reject(f"Path is not a directory: {resolved}")
+        raise _reject(f"Path is not a directory: {resolved}", status_code=403)
 
     logger.debug("Repository path validated: %s", resolved)
     return resolved
@@ -187,13 +188,15 @@ def validate_file_path(
         repo_root: If provided, the file must reside inside this directory.
 
     Raises:
-        HTTPException(403): On any policy violation.
+        HTTPException(400): If file_path is empty or contains traversal sequences.
+        HTTPException(404): If the file does not exist.
+        HTTPException(403): If the file is sensitive or outside repository root.
 
     Returns:
         The resolved, absolute ``Path`` object.
     """
     if not file_path or not file_path.strip():
-        raise _reject("File path must not be empty.")
+        raise _reject("File path must not be empty.", status_code=400)
 
     file_path = file_path.strip()
 
@@ -238,10 +241,10 @@ def validate_file_path(
 
     # Must exist and be a regular file
     if not resolved.exists():
-        raise _reject(f"File does not exist: {resolved}")
+        raise _reject(f"File does not exist: {resolved}", status_code=404)
 
     if not resolved.is_file():
-        raise _reject(f"Path is not a regular file: {resolved}")
+        raise _reject(f"Path is not a regular file: {resolved}", status_code=403)
 
     logger.debug("File path validated: %s", resolved)
     return resolved

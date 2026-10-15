@@ -143,6 +143,7 @@ class Settings(BaseSettings):
 
     # ── Path allowlist ────────────────────────────────────────────────
     allowed_roots: list[str] = []
+    trusted_proxies: list[str] = ["127.0.0.1", "::1"]
 
     # ── Directory list for bulk creation ────────────────────────────────
     _SUBDIRS: ClassVar[tuple[str, ...]] = ("graphs", "embeddings", "docs", "cache")
@@ -151,6 +152,7 @@ class Settings(BaseSettings):
     @field_validator("allowed_roots", mode="before")
     @classmethod
     def _parse_allowed_roots(cls, v: Any) -> list[str]:
+        raw_list: list[str] = []
         if isinstance(v, str):
             v = v.strip()
             if not v:
@@ -159,13 +161,44 @@ class Settings(BaseSettings):
                 try:
                     parsed = json.loads(v)
                     if isinstance(parsed, list):
-                        return [str(item) for item in parsed]
+                        raw_list = [str(item) for item in parsed]
+                except Exception:
+                    raw_list = [part.strip() for part in v.split(",") if part.strip()]
+            else:
+                raw_list = [part.strip() for part in v.split(",") if part.strip()]
+        elif isinstance(v, (list, tuple, set)):
+            raw_list = [str(item) for item in v]
+
+        result: list[str] = []
+        for item in raw_list:
+            clean = item.strip().strip("'\"")
+            if not clean:
+                continue
+            try:
+                expanded = Path(clean).expanduser().resolve()
+                result.append(str(expanded))
+            except Exception:
+                result.append(clean)
+        return result
+
+    @field_validator("trusted_proxies", mode="before")
+    @classmethod
+    def _parse_trusted_proxies(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return ["127.0.0.1", "::1"]
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
                 except Exception:
                     pass
             return [part.strip() for part in v.split(",") if part.strip()]
         if isinstance(v, (list, tuple, set)):
-            return [str(item) for item in v]
-        return []
+            return [str(item).strip() for item in v if str(item).strip()]
+        return ["127.0.0.1", "::1"]
 
     @model_validator(mode="after")
     def _validate_and_normalize(self) -> Settings:

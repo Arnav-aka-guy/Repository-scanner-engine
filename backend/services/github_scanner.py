@@ -97,8 +97,10 @@ def clone_github_repo(
     if target_dir.exists() and (target_dir / ".git").is_dir():
         logger.info("Found existing clone for %s at %s. Verifying repository...", normalized_url, target_dir)
         try:
+            env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
             pull_res = subprocess.run(  # noqa: S603
                 ["git", "-C", str(target_dir), "pull", "--ff-only"],
+                env=env,
                 shell=False,
                 capture_output=True,
                 text=True,
@@ -131,8 +133,10 @@ def clone_github_repo(
     logger.info("Cloning public repository %s into %s ...", normalized_url, target_dir)
     try:
         # shell=False is strictly enforced to prevent command injection
+        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
         result = subprocess.run(  # noqa: S603
             cmd,
+            env=env,
             shell=False,
             capture_output=True,
             text=True,
@@ -143,11 +147,22 @@ def clone_github_repo(
             logger.error("Git clone failed (code %d): %s", result.returncode, result.stderr)
             _safe_rmtree(target_dir)
             err_msg = result.stderr.strip()
-            detail = (
-                f"Failed to clone GitHub repository. {err_msg}"
-                if err_msg
-                else "Failed to clone GitHub repository. Ensure repository is public and accessible."
-            )
+            # Sanitize internal filesystem paths out of the error detail
+            if str(target_dir) in err_msg:
+                err_msg = err_msg.replace(str(target_dir), "<cloned_repo>")
+            if str(parent_dir) in err_msg:
+                err_msg = err_msg.replace(str(parent_dir), "<data_dir>")
+
+            if (
+                "Authentication failed" in err_msg
+                or "could not read Username" in err_msg
+                or "Repository not found" in err_msg
+            ):
+                detail = "Failed to clone GitHub repository. Ensure repository is public and accessible."
+            elif err_msg:
+                detail = f"Failed to clone GitHub repository: {err_msg}"
+            else:
+                detail = "Failed to clone GitHub repository. Ensure repository is public and accessible."
             raise HTTPException(
                 status_code=400,
                 detail=detail,

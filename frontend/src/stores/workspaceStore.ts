@@ -4,13 +4,14 @@ import { RepositoryInfo, FileInfo, FileTreeNode } from '../types/repository';
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
 import {
-  scanRepository,
   scanGitHubRepository,
   scanRepositoryAsync,
+  getScanJobStatus,
   subscribeScanEvents,
   browseFolder,
   listFiles,
   getFile,
+  type ScanJob,
 } from '../services/repository';
 import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph';
 import { semanticSearch, SearchResponse } from '../services/search';
@@ -232,33 +233,66 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           if (isGitHub) {
             info = await scanGitHubRepository(normInputPath);
           } else {
-            // Queue async background job with SSE progress streaming
+            // Queue async background job with SSE progress streaming and polling fallback
             const job = await scanRepositoryAsync(normInputPath);
             info = await new Promise<RepositoryInfo>((resolve, reject) => {
+              let settled = false;
+              let pollInterval: ReturnType<typeof setInterval> | null = null;
+              let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+              const cleanup = () => {
+                settled = true;
+                if (pollInterval) clearInterval(pollInterval);
+                if (timeoutTimer) clearTimeout(timeoutTimer);
+                unsubscribe();
+              };
+
+              const handleJobUpdate = (progressJob: ScanJob) => {
+                set({
+                  scanProgress: progressJob.progress,
+                  scanMessage: progressJob.message,
+                });
+                if (progressJob.status === 'completed' && progressJob.result) {
+                  cleanup();
+                  resolve(progressJob.result);
+                } else if (progressJob.status === 'failed') {
+                  cleanup();
+                  reject(new Error(progressJob.error || progressJob.message || 'Scan failed'));
+                }
+              };
+
               const unsubscribe = subscribeScanEvents(
                 job.job_id,
-                (progressJob) => {
-                  set({
-                    scanProgress: progressJob.progress,
-                    scanMessage: progressJob.message,
-                  });
-                  if (progressJob.status === 'completed' && progressJob.result) {
-                    unsubscribe();
-                    resolve(progressJob.result);
-                  } else if (progressJob.status === 'failed') {
-                    unsubscribe();
-                    reject(new Error(progressJob.error || progressJob.message || 'Scan failed'));
-                  }
-                },
+                handleJobUpdate,
                 (status) => {
-                  if (status !== 'completed' && status !== 'done') {
+                  if (status !== 'completed' && status !== 'done' && !settled) {
+                    cleanup();
                     reject(new Error(`Scan terminated with status: ${status}`));
                   }
                 },
                 (err) => {
-                  console.warn('SSE progress error, falling back to synchronous scan info check', err);
+                  console.warn('Scan SSE streaming disconnected, falling back to polling', err);
                 }
               );
+
+              // Periodic polling fallback in case SSE events are buffered or interrupted
+              pollInterval = setInterval(async () => {
+                if (settled) return;
+                try {
+                  const statusJob = await getScanJobStatus(job.job_id);
+                  handleJobUpdate(statusJob);
+                } catch {
+                  // transient polling error
+                }
+              }, 1000);
+
+              // 120s timeout safeguard
+              timeoutTimer = setTimeout(() => {
+                if (!settled) {
+                  cleanup();
+                  reject(new Error('Scan job timed out after 120 seconds'));
+                }
+              }, 120000);
             });
           }
 
@@ -556,17 +590,21 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       clearWorkspace: () => {
         set({
           activeRepository: null,
+          activeRepositoryId: null,
           repositoryInfo: null,
           files: [],
           fileTree: [],
           selectedFilePath: null,
           selectedFileDetail: null,
           scanStatus: 'idle',
+          scanProgress: 0,
+          scanMessage: '',
           scanError: null,
           graphData: null,
           analysisResult: null,
           searchResults: [],
           chatMessages: [],
+          chatMessagesByRepo: {},
           generatedDocs: null,
         });
         useToastStore.getState().addToast({

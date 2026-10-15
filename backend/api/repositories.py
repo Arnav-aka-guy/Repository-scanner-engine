@@ -5,6 +5,7 @@ Enforces strict user data isolation and the maximum 5 repositories per user limi
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import shutil
@@ -13,14 +14,15 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_embeddings, get_parser
 from backend.core.config import settings
 from backend.db.database import get_db
+from backend.db.models import Repository
 from backend.db.repositories import (
     count_user_repositories,
-    create_user_repository,
     delete_user_repository,
     get_user_repository,
     list_user_repositories,
@@ -165,19 +167,80 @@ async def create_repository(
             ),
         )
 
-    # 2. PATH SECURITY VALIDATION: Prevent directory traversal and forbidden paths
-    sanitized = SanitizedRepoPath(path=body.source_path)
-    validated_path = validate_repository_path(sanitized.path)
+    # 2. Duplicate checking and path resolution
+    repo_name = body.name.strip()
+    source_type = (body.source_type or "local").lower()
+
+    if source_type == "github":
+        from backend.services.github_scanner import clone_github_repo, validate_github_url
+
+        normalized_url, _owner, _repo_extracted = validate_github_url(body.source_path)
+
+        # Check duplicate GitHub repo for this user
+        dup_stmt = select(Repository).where(
+            Repository.user_id == user_id,
+            (Repository.source_path == normalized_url) | (Repository.source_path == body.source_path),
+        )
+        dup_res = await db.execute(dup_stmt)
+        if dup_res.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Repository is already registered under your account.",
+            )
+
+        # Clone into isolated per-user directory
+        user_cloned_dir = (Path(settings.data_dir) / "cloned_repos" / f"user_{user_id}").resolve()
+        user_cloned_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            cloned_path = await asyncio.to_thread(clone_github_repo, normalized_url, user_cloned_dir)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.error("GitHub clone failed in create_repository: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to clone GitHub repository.",
+            ) from exc
+
+        validated_path = cloned_path
+        stored_source_path = normalized_url
+        stored_path = str(cloned_path).replace("\\", "/").rstrip("/")
+
+    else:
+        # Local repository path
+        sanitized = SanitizedRepoPath(path=body.source_path)
+        validated_path = validate_repository_path(sanitized.path)
+        norm_str = str(validated_path).replace("\\", "/").rstrip("/")
+
+        # Check duplicate path or name for this user
+        dup_stmt = select(Repository).where(
+            Repository.user_id == user_id,
+            (Repository.path == norm_str) | (Repository.source_path == norm_str),
+        )
+        dup_res = await db.execute(dup_stmt)
+        if dup_res.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Repository is already registered under your account.",
+            )
+
+        stored_source_path = norm_str
+        stored_path = norm_str
 
     # 3. Create repository record in database
-    repo = await create_user_repository(
-        db,
+    from backend.db.models import Repository as RepoModel
+
+    repo = RepoModel(
         user_id=user_id,
-        name=body.name,
-        source_path=str(validated_path),
-        source_type=body.source_type,
-        description=body.description,
+        name=repo_name,
+        source_path=stored_source_path,
+        path=stored_path,
+        source_type=source_type,
+        description=body.description.strip() if body.description else None,
+        status="CREATED",
     )
+    db.add(repo)
+    await db.flush()
 
     # Register in registry so security validator allows reading files
     register_scanned_repo(validated_path)
@@ -246,9 +309,12 @@ async def delete_repository(
 
     repo_path = repo.source_path or repo.path
 
-    # Invalidate parser and memory embeddings cache
-    parser.invalidate_cache(repo_path)
-    embeddings.invalidate_repo(repo_path)
+    # Invalidate parser, embeddings, and analysis cache
+    from backend.storage.persistence import invalidate_analysis_cache
+
+    parser.invalidate_cache(repo_path, clear_manifest=True)
+    embeddings.invalidate_repo(repo_path, clear_cache=True)
+    invalidate_analysis_cache(repo_path)
 
     # Clean disk index files for this repo
     repo_id_hash = embeddings._get_repo_id(repo_path)
@@ -259,6 +325,19 @@ async def delete_repository(
             logger.info("Purged vector index directory: %s", disk_index_dir)
         except Exception as e:
             logger.warning("Could not delete vector index dir %s: %s", disk_index_dir, e)
+
+    # Clean cloned git directory if applicable
+    if (repo.source_type or "").lower() == "github" and repo.path:
+        try:
+            cloned_p = Path(repo.path).resolve()
+            user_clone_dir = (Path(settings.data_dir) / "cloned_repos" / f"user_{user_id}").resolve()
+            if user_clone_dir in cloned_p.parents or cloned_p.parent == user_clone_dir:
+                from backend.services.github_scanner import _safe_rmtree
+
+                _safe_rmtree(cloned_p)
+                logger.info("Removed cloned repo directory: %s", cloned_p)
+        except Exception as exc:
+            logger.warning("Failed removing cloned directory: %s", exc)
 
     deleted = await delete_user_repository(db, repository_id, user_id)
     if not deleted:
@@ -295,8 +374,11 @@ async def scan_user_repository(
 
     try:
         # Clear caches for fresh scan
-        parser.invalidate_cache(str(path))
-        embeddings.invalidate_repo(str(path))
+        from backend.storage.persistence import invalidate_analysis_cache
+
+        parser.invalidate_cache(str(path), clear_manifest=True)
+        embeddings.invalidate_repo(str(path), clear_cache=True)
+        invalidate_analysis_cache(str(path))
 
         repo_info = await parser.scan_repository(str(path))
         parsed_files = await parser.parse_repository(str(path))
@@ -320,7 +402,7 @@ async def scan_user_repository(
 
     except ScanLimitError as exc:
         repo.status = "FAILED"
-        await db.flush()
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Repository scan stopped: {exc.code}",
@@ -328,7 +410,7 @@ async def scan_user_repository(
     except Exception as exc:
         logger.error("Scan failed for repository %d: %s", repository_id, exc, exc_info=True)
         repo.status = "FAILED"
-        await db.flush()
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Repository scanning failed. Please check the repository directory.",

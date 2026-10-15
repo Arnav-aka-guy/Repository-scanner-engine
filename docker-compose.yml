@@ -26,7 +26,7 @@ services:
         condition: service_healthy
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-antigravity}
-      - DATABASE_ENABLED=${DATABASE_ENABLED:-false}
+      - DATABASE_ENABLED=${DATABASE_ENABLED:-true}
     env_file:
       - .env
     volumes:

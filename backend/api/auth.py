@@ -27,8 +27,10 @@ from backend.db.repositories import (
 from backend.security.auth import (
     create_access_token,
     create_refresh_token,
+    get_current_user,
     get_required_user,
     hash_password,
+    invalidate_user_state,
     verify_and_update_password,
     verify_password,
     verify_token,
@@ -404,15 +406,22 @@ async def logout_user(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ) -> MessageResponse:
-    """Revoke current refresh token and clear cookie."""
+    """Revoke current refresh token, invalidate active cached session, and clear cookies."""
     raw_cookie = request.cookies.get("refresh_token")
     if raw_cookie:
         token_hash = hashlib.sha256(raw_cookie.encode("utf-8")).hexdigest()
         await revoke_refresh_token(db, token_hash)
-        await db.commit()
 
+    if current_user.get("auth") and current_user.get("user_id"):
+        uid = int(current_user["user_id"])
+        await revoke_user_refresh_tokens(db, uid)
+        invalidate_user_state(uid)
+
+    await db.commit()
     response.delete_cookie("refresh_token", path="/api/auth")
+    response.delete_cookie("access_token", path="/")
     return MessageResponse(message="Successfully logged out.")
 
 
@@ -465,8 +474,19 @@ async def login_for_access_token(
     # First check DB by email or username
     user = await get_user_by_email(db, credentials.username)
     if user and verify_password(credentials.password, user.password_hash):
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is inactive or disabled.",
+            )
         token = create_access_token(
-            data={"sub": str(user.id), "user_id": user.id, "email": user.email, "name": user.name}
+            data={
+                "sub": str(user.id),
+                "user_id": user.id,
+                "email": user.email,
+                "name": user.name,
+                "ver": getattr(user, "token_version", 1) or 1,
+            }
         )
         count = await count_user_repositories(db, user.id)
         return TokenResponse(
@@ -496,7 +516,7 @@ async def login_for_access_token(
             detail="Incorrect username or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token = create_access_token(data={"sub": credentials.username, "user_id": 1, "name": "Admin"})
+    token = create_access_token(data={"sub": credentials.username, "user_id": 1, "name": "Admin", "ver": 1})
     return TokenResponse(access_token=token)
 
 
@@ -523,22 +543,26 @@ async def forgot_password(
     """Initiate password reset flow for a user.
 
     SECURITY: Returns identical success response regardless of whether email exists
-    to prevent user enumeration. In development/local mode, prints reset token to logs.
+    to prevent user enumeration. Does not log usable plaintext reset tokens in production.
     """
     clean_email = body.email.strip().lower()
     user = await get_user_by_email(db, clean_email)
 
     if user is not None:
         reset_token = create_access_token(
-            data={"sub": str(user.id), "type": "password_reset", "email": user.email},
+            data={
+                "sub": str(user.id),
+                "type": "password_reset",
+                "email": user.email,
+                "ver": getattr(user, "token_version", 1) or 1,
+            },
             expires_delta=timedelta(minutes=30),
         )
-        # Log reset token securely for development / local console
-        logger.info(
-            "Password reset requested for %s. Reset link: /reset-password?token=%s",
-            clean_email,
-            reset_token,
-        )
+        settings = get_settings()
+        if getattr(settings, "local_mode", False) or settings.log_level.upper() == "DEBUG":
+            logger.debug("Password reset link generated for %s: /reset-password?token=%s", clean_email, reset_token)
+        else:
+            logger.info("Password reset requested for %s", clean_email)
 
     return MessageResponse(message="If an account exists with this email, password reset instructions have been sent.")
 
@@ -550,22 +574,16 @@ async def reset_password(
     body: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
-    """Reset account password using valid reset token."""
+    """Reset account password using valid single-use reset token."""
     from backend.security.auth import verify_token
 
     try:
-        payload = verify_token(body.token)
+        payload = verify_token(body.token, expected_type="password_reset")
     except HTTPException:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token.",
         ) from None
-
-    if payload.get("type") != "password_reset":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid token type for password reset.",
-        )
 
     user_id_str = payload.get("sub")
     if not user_id_str:
@@ -589,9 +607,23 @@ async def reset_password(
             detail="User account not found.",
         )
 
+    # Enforce single-use: token version must match current user token version
+    current_ver = getattr(user, "token_version", 1) or 1
+    token_ver = payload.get("ver")
+    if token_ver is not None and token_ver != current_ver:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token has already been used or has expired.",
+        )
+
+    # Invalidate existing token version, revoke refresh sessions, and update password
+    user.token_version = current_ver + 1
     new_hash = hash_password(body.new_password)
     user.password_hash = new_hash
+    await revoke_user_refresh_tokens(db, user.id)
     await db.commit()
+    invalidate_user_state(user.id)
+
     logger.info("Password successfully reset for user %s (%s)", user.name, user.email)
 
     return MessageResponse(message="Password successfully reset. You can now log in.")

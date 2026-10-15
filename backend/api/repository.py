@@ -9,13 +9,11 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_embeddings, get_parser
 from backend.core.models import CodeEntity, FileInfo, RepositoryInfo
 from backend.db.database import get_db
-from backend.db.models import Repository
 from backend.embeddings.service import EmbeddingsService
 from backend.parser.models import ParsedFile
 from backend.parser.scanner import ScanLimitError
@@ -287,17 +285,23 @@ async def scan_repository_async(
     background_tasks: BackgroundTasks,
     parser: ParserService = Depends(get_parser),
     embeddings: EmbeddingsService = Depends(get_embeddings),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> ScanJobResponse:
     """Trigger an asynchronous repository scan job in the background.
 
     Returns a job_id immediately so clients can poll for status and progress.
     """
+    from backend.security.repo_auth import authorize_repository_access
+
     sanitized = SanitizedRepoPath(path=body.path)
-    path = validate_repository_path(sanitized.path)
+    _, path = await authorize_repository_access(db, current_user, sanitized.path, allow_unscanned=True)
 
     _cleanup_scan_jobs()
     register_scanned_repo(path)
     job_id = str(uuid.uuid4())
+    user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+
     _scan_jobs[job_id] = {
         "job_id": job_id,
         "repo_path": str(path),
@@ -307,14 +311,15 @@ async def scan_repository_async(
         "result": None,
         "error": None,
         "created_at": time.time(),
+        "user_id": user_id,
     }
     save_scan_job(job_id, _scan_jobs[job_id])
 
     # Invalidate cache for fresh scan
     from backend.storage.persistence import invalidate_analysis_cache
 
-    parser.invalidate_cache(str(path))
-    embeddings.invalidate_repo(str(path))
+    parser.invalidate_cache(str(path), clear_manifest=True)
+    embeddings.invalidate_repo(str(path), clear_cache=True)
     invalidate_analysis_cache(str(path))
 
     background_tasks.add_task(_run_scan_job, job_id, str(path), parser, embeddings)
@@ -323,7 +328,10 @@ async def scan_repository_async(
 
 
 @router.get("/scan/jobs", response_model=list[ScanJobResponse])
-async def list_scan_jobs(repo_path: str | None = None) -> list[ScanJobResponse]:
+async def list_scan_jobs(
+    repo_path: str | None = None,
+    current_user: dict = Depends(get_current_user),
+) -> list[ScanJobResponse]:
     """List persistent scan jobs, sorted newest first, optionally filtered by repository."""
     _cleanup_scan_jobs()
     # Re-sync in-memory cache from persistent disk store
@@ -331,6 +339,10 @@ async def list_scan_jobs(repo_path: str | None = None) -> list[ScanJobResponse]:
     _scan_jobs.update(disk_jobs)
 
     jobs = list(_scan_jobs.values())
+    if current_user.get("auth") and current_user.get("user_id"):
+        user_id = int(current_user["user_id"])
+        jobs = [j for j in jobs if j.get("user_id") is None or j.get("user_id") == user_id]
+
     if repo_path:
         norm = repo_path.replace("\\", "/").rstrip("/")
         jobs = [j for j in jobs if (j.get("repo_path") or "").replace("\\", "/").rstrip("/") == norm]
@@ -339,7 +351,10 @@ async def list_scan_jobs(repo_path: str | None = None) -> list[ScanJobResponse]:
 
 
 @router.get("/scan/jobs/{job_id}", response_model=ScanJobResponse)
-async def get_scan_job_status(job_id: str) -> ScanJobResponse:
+async def get_scan_job_status(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> ScanJobResponse:
     """Poll progress and result of an asynchronous repository scan job."""
     if job_id not in _scan_jobs:
         # Check disk directly in case another worker updated it
@@ -348,12 +363,32 @@ async def get_scan_job_status(job_id: str) -> ScanJobResponse:
             _scan_jobs[job_id] = disk_jobs[job_id]
         else:
             raise HTTPException(status_code=404, detail="Scan job not found.")
-    return ScanJobResponse(**_scan_jobs[job_id])
+
+    job = _scan_jobs[job_id]
+    if current_user.get("auth") and current_user.get("user_id"):
+        user_id = int(current_user["user_id"])
+        if job.get("user_id") is not None and job.get("user_id") != user_id:
+            raise HTTPException(status_code=404, detail="Scan job not found.")
+
+    return ScanJobResponse(**job)
 
 
 @router.get("/scan/jobs/{job_id}/events")
-async def stream_scan_job_events(job_id: str) -> StreamingResponse:
+async def stream_scan_job_events(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> StreamingResponse:
     """Stream real-time Server-Sent Events (SSE) for scan job progress and status."""
+    user_dict = current_user if isinstance(current_user, dict) else {}
+    if job_id in _scan_jobs:
+        job_user_id = _scan_jobs[job_id].get("user_id")
+        if (
+            user_dict.get("auth")
+            and user_dict.get("user_id")
+            and job_user_id is not None
+            and job_user_id != int(user_dict["user_id"])
+        ):
+            raise HTTPException(status_code=404, detail="Scan job not found.")
 
     async def event_generator():
         last_progress = -1.0
@@ -421,21 +456,10 @@ async def list_files(
     db: AsyncSession = Depends(get_db),
 ) -> list[FileInfo]:
     """Return a flat list of all source files discovered in the repository."""
-    sanitized = SanitizedRepoPath(path=repo_path)
-    path = validate_repository_path(sanitized.path)
+    from backend.security.repo_auth import authorize_repository_access
 
-    # Strict user isolation check
-    if current_user.get("auth") and current_user.get("user_id"):
-        user_id = int(current_user["user_id"])
-        norm_path = str(path).replace("\\", "/").rstrip("/")
-        stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
-        res = await db.execute(stmt)
-        repo = res.scalar_one_or_none()
-        if repo and repo.user_id is not None and repo.user_id != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied: You do not have permission to access this repository.",
-            )
+    sanitized = SanitizedRepoPath(path=repo_path)
+    _, path = await authorize_repository_access(db, current_user, sanitized.path)
 
     if not is_repo_scanned(path):
         raise HTTPException(
@@ -470,22 +494,10 @@ async def get_file(
     SECURITY: The file must reside inside the declared repo_path. Path traversal,
     symlink escapes, and absolute-path escapes are all blocked by validate_file_path.
     """
-    # Validate repo root first
-    sanitized_repo = SanitizedRepoPath(path=repo_path)
-    root = validate_repository_path(sanitized_repo.path)
+    from backend.security.repo_auth import authorize_repository_access
 
-    # Strict user isolation check
-    if current_user.get("auth") and current_user.get("user_id"):
-        user_id = int(current_user["user_id"])
-        norm_path = str(root).replace("\\", "/").rstrip("/")
-        stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
-        res = await db.execute(stmt)
-        repo = res.scalar_one_or_none()
-        if repo and repo.user_id is not None and repo.user_id != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied: You do not have permission to access this repository.",
-            )
+    sanitized_repo = SanitizedRepoPath(path=repo_path)
+    _, root = await authorize_repository_access(db, current_user, sanitized_repo.path)
 
     if not is_repo_scanned(root):
         raise HTTPException(
@@ -563,21 +575,10 @@ async def get_onboarding_guide(
     db: AsyncSession = Depends(get_db),
 ) -> RepoOnboardingGuide:
     """Generate a high-level developer onboarding guide grounded in repository structure."""
-    sanitized = SanitizedRepoPath(path=repo_path)
-    path = validate_repository_path(sanitized.path)
+    from backend.security.repo_auth import authorize_repository_access
 
-    # Strict user isolation check
-    if current_user.get("auth") and current_user.get("user_id"):
-        user_id = int(current_user["user_id"])
-        norm_path = str(path).replace("\\", "/").rstrip("/")
-        stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
-        res = await db.execute(stmt)
-        repo = res.scalar_one_or_none()
-        if repo and repo.user_id is not None and repo.user_id != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied: You do not have permission to access this repository.",
-            )
+    sanitized = SanitizedRepoPath(path=repo_path)
+    _, path = await authorize_repository_access(db, current_user, sanitized.path)
 
     parsed_files = await parser.parse_repository(str(path))
     files = parser._scanner.get_files(str(path))

@@ -155,7 +155,7 @@ export async function apiPostStream(
   onClose?: () => void,
   onDone?: (payload?: { sources?: unknown[]; content?: string }) => void
 ): Promise<void> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  let response = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -163,6 +163,20 @@ export async function apiPostStream(
     },
     body: JSON.stringify(body),
   });
+
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      response = await fetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+    }
+  }
 
   if (response.status === 401) {
     useAuthStore.getState().logout();
@@ -264,6 +278,53 @@ export async function apiDelete<T = unknown>(path: string, params?: Record<strin
       response = await fetch(url.toString(), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${newToken}` },
+      });
+    }
+  }
+
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(formatApiError(response.status, text, response.statusText));
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err: unknown) {
+    if (err instanceof TypeError && err.message.toLowerCase().includes('failed to fetch')) {
+      throw new Error(
+        'Unable to connect to the backend server. Please ensure the backend is running on http://127.0.0.1:8000.',
+        { cause: err }
+      );
+    }
+    throw err;
+  }
+
+  if (response.status === 401 && !path.startsWith('/auth/')) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      response = await fetch(`${API_BASE}${path}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken}`,
+        },
+        body: JSON.stringify(body),
       });
     }
   }

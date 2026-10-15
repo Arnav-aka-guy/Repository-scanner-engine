@@ -6,10 +6,13 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_parser
+from backend.db.database import get_db
 from backend.parser.service import ParserService
-from backend.security.path_validator import validate_repository_path
+from backend.security.auth import get_current_user
+from backend.security.repo_auth import authorize_repository_access
 from backend.services.repo_comparison import compare_repositories
 
 logger = logging.getLogger(__name__)
@@ -56,14 +59,16 @@ class CompareResponse(BaseModel):
 async def compare_repos(
     body: CompareRequest,
     parser: ParserService = Depends(get_parser),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> CompareResponse:
     """Compare two repositories side-by-side.
 
     Returns health scores, tech debt ratings, and auto-generated
     insights about the differences.
     """
-    path_a = validate_repository_path(body.path_a)
-    path_b = validate_repository_path(body.path_b)
+    _, path_a = await authorize_repository_access(db, current_user, body.path_a)
+    _, path_b = await authorize_repository_access(db, current_user, body.path_b)
 
     try:
         parsed_a = await parser.parse_repository(str(path_a))

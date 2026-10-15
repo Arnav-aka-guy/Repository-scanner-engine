@@ -9,12 +9,10 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_llm, get_parser, get_retrieval
 from backend.db.database import get_db
-from backend.db.models import Repository
 from backend.db.repositories import (
     delete_chat_messages,
     list_user_chat_conversations,
@@ -27,9 +25,9 @@ from backend.llm.service import LLMService
 from backend.parser.service import ParserService
 from backend.retrieval.service import RetrievalService
 from backend.security.auth import get_current_user
-from backend.security.input_sanitizer import SanitizedChatInput, SanitizedRepoPath
-from backend.security.path_validator import validate_repository_path
+from backend.security.input_sanitizer import SanitizedChatInput
 from backend.security.rate_limiter import CHAT_RATE, limiter
+from backend.security.repo_auth import authorize_repository_access
 from backend.storage.persistence import (
     append_chat_message,
     delete_chat_history,
@@ -107,21 +105,8 @@ async def chat(
     """
     # Sanitize inputs before processing
     sanitized = SanitizedChatInput(question=body.question, repo_path=body.repo_path)
-    path = validate_repository_path(sanitized.repo_path)
+    repo, path = await authorize_repository_access(db, current_user, sanitized.repo_path)
     repo_key = str(path)
-
-    # Strict user isolation check
-    if current_user.get("auth") and current_user.get("user_id"):
-        user_id = int(current_user["user_id"])
-        norm_path = repo_key.replace("\\", "/").rstrip("/")
-        stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
-        res = await db.execute(stmt)
-        repo = res.scalar_one_or_none()
-        if repo and repo.user_id is not None and repo.user_id != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied: You do not have permission to access this repository.",
-            )
 
     try:
         parsed_files = await parser.parse_repository(repo_key)
@@ -227,16 +212,17 @@ async def chat(
             _repo_conversation_history[repo_key] = []
         _repo_conversation_history[repo_key].append(entry)
 
+        # Persist message to database
+        db_user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+        db_repo_id = repo.id if repo else None
+
         # Persist message to disk
         append_chat_message(
             repo_path=repo_key,
             entry=entry,
             conversation_id=body.conversation_id,
+            user_id=db_user_id,
         )
-
-        # Persist message to database
-        db_user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
-        db_repo_id = repo.id if repo else None
         try:
             await save_chat_message(
                 db,
@@ -289,22 +275,12 @@ async def get_history(
     """Return conversation history from database or file storage, scoped by repository/user."""
     user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
     repo_id: int | None = None
+    path_key: str | None = None
 
     if repo_path:
-        sanitized = SanitizedRepoPath(path=repo_path)
-        path = validate_repository_path(sanitized.path)
-        norm_path = str(path).replace("\\", "/").rstrip("/")
-        if user_id:
-            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
-            res = await db.execute(stmt)
-            repo = res.scalar_one_or_none()
-            if repo:
-                if repo.user_id is not None and repo.user_id != user_id:
-                    raise HTTPException(
-                        status_code=403,
-                        detail="Access denied: You do not have permission to access this repository.",
-                    )
-                repo_id = repo.id
+        repo, path = await authorize_repository_access(db, current_user, repo_path)
+        repo_id = repo.id if repo else None
+        path_key = str(path).replace("\\", "/").rstrip("/")
 
     # Check database chat records first
     try:
@@ -339,15 +315,13 @@ async def get_history(
     except Exception as exc:
         logger.debug("DB chat history query failed: %s", exc)
 
-    # Fallback to local file storage
-    data = load_chat_data()
+    # Fallback to local file storage scoped to this user
+    data = load_chat_data(user_id=user_id)
     if conversation_id:
         conv = data.get("conversations", {}).get(conversation_id, {})
         entries_raw = conv.get("messages", [])
-    elif repo_path:
-        sanitized = SanitizedRepoPath(path=repo_path)
-        path = validate_repository_path(sanitized.path)
-        entries_raw = data.get("by_repo", {}).get(str(path), [])
+    elif path_key:
+        entries_raw = data.get("by_repo", {}).get(path_key, [])
     else:
         entries_raw = data.get("global", [])
 
@@ -374,22 +348,12 @@ async def clear_chat_history(
 
     user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
     repo_id: int | None = None
+    path_key: str | None = None
 
     if repo_path:
-        sanitized = SanitizedRepoPath(path=repo_path)
-        path = validate_repository_path(sanitized.path)
-        norm_path = str(path).replace("\\", "/").rstrip("/")
-        if user_id:
-            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
-            res = await db.execute(stmt)
-            repo = res.scalar_one_or_none()
-            if repo:
-                if repo.user_id is not None and repo.user_id != user_id:
-                    raise HTTPException(
-                        status_code=403,
-                        detail="Access denied: You do not have permission to access this repository.",
-                    )
-                repo_id = repo.id
+        repo, path = await authorize_repository_access(db, current_user, repo_path)
+        repo_id = repo.id if repo else None
+        path_key = str(path).replace("\\", "/").rstrip("/")
 
     # Delete from database
     try:
@@ -403,7 +367,7 @@ async def clear_chat_history(
     except Exception as exc:
         logger.debug("DB chat history delete failed: %s", exc)
 
-    delete_chat_history(repo_path=repo_path, conversation_id=conversation_id)
+    delete_chat_history(repo_path=path_key, conversation_id=conversation_id, user_id=user_id)
 
     if conversation_id:
         _conversation_history = [e for e in _conversation_history if e.get("conversation_id") != conversation_id]
@@ -411,10 +375,8 @@ async def clear_chat_history(
             _repo_conversation_history[rk] = [
                 e for e in _repo_conversation_history[rk] if e.get("conversation_id") != conversation_id
             ]
-    elif repo_path:
-        sanitized = SanitizedRepoPath(path=repo_path)
-        path = validate_repository_path(sanitized.path)
-        _repo_conversation_history.pop(str(path), None)
+    elif path_key:
+        _repo_conversation_history.pop(path_key, None)
     else:
         _conversation_history.clear()
         _repo_conversation_history.clear()
@@ -431,22 +393,12 @@ async def list_conversations(
     """List persistent chat conversations from database and file cache."""
     user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
     repo_id: int | None = None
+    path_key: str | None = None
 
     if repo_path:
-        sanitized = SanitizedRepoPath(path=repo_path)
-        path = validate_repository_path(sanitized.path)
-        norm_path = str(path).replace("\\", "/").rstrip("/")
-        if user_id:
-            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
-            res = await db.execute(stmt)
-            repo = res.scalar_one_or_none()
-            if repo:
-                if repo.user_id is not None and repo.user_id != user_id:
-                    raise HTTPException(
-                        status_code=403,
-                        detail="Access denied: You do not have permission to access this repository.",
-                    )
-                repo_id = repo.id
+        repo, path = await authorize_repository_access(db, current_user, repo_path)
+        repo_id = repo.id if repo else None
+        path_key = str(path).replace("\\", "/").rstrip("/")
 
     # Check DB conversations first
     try:
@@ -456,10 +408,9 @@ async def list_conversations(
     except Exception as exc:
         logger.debug("DB chat conversations lookup failed: %s", exc)
 
-    data = load_chat_data()
+    data = load_chat_data(user_id=user_id)
     convs = list(data.get("conversations", {}).values())
-    if repo_path:
-        norm = repo_path.replace("\\", "/").rstrip("/")
-        convs = [c for c in convs if (c.get("repo_path") or "").replace("\\", "/").rstrip("/") == norm]
+    if path_key:
+        convs = [c for c in convs if (c.get("repo_path") or "").replace("\\", "/").rstrip("/") == path_key]
     convs.sort(key=lambda c: c.get("updated_at", 0), reverse=True)
     return convs

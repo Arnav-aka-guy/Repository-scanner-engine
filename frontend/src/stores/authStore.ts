@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useWorkspaceStore } from './workspaceStore';
 
 export interface UserProfile {
   id: number;
@@ -164,7 +165,25 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        const currentToken = get().token;
+        if (currentToken) {
+          fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${currentToken}`,
+            },
+            credentials: 'include',
+          }).catch(() => {
+            // Ignore network errors during logout
+          });
+        }
         set({ token: null, user: null, loginError: null });
+        try {
+          useWorkspaceStore.getState().clearWorkspace();
+        } catch {
+          // Ignore if workspace store is not ready
+        }
       },
     }),
     {

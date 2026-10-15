@@ -208,10 +208,13 @@ scans_alias_router = APIRouter(prefix="/api/scans", tags=["repository"])
 
 
 @scans_alias_router.get("/{job_id}/events")
-async def stream_scan_events_alias(job_id: str) -> StreamingResponse:
+async def stream_scan_events_alias(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> StreamingResponse:
     from backend.api.repository import stream_scan_job_events
 
-    return await stream_scan_job_events(job_id)
+    return await stream_scan_job_events(job_id, current_user=current_user)
 
 
 app.include_router(scans_alias_router, dependencies=_auth_deps)

@@ -5,16 +5,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_embeddings
 from backend.db.database import get_db
-from backend.db.models import Repository
 from backend.embeddings.service import EmbeddingsService
 from backend.security.auth import get_current_user
-from backend.security.input_sanitizer import SanitizedQuery, SanitizedRepoPath
-from backend.security.path_validator import validate_repository_path
+from backend.security.input_sanitizer import SanitizedQuery
 from backend.security.rate_limiter import SEARCH_RATE, limiter
 
 logger = logging.getLogger(__name__)
@@ -72,23 +69,21 @@ async def search(
     sanitized = SanitizedQuery(query=body.query)
 
     validated_repo_path: str | None = None
-    if body.repo_path:
-        sanitized_repo = SanitizedRepoPath(path=body.repo_path)
-        path = validate_repository_path(sanitized_repo.path)
-        validated_repo_path = str(path)
+    if current_user.get("auth") and current_user.get("user_id"):
+        if not body.repo_path or not body.repo_path.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="repo_path is required for authenticated search.",
+            )
+        from backend.security.repo_auth import authorize_repository_access
 
-        # Check repository ownership if user is authenticated
-        if current_user.get("auth") and current_user.get("user_id"):
-            user_id = int(current_user["user_id"])
-            norm_path = validated_repo_path.replace("\\", "/").rstrip("/")
-            stmt = select(Repository).where((Repository.path == norm_path) | (Repository.source_path == norm_path))
-            res = await db.execute(stmt)
-            repo = res.scalar_one_or_none()
-            if repo and repo.user_id is not None and repo.user_id != user_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Access denied: You do not own this repository.",
-                )
+        _, path = await authorize_repository_access(db, current_user, body.repo_path)
+        validated_repo_path = str(path)
+    elif body.repo_path and body.repo_path.strip():
+        from backend.security.repo_auth import authorize_repository_access
+
+        _, path = await authorize_repository_access(db, current_user, body.repo_path)
+        validated_repo_path = str(path)
 
     try:
         raw_results: list[dict] = await embeddings.search(

@@ -41,8 +41,8 @@ class EmbeddingsService:
         self._keyword_searchers: dict[str, KeywordSearcher] = {}
         # Hybrid reranker
         self.reranker = SearchReranker()
-        # Per-repo chunk embeddings cache: repo_id -> {file_path: (texts, metadata, embs)}
-        self._file_embeddings_cache: dict[str, dict[str, tuple[list[str], list[dict[str, Any]], np.ndarray]]] = {}
+        # Per-repo chunk embeddings cache: repo_id -> {file_path: (file_hash, texts, metadata, embs)}
+        self._file_embeddings_cache: dict[str, dict[str, tuple[str, list[str], list[dict[str, Any]], np.ndarray]]] = {}
 
     def _get_repo_id(self, repo_path: str) -> str:
         """Derive a safe filesystem folder identifier from a repository path."""
@@ -124,8 +124,17 @@ class EmbeddingsService:
         embs_list: list[np.ndarray] = []
 
         files_to_encode: list[str] = []
+        file_hashes: dict[str, str] = {}
         for fpath in parsed_files:
-            if fpath not in file_cache:
+            try:
+                content_bytes = Path(fpath).read_bytes()
+                f_hash = hashlib.sha256(content_bytes).hexdigest()
+            except Exception:
+                f_hash = ""
+            file_hashes[fpath] = f_hash
+            cached = file_cache.get(fpath)
+            # Recompute if file is not cached or content hash changed
+            if not cached or cached[0] != f_hash:
                 files_to_encode.append(fpath)
 
         # Collect chunks across all new/modified files to batch encode efficiently
@@ -153,10 +162,10 @@ class EmbeddingsService:
             f_embs = (
                 all_embs[start_idx:end_idx] if end_idx > start_idx else np.empty((0, store.dimension), dtype=np.float32)
             )
-            file_cache[fpath] = (texts, metadata, f_embs)
+            file_cache[fpath] = (file_hashes.get(fpath, ""), texts, metadata, f_embs)
 
         # Aggregate across all active repository files
-        for _fpath, (texts, metadata, embs) in file_cache.items():
+        for _fpath, (_h, texts, metadata, embs) in file_cache.items():
             all_texts.extend(texts)
             all_metadata.extend(metadata)
             if len(embs) > 0:
@@ -297,7 +306,7 @@ class EmbeddingsService:
         if store is not self.store:
             self.store = store
 
-    def invalidate_repo(self, repo_path: str, clear_cache: bool = False) -> None:
+    def invalidate_repo(self, repo_path: str, clear_cache: bool = True) -> None:
         """Evict the cached VectorStore and KeywordSearcher for a repository from memory."""
         norm_path = str(Path(repo_path).resolve())
         self._stores.pop(norm_path, None)

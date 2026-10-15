@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -220,6 +221,62 @@ _ANON_USER: dict[str, Any] = {
     "name": "Developer",
 }
 
+_USER_CACHE_TTL: float = 30.0  # seconds
+_user_state_cache: dict[int, tuple[float, bool, int]] = {}
+
+
+def invalidate_user_state(user_id: int) -> None:
+    """Invalidate cached user state when user account or token version is modified."""
+    _user_state_cache.pop(user_id, None)
+
+
+async def validate_user_active_and_version(user_id: int, token_ver: int | None = None) -> None:
+    """Check user exists, is active, and token version matches/exceeds revocation threshold."""
+    settings = get_settings()
+    if not settings.database_enabled:
+        return
+
+    now = time.time()
+    cached = _user_state_cache.get(user_id)
+    if cached and (now - cached[0] < _USER_CACHE_TTL):
+        _, is_active, current_ver = cached
+    else:
+        try:
+            from backend.db.database import get_async_session
+            from backend.db.repositories import get_user_by_id
+
+            session_factory = get_async_session()
+            async with session_factory() as session:
+                user = await get_user_by_id(session, user_id)
+                if user is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="User account no longer exists.",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+                is_active = bool(user.is_active)
+                current_ver = getattr(user, "token_version", 1) or 1
+                _user_state_cache[user_id] = (now, is_active, current_ver)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.debug("User status validation database check skipped: %s", exc)
+            return
+
+    if not is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is inactive or disabled.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if token_ver is not None and token_ver < current_ver:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session revoked or password changed. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
@@ -252,6 +309,10 @@ async def get_current_user(
                         detail="Invalid user subject in token.",
                         headers={"WWW-Authenticate": "Bearer"},
                     ) from None
+
+        if "user_id" in payload:
+            await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
+
         return payload
 
     if not settings.auth_enabled:
@@ -275,7 +336,7 @@ async def get_required_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = verify_token(credentials.credentials)
+    payload = verify_token(credentials.credentials, expected_type="access")
     payload["auth"] = True
     if "user_id" not in payload and "sub" in payload:
         try:
@@ -289,4 +350,8 @@ async def get_required_user(
                     detail="Invalid user subject in token.",
                     headers={"WWW-Authenticate": "Bearer"},
                 ) from None
+
+    if "user_id" in payload:
+        await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
+
     return payload
