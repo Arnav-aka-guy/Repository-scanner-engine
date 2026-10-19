@@ -56,14 +56,9 @@ def _sanitize_error_message(msg: str, max_length: int = 300) -> str:
     return cleaned
 
 
-# ── File-backed conversation history (repo-scoped) ─────────────────────────
-
 _chat_state = load_chat_data()
 _conversation_history: list[dict[str, str]] = _chat_state.get("global", [])
 _repo_conversation_history: dict[str, list[dict[str, str]]] = _chat_state.get("by_repo", {})
-
-
-# ── Request / Response schemas ──────────────────────────────────────────
 
 
 class ChatRequest(BaseModel):
@@ -81,9 +76,6 @@ class ChatHistoryEntry(BaseModel):
     question: str
     answer: str
     conversation_id: str | None = None
-
-
-# ── Route handlers ──────────────────────────────────────────────────────
 
 
 @router.post("", response_class=StreamingResponse)

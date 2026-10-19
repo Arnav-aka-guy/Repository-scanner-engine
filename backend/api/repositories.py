@@ -44,9 +44,6 @@ router = APIRouter(prefix="/api/repositories", tags=["repositories"])
 MAX_REPOSITORIES_PER_USER = 5
 
 
-# ── Schemas ─────────────────────────────────────────────────────────────
-
-
 class RepositoryItem(BaseModel):
     """Detailed metadata for a single saved repository."""
 
@@ -117,8 +114,6 @@ def _to_item(repo) -> RepositoryItem:
         updated_at=repo.updated_at,
     )
 
-
-# ── Route Handlers ──────────────────────────────────────────────────────
 
 
 @router.get("", response_model=RepositoryListResponse)

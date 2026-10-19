@@ -2,7 +2,6 @@
 
 import hashlib
 import logging
-import re
 import secrets
 import uuid
 from datetime import datetime, timedelta
@@ -42,15 +41,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 AUTH_TOKEN_RATE = "10/minute"
-EMAIL_REGEX = re.compile(r"^[\w\.-]+@[\w\.-]+\.\w+$")
 
 
 def _is_secure_cookie(request: Request) -> bool:
     settings = get_settings()
     return getattr(settings, "app_mode", "local").lower() == "cloud" or request.url.scheme == "https"
-
-
-# ── Schemas ─────────────────────────────────────────────────────────────
 
 
 class UserProfileResponse(BaseModel):
@@ -105,8 +100,6 @@ class MessageResponse(BaseModel):
 
     message: str
 
-
-# ── Endpoints ───────────────────────────────────────────────────────────
 
 
 @router.post("/register", response_model=TokenResponse)

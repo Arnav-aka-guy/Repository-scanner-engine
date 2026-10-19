@@ -55,9 +55,6 @@ def _cleanup_scan_jobs() -> None:
             _scan_jobs.pop(jid, None)
 
 
-# ── Request / Response schemas ──────────────────────────────────────────
-
-
 class ScanRequest(BaseModel):
     """Body for the repository scan endpoint."""
 
@@ -103,8 +100,6 @@ class RepoOnboardingGuide(BaseModel):
     known_issues: list[str] = Field(default_factory=list)
     starting_points: list[str] = Field(default_factory=list)
 
-
-# ── Route handlers ──────────────────────────────────────────────────────
 
 
 @router.post("/scan", response_model=RepositoryInfo)
@@ -625,8 +620,6 @@ async def get_onboarding_guide(
         starting_points=starting_points,
     )
 
-
-# ── Helpers ──────────────────────────────────────────────────────────────
 
 
 async def _index_embeddings(

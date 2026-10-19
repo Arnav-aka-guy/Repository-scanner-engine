@@ -23,8 +23,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/documentation", tags=["documentation"])
 
 
-# ── Request / Response schemas ──────────────────────────────────────────
-
 _VALID_FORMATS = {"markdown", "html"}
 
 
@@ -46,9 +44,6 @@ class GenerateResponse(BaseModel):
     modules: int = 0
     output_dir: str = ""
     docs: dict = Field(default_factory=dict)
-
-
-# ── Route handlers ──────────────────────────────────────────────────────
 
 
 @router.post("/generate", response_model=GenerateResponse)

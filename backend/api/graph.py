@@ -21,8 +21,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/graph", tags=["graph"])
 
 
-# ── Route handlers ──────────────────────────────────────────────────────
-
 
 @router.get("/dependency")
 async def dependency_graph(

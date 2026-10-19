@@ -23,8 +23,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/viz", tags=["visualization"])
 
 
-# ── Constants ────────────────────────────────────────────────────────────
-
 _VALID_GRAPH_TYPES = {"dependency", "call"}
 
 _EDGE_STYLE: dict[str, str] = {
@@ -36,9 +34,6 @@ _EDGE_STYLE: dict[str, str] = {
 
 # Characters that break Mermaid node labels — replace with underscores.
 _UNSAFE_CHARS = re.compile(r"[^A-Za-z0-9_]")
-
-
-# ── Response schemas ────────────────────────────────────────────────────
 
 
 class MermaidResponse(BaseModel):
@@ -61,9 +56,6 @@ class ArchitectureResponse(BaseModel):
 
     layers: list[ArchitectureLayer] = Field(default_factory=list)
     diagram: str = ""
-
-
-# ── Helpers ──────────────────────────────────────────────────────────────
 
 
 def _safe_id(raw: str) -> str:
@@ -146,10 +138,6 @@ def _layers_to_mermaid(layers: list[ArchitectureLayer]) -> str:
             lines.append(f"    {src} --> {tgt}")
 
     return "\n".join(lines)
-
-
-# ── Route handlers ──────────────────────────────────────────────────────
-
 
 @router.get("/mermaid", response_model=MermaidResponse)
 async def mermaid_diagram(

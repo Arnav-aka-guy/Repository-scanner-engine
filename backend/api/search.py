@@ -19,9 +19,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 
-# ── Request / Response schemas ──────────────────────────────────────────
-
-
 class SearchRequest(BaseModel):
     """Body for the search endpoint."""
 
@@ -50,8 +47,6 @@ class SearchResponse(BaseModel):
     results: list[SearchResultItem] = Field(default_factory=list)
     total: int = 0
 
-
-# ── Route handlers ──────────────────────────────────────────────────────
 
 
 @router.post("", response_model=SearchResponse)
