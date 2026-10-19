@@ -6,14 +6,6 @@ export interface ChatHistoryResponse {
   answer: string;
 }
 
-export interface ConversationSession {
-  id: string;
-  title: string;
-  repo_path?: string;
-  created_at: number;
-  updated_at: number;
-  messages: ChatHistoryResponse[];
-}
 
 export async function sendChatMessageStream(
   question: string,
@@ -55,10 +47,3 @@ export async function clearChatHistoryApi(
   if (conversationId) params.conversation_id = conversationId;
   return apiDelete('/chat/history', params);
 }
-
-export async function listConversations(repoPath?: string): Promise<ConversationSession[]> {
-  const params: Record<string, string> = {};
-  if (repoPath) params.repo_path = repoPath;
-  return apiGet<ConversationSession[]>('/chat/conversations', params);
-}
-

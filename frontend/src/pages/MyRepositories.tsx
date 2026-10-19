@@ -170,7 +170,6 @@ export const MyRepositories: React.FC = () => {
         </div>
       </header>
 
-      {/* ── Main Content Container ────────────────────────────────────── */}
       <main style={{ maxWidth: '1040px', margin: '0 auto', padding: '36px 24px' }}>
         {/* Workspace Title & Quota Meter Header */}
         <div
@@ -282,7 +281,6 @@ export const MyRepositories: React.FC = () => {
           </div>
         )}
 
-        {/* ── Content: Loading, Empty, or Repository List ───────────────── */}
         {isLoading ? (
           <div
             style={{

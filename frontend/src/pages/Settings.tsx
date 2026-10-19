@@ -124,7 +124,6 @@ export const Settings: React.FC = () => {
         fontFamily: font.sans,
       }}
     >
-      {/* ── Page Header ── */}
       <div
         style={{
           padding: '16px 24px',
@@ -174,7 +173,6 @@ export const Settings: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Main Layout: Sidebar Tabs + Content Panel ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Settings Navigation Tabs */}
         <div

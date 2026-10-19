@@ -37,14 +37,6 @@ export async function getScanJobStatus(jobId: string): Promise<ScanJob> {
   return apiGet<ScanJob>(`/repository/scan/jobs/${jobId}`);
 }
 
-export async function listScanJobs(repoPath?: string): Promise<ScanJob[]> {
-  const params: Record<string, string> = {};
-  if (repoPath) {
-    params.repo_path = repoPath;
-  }
-  return apiGet<ScanJob[]>('/repository/scan/jobs', params);
-}
-
 export function subscribeScanEvents(
   jobId: string,
   onProgress: (job: ScanJob) => void,
@@ -190,8 +182,6 @@ export interface RepoOnboardingGuide {
 export async function getOnboardingGuide(repoPath: string): Promise<RepoOnboardingGuide> {
   return apiGet<RepoOnboardingGuide>('/repository/onboarding', { repo_path: repoPath });
 }
-
-// ── Multi-user Repository Management ────────────────────────────────────
 
 export async function getUserRepositories(): Promise<RepositoryListResponse> {
   return apiGet<RepositoryListResponse>('/repositories');

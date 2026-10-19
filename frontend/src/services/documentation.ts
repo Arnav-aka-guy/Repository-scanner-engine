@@ -1,4 +1,4 @@
-import { apiPost, apiGet } from './api';
+import { apiPost } from './api';
 
 export interface GenerateDocsResponse {
   repo_path: string;
@@ -14,8 +14,4 @@ export interface GenerateDocsResponse {
 
 export async function generateDocumentation(repoPath: string, format: 'markdown' | 'html' = 'markdown'): Promise<GenerateDocsResponse> {
   return apiPost<GenerateDocsResponse>('/documentation/generate', { repo_path: repoPath, format });
-}
-
-export async function exportDocumentation(repoPath: string, format: 'markdown' | 'html' = 'markdown'): Promise<GenerateDocsResponse> {
-  return apiGet<GenerateDocsResponse>('/documentation/export', { repo_path: repoPath, format });
 }

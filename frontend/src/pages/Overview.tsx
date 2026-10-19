@@ -194,9 +194,6 @@ export const Overview: React.FC = () => {
     }
   };
 
-  // ─────────────────────────────────────────────────────────────
-  // 1. EMPTY / ONBOARDING STATE
-  // ─────────────────────────────────────────────────────────────
   if (!activeRepository) {
     return (
       <div
@@ -355,9 +352,6 @@ export const Overview: React.FC = () => {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // 2. ACTIVE REPOSITORY DASHBOARD VIEW
-  // ─────────────────────────────────────────────────────────────
   const repoBasename = getRepoBasename(activeRepository);
   const totalFiles = repositoryInfo?.total_files || 0;
   const totalLines = repositoryInfo?.total_lines || 0;
@@ -427,7 +421,6 @@ export const Overview: React.FC = () => {
       className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6"
       style={{ backgroundColor: colors.bg.primary }}
     >
-      {/* ── 1. HEADER SECTION ── */}
       <header
         style={{
           display: 'flex',
@@ -552,7 +545,6 @@ export const Overview: React.FC = () => {
         </div>
       </header>
 
-      {/* ── 1.5 REPOSITORY ONBOARDING WALKTHROUGH (Feature 4) ── */}
       {showWalkthrough && (
         <section
           style={{
@@ -909,7 +901,6 @@ export const Overview: React.FC = () => {
         </section>
       )}
 
-      {/* ── 2. REPOSITORY SUMMARY METRICS ── */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <SectionHeader
           label="Repository Summary"
@@ -1060,7 +1051,6 @@ export const Overview: React.FC = () => {
         </div>
       </section>
 
-      {/* ── 3. HEALTH & ARCHITECTURE SUMMARY ── */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
@@ -1238,7 +1228,6 @@ export const Overview: React.FC = () => {
         )}
       </section>
 
-      {/* ── 4. ATTENTION & QUICK ACTIONS GRID ── */}
       <div
         style={{
           display: 'grid',

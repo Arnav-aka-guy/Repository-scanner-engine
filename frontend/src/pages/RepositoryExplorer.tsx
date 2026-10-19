@@ -300,9 +300,6 @@ export const RepositoryExplorer: React.FC = () => {
       className="flex-1 flex overflow-hidden w-full h-full select-none"
       style={{ backgroundColor: colors.bg.primary }}
     >
-      {/* ─────────────────────────────────────────────────────────────
-          1. LEFT PANE: FILE TREE WORKSPACE
-          ───────────────────────────────────────────────────────────── */}
       {showLeftPane && (
         <aside
           style={{
@@ -515,9 +512,6 @@ export const RepositoryExplorer: React.FC = () => {
         </aside>
       )}
 
-      {/* ─────────────────────────────────────────────────────────────
-          2. CENTER PANE: CODE VIEWER WORKSPACE
-          ───────────────────────────────────────────────────────────── */}
       <main
         style={{
           flex: 1,
@@ -732,9 +726,6 @@ export const RepositoryExplorer: React.FC = () => {
         </div>
       </main>
 
-      {/* ─────────────────────────────────────────────────────────────
-          3. RIGHT PANE: CONTEXT & SYMBOL INSPECTOR
-          ───────────────────────────────────────────────────────────── */}
       {showRightPane && selectedFilePath && (
         <aside
           style={{
@@ -811,7 +802,6 @@ export const RepositoryExplorer: React.FC = () => {
 
           {/* Tab Content Body */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-            {/* ── TAB 1: CODE STRUCTURE (SYMBOLS) ── */}
             {rightTab === 'symbols' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {entitiesByType.total === 0 ? (
@@ -902,7 +892,6 @@ export const RepositoryExplorer: React.FC = () => {
               </div>
             )}
 
-            {/* ── TAB 2: RELATIONSHIPS CONTEXT PANEL ── */}
             {rightTab === 'relationships' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {/* Summary Metrics Card */}
@@ -1053,9 +1042,6 @@ export const RepositoryExplorer: React.FC = () => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// Subcomponent: Symbol Card with 4 IDE Actions
-// ─────────────────────────────────────────────────────────────
 interface SymbolCardProps {
   symbol: any;
   onJump: () => void;

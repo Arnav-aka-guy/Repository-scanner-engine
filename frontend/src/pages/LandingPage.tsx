@@ -249,7 +249,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </header>
 
-      {/* ── Main Hero Section ─────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-6 pt-16 pb-12 text-center">
         {/* Technical mono badge */}
         <div className="inline-flex items-center gap-2 bg-[#151816] border border-[#262B28] rounded px-3 py-1 mb-6">
@@ -292,7 +291,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Section 2: Reality / Why Survey Map ───────────────────────── */}
       <section className="border-y border-[#262B28] bg-[#151816] py-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <span className="text-[11px] font-mono text-[#F2A93B] uppercase tracking-widest">
@@ -325,7 +323,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Section 3: Core Capabilities ─────────────────────────────── */}
       <section id="capabilities" className="max-w-5xl mx-auto py-20 px-6">
         <div className="text-center mb-12">
           <span className="text-[11px] font-mono text-[#F2A93B] uppercase tracking-widest">
@@ -374,7 +371,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Section 4: Workflow ──────────────────────────────────────── */}
       <section id="how-it-works" className="border-y border-[#262B28] bg-[#151816] py-16 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
@@ -407,7 +403,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Section 5: Architecture & Storage Specs ───────────────────── */}
       <section id="specs" className="max-w-5xl mx-auto py-16 px-6">
         <div className="text-center mb-8">
           <span className="text-[11px] font-mono text-[#F2A93B] uppercase tracking-widest">
@@ -451,7 +446,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Section 6: Final CTA ─────────────────────────────────────── */}
       <section className="border-t border-[#262B28] bg-[#11141A] py-16 px-6 text-center">
         <div className="max-w-xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold font-display text-[#E9ECE6] mb-3">
@@ -471,7 +465,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── Footer ───────────────────────────────────────────────────── */}
       <footer className="border-t border-[#262B28] bg-[#0D0F0E] py-6 px-6">
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#5E645F]">
           <div className="flex items-center gap-2">

@@ -255,7 +255,6 @@ export const SemanticSearch: React.FC = () => {
       className="flex-grow flex flex-col overflow-hidden h-full select-none"
       style={{ backgroundColor: colors.bg.primary }}
     >
-      {/* ── 1. Search Header ── */}
       <div
         style={{
           padding: '16px 24px',
@@ -343,7 +342,6 @@ export const SemanticSearch: React.FC = () => {
         </div>
       </div>
 
-      {/* ── 2. Results Body ── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
         {error && (
           <div style={{ maxWidth: '820px', marginBottom: '16px' }}>
