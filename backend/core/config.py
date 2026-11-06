@@ -210,9 +210,14 @@ class Settings(BaseSettings):
             self.database_url = f"sqlite+aiosqlite:///{sqlite_db_path.as_posix()}"
 
         mode = self.app_mode.lower().strip()
+        auth_explicitly_set = "auth_enabled" in self.model_fields_set
+
         if mode == "local":
-            self.local_mode = True
-            self.auth_enabled = False
+            if auth_explicitly_set:
+                self.local_mode = not self.auth_enabled
+            else:
+                self.auth_enabled = False
+                self.local_mode = True
         elif mode == "cloud":
             self.auth_enabled = True
             self.database_enabled = True
@@ -229,6 +234,16 @@ class Settings(BaseSettings):
                     f"APP_MODE=cloud requires JWT_SECRET_KEY of at least "
                     f"{_MIN_SECRET_LENGTH} characters (got {len(secret)})."
                 )
+        else:
+            if not auth_explicitly_set:
+                self.auth_enabled = False
+            self.local_mode = not self.auth_enabled
+
+        # Guarantee invariant: local_mode and auth_enabled can never both be true
+        if self.auth_enabled:
+            self.local_mode = False
+        else:
+            self.local_mode = True
 
         if self.auth_enabled:
             secret = self.jwt_secret_key

@@ -159,6 +159,23 @@ class TestAuthEnforcement:
         s = Settings(auth_enabled=False, jwt_secret_key="short")  # type: ignore[call-arg]
         assert s.auth_enabled is False
 
+    def test_explicit_auth_enabled_wins_in_local_mode(self):
+        """Explicit AUTH_ENABLED=true in local mode must keep auth_enabled True and local_mode False."""
+        from backend.core.config import Settings
+
+        s = Settings(app_mode="local", auth_enabled=True, jwt_secret_key="a" * 32)
+        assert s.auth_enabled is True
+        assert s.local_mode is False
+
+    def test_local_mode_default_turns_auth_off_when_unset(self):
+        """Local mode without explicit auth_enabled defaults to auth_enabled False and local_mode True."""
+        from backend.core.config import Settings
+
+        s = Settings(app_mode="local")
+        assert s.auth_enabled is False
+        assert s.local_mode is True
+        assert not (s.local_mode and s.auth_enabled)
+
 
 # ── 5.5 Rate limiting tests ──────────────────────────────────────────────
 
