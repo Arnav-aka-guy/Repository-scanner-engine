@@ -9,10 +9,10 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # Known insecure placeholder values that must never be used in production
 _INSECURE_SECRETS: frozenset[str] = frozenset(
@@ -143,8 +143,8 @@ class Settings(BaseSettings):
     max_directory_depth: int = 30
 
     # ── Path allowlist ────────────────────────────────────────────────
-    allowed_roots: list[str] = []
-    trusted_proxies: list[str] = ["127.0.0.1", "::1"]
+    allowed_roots: Annotated[list[str], NoDecode] = []
+    trusted_proxies: Annotated[list[str], NoDecode] = ["127.0.0.1", "::1"]
 
     # ── Directory list for bulk creation ────────────────────────────────
     _SUBDIRS: ClassVar[tuple[str, ...]] = ("graphs", "embeddings", "docs", "cache")

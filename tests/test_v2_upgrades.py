@@ -177,6 +177,51 @@ class TestAuthEnforcement:
         assert not (s.local_mode and s.auth_enabled)
 
 
+class TestAllowedRootsEnvParsing:
+    """Verify that allowed_roots and trusted_proxies handle raw env strings without SettingsError."""
+
+    def test_allowed_roots_tilde_format(self, monkeypatch):
+        """Form 1: ~/projects from .env.example should resolve without SettingsError."""
+        from backend.core.config import Settings
+
+        monkeypatch.setenv("ALLOWED_ROOTS", "~/projects")
+        s = Settings()
+        assert len(s.allowed_roots) == 1
+        assert "projects" in s.allowed_roots[0]
+
+    def test_allowed_roots_comma_separated_format(self, monkeypatch, tmp_path):
+        """Form 2: comma-separated list like /a,/b."""
+        from backend.core.config import Settings
+
+        dir_a = tmp_path / "a"
+        dir_b = tmp_path / "b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+
+        monkeypatch.setenv("ALLOWED_ROOTS", f"{dir_a},{dir_b}")
+        s = Settings()
+        assert len(s.allowed_roots) == 2
+        assert str(dir_a.resolve()) in s.allowed_roots
+        assert str(dir_b.resolve()) in s.allowed_roots
+
+    def test_allowed_roots_json_list_format(self, monkeypatch, tmp_path):
+        """Form 3: JSON list like [\"/a\",\"/b\"]."""
+        import json
+        from backend.core.config import Settings
+
+        dir_a = tmp_path / "a"
+        dir_b = tmp_path / "b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+
+        json_val = json.dumps([str(dir_a), str(dir_b)])
+        monkeypatch.setenv("ALLOWED_ROOTS", json_val)
+        s = Settings()
+        assert len(s.allowed_roots) == 2
+        assert str(dir_a.resolve()) in s.allowed_roots
+        assert str(dir_b.resolve()) in s.allowed_roots
+
+
 # ── 5.5 Rate limiting tests ──────────────────────────────────────────────
 
 
