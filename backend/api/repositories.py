@@ -35,6 +35,7 @@ from backend.security.auth import get_required_user
 from backend.security.input_sanitizer import SanitizedRepoPath
 from backend.security.path_validator import validate_repository_path
 from backend.security.rate_limiter import SCAN_RATE, limiter
+from backend.security.repo_auth import repo_disk_path
 from backend.security.repo_registry import register_scanned_repo
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ class RepositoryItem(BaseModel):
     description: str | None = None
     source_type: str = "local"
     source_path: str
+    path: str | None = None
     status: str = "CREATED"
     language: str | None = None
     file_count: int = 0
@@ -103,6 +105,7 @@ def _to_item(repo) -> RepositoryItem:
         description=repo.description,
         source_type=repo.source_type or "local",
         source_path=repo.source_path or repo.path,
+        path=repo_disk_path(repo),
         status=repo.status or "CREATED",
         language=repo.language,
         file_count=repo.file_count or repo.total_files or 0,
@@ -301,7 +304,7 @@ async def delete_repository(
             detail="Repository not found or access denied.",
         )
 
-    repo_path = repo.source_path or repo.path
+    repo_path = repo_disk_path(repo)
 
     # Invalidate parser, embeddings, and analysis cache
     from backend.storage.persistence import invalidate_analysis_cache
@@ -359,7 +362,7 @@ async def scan_user_repository(
             detail="Repository not found or access denied.",
         )
 
-    repo_path = repo.source_path or repo.path
+    repo_path = repo_disk_path(repo)
     path = validate_repository_path(repo_path)
     register_scanned_repo(path)
 

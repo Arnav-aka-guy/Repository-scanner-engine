@@ -337,3 +337,38 @@ class TestUserDataIsolation:
         new_login = client.post("/api/auth/login", json={"email": email, "password": "newsecurepassword123"})
         assert new_login.status_code == 200
         assert "access_token" in new_login.json()
+
+
+class TestGithubRepositoryDiskPath:
+    """Verify GitHub repositories with URL source_path use on-disk path for scanning and schemas."""
+
+    def test_repo_disk_path_prefers_disk_path_over_github_url(self):
+        from backend.db.models import Repository
+        from backend.security.repo_auth import repo_disk_path
+
+        repo = Repository(
+            id=10,
+            user_id=1,
+            name="Remote Repo",
+            source_type="github",
+            source_path="https://github.com/org/repo.git",
+            path="C:/data/cloned_repos/org_repo_12345",
+        )
+        assert repo_disk_path(repo) == "C:/data/cloned_repos/org_repo_12345"
+
+    def test_repository_item_exposes_disk_path(self):
+        from backend.api.repositories import _to_item
+        from backend.db.models import Repository
+
+        repo = Repository(
+            id=11,
+            user_id=1,
+            name="Remote Repo",
+            source_type="github",
+            source_path="https://github.com/org/repo.git",
+            path="C:/data/cloned_repos/org_repo_12345",
+            status="READY",
+        )
+        item = _to_item(repo)
+        assert item.path == "C:/data/cloned_repos/org_repo_12345"
+        assert item.source_path == "https://github.com/org/repo.git"

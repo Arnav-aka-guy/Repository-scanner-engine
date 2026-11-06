@@ -23,6 +23,21 @@ from backend.security.path_validator import validate_repository_path
 logger = logging.getLogger(__name__)
 
 
+def repo_disk_path(repo: Any) -> str:
+    """Return the filesystem directory path for a repository.
+
+    For cloned/GitHub repos, repo.path holds the on-disk directory while
+    repo.source_path contains the original URL. Always prefers the on-disk path.
+    """
+    if repo is None:
+        return ""
+    if hasattr(repo, "path") and repo.path:
+        return str(repo.path)
+    if hasattr(repo, "source_path") and repo.source_path:
+        return str(repo.source_path)
+    return ""
+
+
 async def authorize_repository_access(
     db: AsyncSession,
     current_user: dict[str, Any],
@@ -74,7 +89,7 @@ async def authorize_repository_access(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Repository not found or access denied.",
                 )
-            raw_path = repo.path or repo.source_path
+            raw_path = repo_disk_path(repo)
             target_path = validate_repository_path(raw_path)
 
         # 2. Lookup by path string
@@ -102,7 +117,7 @@ async def authorize_repository_access(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Access denied: Repository is not registered under your account in cloud mode.",
                     )
-                target_path = validate_repository_path(repo.path or repo.source_path)
+                target_path = validate_repository_path(repo_disk_path(repo))
 
             else:
                 target_path = validate_repository_path(raw_input)
