@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_embeddings
+from backend.core.config import settings
 from backend.db.database import get_db
 from backend.embeddings.service import EmbeddingsService
 from backend.security.auth import get_current_user
@@ -63,7 +64,7 @@ async def search(
     sanitized = SanitizedQuery(query=body.query)
 
     validated_repo_path: str | None = None
-    if current_user.get("auth") and current_user.get("user_id"):
+    if settings.auth_enabled and current_user.get("auth") and current_user.get("user_id"):
         if not body.repo_path or not body.repo_path.strip():
             raise HTTPException(
                 status_code=400,

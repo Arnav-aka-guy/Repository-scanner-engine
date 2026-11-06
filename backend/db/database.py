@@ -100,6 +100,7 @@ async def ensure_local_user() -> None:
     """Ensure the default local workspace user (id=1, email=local@localhost) exists in DB."""
     try:
         from sqlalchemy import select
+
         from backend.db.models import User
         from backend.security.auth import hash_password
 

@@ -241,6 +241,7 @@ async def _update_repo_status_in_db(
     """Helper to update a Repository row status, stats, and last_scanned_at with real DB commit."""
     try:
         from sqlalchemy import select
+
         from backend.db.database import get_async_session
         from backend.db.models import Repository
         from backend.db.repositories import update_repository_stats
@@ -313,14 +314,39 @@ async def _run_scan_job(
     except ScanLimitError as exc:
         _scan_jobs[job_id]["status"] = "failed"
         _scan_jobs[job_id]["error"] = f"Repository limit exceeded: {exc.code}"
-        _scan_jobs[job_id]["message"] = f"Scan stopped: repository limits exceeded ({exc.code})."
+        if exc.code == "max_files":
+            _scan_jobs[job_id]["message"] = f"Scan stopped: file count exceeded maximum limit ({exc.limit} files)."
+        elif exc.code == "max_depth":
+            _scan_jobs[job_id]["message"] = (
+                f"Scan stopped: directory depth exceeded maximum limit ({exc.limit} levels)."
+            )
+        elif exc.code == "max_size":
+            _scan_jobs[job_id]["message"] = "Scan stopped: individual file size limit exceeded."
+        else:
+            _scan_jobs[job_id]["message"] = f"Scan stopped: repository limits exceeded ({exc.code})."
+        save_scan_job(job_id, _scan_jobs[job_id])
+        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
+    except HTTPException as exc:
+        logger.warning("Async scan job %s HTTP error: %s", job_id, exc.detail)
+        _scan_jobs[job_id]["status"] = "failed"
+        _scan_jobs[job_id]["error"] = str(exc.detail)
+        _scan_jobs[job_id]["message"] = f"Scan failed: {exc.detail}"
         save_scan_job(job_id, _scan_jobs[job_id])
         await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
     except Exception as exc:
         logger.error("Async scan job %s failed: %s", job_id, exc, exc_info=True)
         _scan_jobs[job_id]["status"] = "failed"
-        _scan_jobs[job_id]["error"] = str(exc) or "Repository scan failed."
-        _scan_jobs[job_id]["message"] = "Scan job failed."
+        err_msg = str(exc)
+        if "not allowed" in err_msg.lower() or "forbidden" in err_msg.lower():
+            user_msg = "Scan failed: repository path is not permitted by security policy."
+        elif "clone" in err_msg.lower():
+            user_msg = "Scan failed: git clone failed. Please verify repository URL and access rights."
+        elif "too many" in err_msg.lower() or "limit" in err_msg.lower():
+            user_msg = "Scan failed: repository exceeds resource limits."
+        else:
+            user_msg = f"Repository scan failed: {err_msg}" if err_msg else "Repository scan failed."
+        _scan_jobs[job_id]["error"] = err_msg or "Repository scan failed."
+        _scan_jobs[job_id]["message"] = user_msg
         save_scan_job(job_id, _scan_jobs[job_id])
         await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
 

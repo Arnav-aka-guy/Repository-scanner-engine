@@ -24,10 +24,8 @@ from backend.db.repositories import (
     delete_user_repository,
     get_user_repository,
     list_user_repositories,
-    update_repository_stats,
 )
 from backend.embeddings.service import EmbeddingsService
-from backend.parser.scanner import ScanLimitError
 from backend.parser.service import ParserService
 from backend.security.auth import get_required_user
 from backend.security.input_sanitizer import SanitizedRepoPath

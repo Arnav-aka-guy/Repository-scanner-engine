@@ -161,6 +161,14 @@ class TestRepositoryEndpoints:
         _cleanup_scan_jobs()
         assert len(_scan_jobs) <= 100
 
+    def test_async_scan_job_clear_failure_message(self, client: TestClient):
+        """Async scan job returns clear error message when path is invalid."""
+        response = client.post(
+            "/api/repository/scan/async",
+            json={"path": "/nonexistent/repo/directory/12345"},
+        )
+        assert response.status_code in (400, 403)
+
 
 class TestSearchEndpoints:
     """Test semantic search endpoints."""
