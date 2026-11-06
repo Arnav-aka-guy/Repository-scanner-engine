@@ -24,6 +24,7 @@ _INSECURE_SECRETS: frozenset[str] = frozenset(
         "jwt-secret",
         "mysecret",
         "placeholder",
+        "dev-insecure-secret-key-change-in-production-min-32-chars-long-0123456789",
     }
 )
 
@@ -41,7 +42,7 @@ class Settings(BaseSettings):
     )
 
     # ── Application version ──────────────────────────────────────────────
-    app_version: str = "2.0.0"
+    app_version: str = "2.1.0"
 
     # ── Data directories ────────────────────────────────────────────────
     data_dir: str = "data"
@@ -90,7 +91,7 @@ class Settings(BaseSettings):
 
     # ── Groq settings ─────────────────────────────────────────────────
     groq_api_key: str = ""
-    groq_model: str = "openai/gpt-oss-120b"
+    groq_model: str = "llama-3.3-70b-versatile"
 
     # ── OpenRouter settings ───────────────────────────────────────────
     openrouter_api_key: str = ""
@@ -112,7 +113,7 @@ class Settings(BaseSettings):
     # ── Authentication ────────────────────────────────────────────────
     local_mode: bool = False
     auth_enabled: bool = False
-    jwt_secret_key: str = "change-me-to-a-random-secret"
+    jwt_secret_key: str = "dev-insecure-secret-key-change-in-production-min-32-chars-long-0123456789"
     jwt_algorithm: str = "HS256"
     jwt_issuer: str = "repository-scanner-engine"
     jwt_audience: str = "repository-scanner-client"

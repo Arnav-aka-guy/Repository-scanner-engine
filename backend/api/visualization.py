@@ -139,6 +139,7 @@ def _layers_to_mermaid(layers: list[ArchitectureLayer]) -> str:
 
     return "\n".join(lines)
 
+
 @router.get("/mermaid", response_model=MermaidResponse)
 async def mermaid_diagram(
     path: Path = Depends(get_owned_repository),

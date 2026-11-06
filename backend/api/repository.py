@@ -101,7 +101,6 @@ class RepoOnboardingGuide(BaseModel):
     starting_points: list[str] = Field(default_factory=list)
 
 
-
 @router.post("/scan", response_model=RepositoryInfo)
 @limiter.limit(SCAN_RATE)
 async def scan_repository(
@@ -368,6 +367,26 @@ async def get_scan_job_status(
     return ScanJobResponse(**job)
 
 
+@router.post("/scan/jobs/{job_id}/cancel", response_model=ScanJobResponse)
+async def cancel_scan_job(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> ScanJobResponse:
+    """Cancel a running scan job."""
+    from backend.services.scan_worker import get_scan_job_manager
+
+    manager = get_scan_job_manager()
+    user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+    try:
+        updated = await manager.cancel_job(job_id, user_id=user_id)
+        _scan_jobs[job_id] = updated
+        return ScanJobResponse(**updated)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Scan job not found.") from None
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Permission denied to cancel this job.") from None
+
+
 @router.get("/scan/jobs/{job_id}/events")
 async def stream_scan_job_events(
     job_id: str,
@@ -619,7 +638,6 @@ async def get_onboarding_guide(
         known_issues=known_issues,
         starting_points=starting_points,
     )
-
 
 
 async def _index_embeddings(

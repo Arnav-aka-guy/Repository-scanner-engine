@@ -48,7 +48,6 @@ class SearchResponse(BaseModel):
     total: int = 0
 
 
-
 @router.post("", response_model=SearchResponse)
 @router.post("/", response_model=SearchResponse)
 @limiter.limit(SEARCH_RATE)

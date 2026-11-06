@@ -30,23 +30,29 @@ class VectorRetriever:
             repo_path: Optional repository root path for isolated repo search.
 
         Returns:
-            List of dictionaries representing search results.
+            List of dictionaries representing search results with enriched metadata.
         """
         raw_results = await self.embeddings_service.search(query, top_k=top_k, repo_path=repo_path)
 
         results = []
         for res in raw_results:
             meta = res["metadata"]
+            start_l = meta.get("start_line", 1)
+            end_l = meta.get("end_line", 1)
             results.append(
                 {
                     "score": res["score"],
+                    "repo_id": meta.get("repo_id", ""),
                     "file_path": meta.get("file_path", ""),
                     "entity_name": meta.get("entity_name", ""),
+                    "symbol_name": meta.get("symbol_name", meta.get("entity_name", "")),
                     "entity_type": meta.get("entity_type", ""),
+                    "line_range": meta.get("line_range", f"L{start_l}-L{end_l}"),
+                    "relationships": meta.get("relationships", []),
                     "source_code": meta.get("source_code", ""),
                     "docstring": meta.get("docstring", ""),
-                    "start_line": meta.get("start_line", 1),
-                    "end_line": meta.get("end_line", 1),
+                    "start_line": start_l,
+                    "end_line": end_l,
                 }
             )
 

@@ -15,6 +15,8 @@ const SemanticSearch = lazy(() => import('./pages/SemanticSearch').then((m) => (
 const AIChat = lazy(() => import('./pages/AIChat').then((m) => ({ default: m.AIChat })));
 const DocumentationGenerator = lazy(() => import('./pages/DocumentationGenerator').then((m) => ({ default: m.DocumentationGenerator })));
 const HealthDashboard = lazy(() => import('./pages/HealthDashboard').then((m) => ({ default: m.HealthDashboard })));
+const ChangeImpact = lazy(() => import('./pages/ChangeImpact').then((m) => ({ default: m.ChangeImpact })));
+const CodeReview = lazy(() => import('./pages/CodeReview').then((m) => ({ default: m.CodeReview })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then((m) => ({ default: m.LandingPage })));
 const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
@@ -145,6 +147,22 @@ function AnimatedRoutes() {
             }
           />
           <Route
+            path="/impact"
+            element={
+              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+                <ChangeImpact />
+              </motion.div>
+            }
+          />
+          <Route
+            path="/review"
+            element={
+              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+                <CodeReview />
+              </motion.div>
+            }
+          />
+          <Route
             path="/settings"
             element={
               <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
@@ -219,6 +237,22 @@ function AnimatedRoutes() {
             element={
               <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
                 <HealthDashboard />
+              </motion.div>
+            }
+          />
+          <Route
+            path="/app/repositories/:repositoryId/impact"
+            element={
+              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+                <ChangeImpact />
+              </motion.div>
+            }
+          />
+          <Route
+            path="/app/repositories/:repositoryId/review"
+            element={
+              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+                <CodeReview />
               </motion.div>
             }
           />

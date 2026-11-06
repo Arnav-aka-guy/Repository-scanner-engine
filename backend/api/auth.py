@@ -101,7 +101,6 @@ class MessageResponse(BaseModel):
     message: str
 
 
-
 @router.post("/register", response_model=TokenResponse)
 @limiter.limit(AUTH_TOKEN_RATE)
 async def register_user(

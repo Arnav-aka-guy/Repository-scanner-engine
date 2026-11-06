@@ -181,11 +181,23 @@ async def chat(
             key = (fpath, src.get("entity_name", ""))
             if key not in seen_sources:
                 seen_sources.add(key)
+                rel_type = (
+                    "verified_direct"
+                    if any(
+                        v.get("file_path") == fpath and v.get("entity_name") == src.get("entity_name")
+                        for v in vector_results
+                    )
+                    else "inferred_relationship"
+                )
                 verified_sources.append(
                     {
                         "file_path": fpath,
                         "entity_name": src.get("entity_name", ""),
+                        "symbol_name": src.get("symbol_name", src.get("entity_name", "")),
                         "entity_type": src.get("entity_type", ""),
+                        "line_range": src.get("line_range") or (f"L{s_line}-L{e_line}" if s_line and e_line else None),
+                        "relationship_type": rel_type,
+                        "relationships": src.get("relationships", []),
                         "start_line": s_line if (valid_lines and s_line > 0) else None,
                         "end_line": e_line if (valid_lines and e_line > 0) else None,
                         "verified": True,

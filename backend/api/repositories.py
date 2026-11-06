@@ -115,7 +115,6 @@ def _to_item(repo) -> RepositoryItem:
     )
 
 
-
 @router.get("", response_model=RepositoryListResponse)
 @router.get("/", response_model=RepositoryListResponse)
 async def list_repositories(

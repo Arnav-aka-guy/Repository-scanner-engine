@@ -14,6 +14,8 @@ import {
   FolderOpen,
   RefreshCw,
   X,
+  GitBranch,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -52,6 +54,8 @@ const NAV_SECTIONS: NavSection[] = [
       { name: 'Dependencies', path: '/graph', icon: Share2 },
       { name: 'Architecture', path: '/architecture', icon: Tv },
       { name: 'Code Health', path: '/health-dashboard', icon: Activity },
+      { name: 'Change Impact', path: '/impact', icon: GitBranch },
+      { name: 'Code Review', path: '/review', icon: ShieldCheck },
     ],
   },
   {

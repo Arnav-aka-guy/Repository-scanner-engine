@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/graph", tags=["graph"])
 
 
-
 @router.get("/dependency")
 async def dependency_graph(
     path: Path = Depends(get_owned_repository),
