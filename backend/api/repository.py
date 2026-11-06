@@ -232,11 +232,53 @@ async def browse_folder() -> dict[str, str]:
     return {"path": folder}
 
 
+async def _update_repo_status_in_db(
+    repo_id: int | None,
+    path_str: str,
+    status: str,
+    repo_info: RepositoryInfo | None = None,
+) -> None:
+    """Helper to update a Repository row status, stats, and last_scanned_at with real DB commit."""
+    try:
+        from sqlalchemy import select
+        from backend.db.database import get_async_session
+        from backend.db.models import Repository
+        from backend.db.repositories import update_repository_stats
+
+        factory = get_async_session()
+        async with factory() as db:
+            target_repo: Repository | None = None
+            if repo_id:
+                target_repo = await db.get(Repository, repo_id)
+            if target_repo is None:
+                norm = path_str.replace("\\", "/").rstrip("/")
+                stmt = select(Repository).where(
+                    (Repository.path == norm) | (Repository.source_path == norm) | (Repository.path == path_str)
+                )
+                res = await db.execute(stmt)
+                target_repo = res.scalars().first()
+
+            if target_repo:
+                target_repo.status = status
+                if status == "READY" and repo_info is not None:
+                    await update_repository_stats(
+                        db,
+                        target_repo,
+                        total_files=repo_info.total_files,
+                        total_lines=repo_info.total_lines,
+                        languages=repo_info.languages,
+                    )
+                await db.commit()
+    except Exception as exc:
+        logger.debug("Database update for scan job skipped/failed: %s", exc)
+
+
 async def _run_scan_job(
     job_id: str,
     path_str: str,
     parser: ParserService,
     embeddings: EmbeddingsService,
+    repo_id: int | None = None,
 ) -> None:
     """Background worker for asynchronous repository scan jobs."""
     try:
@@ -244,6 +286,8 @@ async def _run_scan_job(
         _scan_jobs[job_id]["message"] = "Discovering and analyzing repository files..."
         _scan_jobs[job_id]["progress"] = 0.3
         save_scan_job(job_id, _scan_jobs[job_id])
+
+        await _update_repo_status_in_db(repo_id, path_str, status="SCANNING")
 
         repo_info = await parser.scan_repository(path_str)
         register_scanned_repo(path_str)
@@ -264,17 +308,59 @@ async def _run_scan_job(
         _scan_jobs[job_id]["result"] = repo_info
         save_scan_job(job_id, _scan_jobs[job_id])
 
+        await _update_repo_status_in_db(repo_id, path_str, status="READY", repo_info=repo_info)
+
     except ScanLimitError as exc:
         _scan_jobs[job_id]["status"] = "failed"
         _scan_jobs[job_id]["error"] = f"Repository limit exceeded: {exc.code}"
-        _scan_jobs[job_id]["message"] = "Scan stopped: repository limits exceeded."
+        _scan_jobs[job_id]["message"] = f"Scan stopped: repository limits exceeded ({exc.code})."
         save_scan_job(job_id, _scan_jobs[job_id])
+        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
     except Exception as exc:
         logger.error("Async scan job %s failed: %s", job_id, exc, exc_info=True)
         _scan_jobs[job_id]["status"] = "failed"
-        _scan_jobs[job_id]["error"] = "Repository scan failed."
+        _scan_jobs[job_id]["error"] = str(exc) or "Repository scan failed."
         _scan_jobs[job_id]["message"] = "Scan job failed."
         save_scan_job(job_id, _scan_jobs[job_id])
+        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
+
+
+def queue_scan_job(
+    path: str,
+    background_tasks: BackgroundTasks,
+    parser: ParserService,
+    embeddings: EmbeddingsService,
+    user_id: int | None = None,
+    repo_id: int | None = None,
+) -> str:
+    """Unified entry point to register, initialize, and queue a background repository scan job."""
+    _cleanup_scan_jobs()
+    register_scanned_repo(path)
+    job_id = str(uuid.uuid4())
+
+    _scan_jobs[job_id] = {
+        "job_id": job_id,
+        "repo_path": str(path),
+        "status": "pending",
+        "progress": 0.0,
+        "message": "Scan job queued.",
+        "result": None,
+        "error": None,
+        "created_at": time.time(),
+        "user_id": user_id,
+        "repo_id": repo_id,
+    }
+    save_scan_job(job_id, _scan_jobs[job_id])
+
+    # Invalidate cache for fresh scan
+    from backend.storage.persistence import invalidate_analysis_cache
+
+    parser.invalidate_cache(str(path), clear_manifest=True)
+    embeddings.invalidate_repo(str(path), clear_cache=True)
+    invalidate_analysis_cache(str(path))
+
+    background_tasks.add_task(_run_scan_job, job_id, str(path), parser, embeddings, repo_id)
+    return job_id
 
 
 @router.post("/scan/async", response_model=ScanJobResponse)
@@ -295,34 +381,18 @@ async def scan_repository_async(
     from backend.security.repo_auth import authorize_repository_access
 
     sanitized = SanitizedRepoPath(path=body.path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path, allow_unscanned=True)
-
-    _cleanup_scan_jobs()
-    register_scanned_repo(path)
-    job_id = str(uuid.uuid4())
+    repo, path = await authorize_repository_access(db, current_user, sanitized.path, allow_unscanned=True)
     user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+    repo_id = repo.id if repo else None
 
-    _scan_jobs[job_id] = {
-        "job_id": job_id,
-        "repo_path": str(path),
-        "status": "pending",
-        "progress": 0.0,
-        "message": "Scan job queued.",
-        "result": None,
-        "error": None,
-        "created_at": time.time(),
-        "user_id": user_id,
-    }
-    save_scan_job(job_id, _scan_jobs[job_id])
-
-    # Invalidate cache for fresh scan
-    from backend.storage.persistence import invalidate_analysis_cache
-
-    parser.invalidate_cache(str(path), clear_manifest=True)
-    embeddings.invalidate_repo(str(path), clear_cache=True)
-    invalidate_analysis_cache(str(path))
-
-    background_tasks.add_task(_run_scan_job, job_id, str(path), parser, embeddings)
+    job_id = queue_scan_job(
+        path=str(path),
+        background_tasks=background_tasks,
+        parser=parser,
+        embeddings=embeddings,
+        user_id=user_id,
+        repo_id=repo_id,
+    )
 
     return ScanJobResponse(**_scan_jobs[job_id])
 

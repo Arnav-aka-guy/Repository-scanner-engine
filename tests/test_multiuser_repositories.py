@@ -372,3 +372,29 @@ class TestGithubRepositoryDiskPath:
         item = _to_item(repo)
         assert item.path == "C:/data/cloned_repos/org_repo_12345"
         assert item.source_path == "https://github.com/org/repo.git"
+
+    def test_scan_user_repository_returns_202_and_job_id(self, client: TestClient, tmp_path: Path):
+        """POST /api/repositories/{id}/scan must return 202 Accepted with a job_id."""
+        email = f"user_scan_{tempfile.mktemp()[-6:]}@example.com"
+        reg = client.post("/api/auth/register", json={"name": "Scanner User", "email": email, "password": "password123!"})
+        token = reg.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        repo_dir = tmp_path / "scan_repo_test"
+        repo_dir.mkdir()
+        (repo_dir / "index.py").write_text("x = 100\n", encoding="utf-8")
+
+        create = client.post(
+            "/api/repositories",
+            headers=headers,
+            json={"name": "Scan Target", "source_path": str(repo_dir), "source_type": "local"},
+        )
+        assert create.status_code == 201
+        repo_id = create.json()["id"]
+
+        scan_resp = client.post(f"/api/repositories/{repo_id}/scan", headers=headers)
+        assert scan_resp.status_code == 202
+        data = scan_resp.json()
+        assert "job_id" in data
+        assert data["status"] == "pending"
+        assert data["repository_id"] == repo_id
