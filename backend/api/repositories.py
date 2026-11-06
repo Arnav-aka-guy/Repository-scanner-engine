@@ -27,7 +27,7 @@ from backend.db.repositories import (
 )
 from backend.embeddings.service import EmbeddingsService
 from backend.parser.service import ParserService
-from backend.security.auth import get_required_user
+from backend.security.auth import get_current_user
 from backend.security.input_sanitizer import SanitizedRepoPath
 from backend.security.path_validator import validate_repository_path
 from backend.security.rate_limiter import SCAN_RATE, limiter
@@ -117,7 +117,7 @@ def _to_item(repo) -> RepositoryItem:
 @router.get("", response_model=RepositoryListResponse)
 @router.get("/", response_model=RepositoryListResponse)
 async def list_repositories(
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepositoryListResponse:
     """Return all repositories owned by the authenticated user with quota count."""
@@ -137,7 +137,7 @@ async def list_repositories(
 @router.post("/", response_model=RepositoryItem, status_code=status.HTTP_201_CREATED)
 async def create_repository(
     body: CreateRepositoryRequest,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepositoryItem:
     """Add a new repository for the authenticated user, enforcing the 5-repository ceiling."""
@@ -244,7 +244,7 @@ async def create_repository(
 @router.get("/{repository_id}", response_model=RepositoryItem)
 async def get_repository(
     repository_id: int,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepositoryItem:
     """Get repository metadata, enforcing strict user ownership isolation."""
@@ -262,7 +262,7 @@ async def get_repository(
 async def update_repository(
     repository_id: int,
     body: UpdateRepositoryRequest,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepositoryItem:
     """Update name or description of an owned repository."""
@@ -286,7 +286,7 @@ async def update_repository(
 @router.delete("/{repository_id}", status_code=status.HTTP_200_OK)
 async def delete_repository(
     repository_id: int,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     embeddings: EmbeddingsService = Depends(get_embeddings),
     parser: ParserService = Depends(get_parser),
@@ -352,7 +352,7 @@ async def scan_user_repository(
     request: Request,
     repository_id: int,
     background_tasks: BackgroundTasks,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     parser: ParserService = Depends(get_parser),
     embeddings: EmbeddingsService = Depends(get_embeddings),

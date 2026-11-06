@@ -337,40 +337,30 @@ async def get_current_user(
 async def get_required_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> dict[str, Any]:
-    """FastAPI dependency that strictly enforces authentication in cloud mode,
-    or returns the local user when auth is disabled.
-    """
-    settings = get_settings()
+    """FastAPI dependency that strictly enforces authentication regardless of server defaults."""
     if credentials is None:
-        if not settings.auth_enabled:
-            return dict(_LOCAL_USER)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    try:
-        payload = verify_token(credentials.credentials, expected_type="access")
-        payload["auth"] = True
-        if "user_id" not in payload and "sub" in payload:
-            try:
-                payload["user_id"] = int(payload["sub"])
-            except (ValueError, TypeError):
-                if payload["sub"] == "admin":
-                    payload["user_id"] = 1
-                else:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid user subject in token.",
-                        headers={"WWW-Authenticate": "Bearer"},
-                    ) from None
+    payload = verify_token(credentials.credentials, expected_type="access")
+    payload["auth"] = True
+    if "user_id" not in payload and "sub" in payload:
+        try:
+            payload["user_id"] = int(payload["sub"])
+        except (ValueError, TypeError):
+            if payload["sub"] == "admin":
+                payload["user_id"] = 1
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid user subject in token.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                ) from None
 
-        if "user_id" in payload:
-            await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
+    if "user_id" in payload:
+        await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
 
-        return payload
-    except HTTPException:
-        if settings.auth_enabled:
-            raise
-        return dict(_LOCAL_USER)
+    return payload
