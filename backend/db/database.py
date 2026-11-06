@@ -96,6 +96,37 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
+async def ensure_local_user() -> None:
+    """Ensure the default local workspace user (id=1, email=local@localhost) exists in DB."""
+    try:
+        from sqlalchemy import select
+        from backend.db.models import User
+        from backend.security.auth import hash_password
+
+        factory = _get_session_factory()
+        async with factory() as db:
+            local_user = await db.get(User, 1)
+            if not local_user:
+                stmt = select(User).where(User.email == "local@localhost")
+                res = await db.execute(stmt)
+                local_user = res.scalars().first()
+
+            if not local_user:
+                local_user = User(
+                    id=1,
+                    name="Local User",
+                    email="local@localhost",
+                    password_hash=hash_password("local_default_pass_123!"),
+                    is_active=True,
+                    token_version=1,
+                )
+                db.add(local_user)
+                await db.commit()
+                logger.info("Created default local user: id=1, email=local@localhost")
+    except Exception as exc:
+        logger.debug("Failed or skipped creating default local user: %s", exc)
+
+
 async def init_db() -> None:
     """Create all tables. Call once during application startup.
 
@@ -112,6 +143,7 @@ async def init_db() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables created/verified")
+        await ensure_local_user()
     except Exception as exc:
         logger.error("Database initialization failed: %s", exc)
         raise

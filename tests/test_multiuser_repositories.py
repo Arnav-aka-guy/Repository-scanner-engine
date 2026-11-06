@@ -398,3 +398,54 @@ class TestGithubRepositoryDiskPath:
         assert "job_id" in data
         assert data["status"] == "pending"
         assert data["repository_id"] == repo_id
+
+
+class TestLocalModeRepositoryWorkflow:
+    """Verify that in local mode (no auth, no token), /api/repositories works seamlessly: list, create, scan, delete."""
+
+    def test_local_mode_crud_without_token(self, client: TestClient, tmp_path: Path):
+        from backend.core.config import settings
+
+        # Ensure local mode with auth disabled
+        assert not settings.auth_enabled
+
+        # 1. List repositories with no token -> 200
+        list_resp = client.get("/api/repositories")
+        assert list_resp.status_code == 200
+        initial_count = list_resp.json()["count"]
+
+        # 2. Create repository with no token -> 201
+        repo_dir = tmp_path / "local_repo_unauthenticated"
+        repo_dir.mkdir()
+        (repo_dir / "app.py").write_text("print('hello local world')\n", encoding="utf-8")
+
+        create_resp = client.post(
+            "/api/repositories",
+            json={
+                "name": "Local Unauthed Project",
+                "source_path": str(repo_dir),
+                "source_type": "local",
+            },
+        )
+        assert create_resp.status_code == 201
+        created = create_resp.json()
+        assert created["name"] == "Local Unauthed Project"
+        repo_id = created["id"]
+
+        # Verify it shows up in list without token
+        list_resp2 = client.get("/api/repositories")
+        assert list_resp2.status_code == 200
+        assert list_resp2.json()["count"] == initial_count + 1
+
+        # 3. Scan repository with no token -> 202 Accepted
+        scan_resp = client.post(f"/api/repositories/{repo_id}/scan")
+        assert scan_resp.status_code == 202
+        assert "job_id" in scan_resp.json()
+
+        # 4. Delete repository with no token -> 200 / 204
+        del_resp = client.delete(f"/api/repositories/{repo_id}")
+        assert del_resp.status_code in (200, 204)
+
+        # Verify it was removed
+        get_del = client.get(f"/api/repositories/{repo_id}")
+        assert get_del.status_code == 404

@@ -213,6 +213,15 @@ def verify_token(token: str, expected_type: str | None = None) -> dict[str, Any]
 
 # ── FastAPI dependency ─────────────────────────────────────────────────
 
+_LOCAL_USER: dict[str, Any] = {
+    "sub": "local@localhost",
+    "auth": True,
+    "user_id": 1,
+    "email": "local@localhost",
+    "name": "Local User",
+    "ver": 1,
+}
+
 _ANON_USER: dict[str, Any] = {
     "sub": "anonymous",
     "auth": False,
@@ -283,21 +292,71 @@ async def get_current_user(
 ) -> dict[str, Any]:
     """FastAPI dependency that resolves the current user.
 
-    If settings.local_mode is true, returns local workspace user dictionary.
-    If credentials are provided, validates and decodes the token.
-    If no credentials and AUTH_ENABLED=false, returns anonymous user dict.
-    If no credentials and AUTH_ENABLED=true, raises HTTPException(401).
+    In local mode (AUTH_ENABLED=false), returns the default local user with auth: True.
+    When AUTH_ENABLED=true, verifies the bearer token and returns payload or raises 401.
     """
     settings = get_settings()
 
     if credentials is not None:
+        try:
+            payload = verify_token(credentials.credentials, expected_type="access")
+            payload["auth"] = True
+            if "user_id" not in payload and "sub" in payload:
+                try:
+                    payload["user_id"] = int(payload["sub"])
+                except (ValueError, TypeError):
+                    # When sub is a username (e.g. legacy 'admin')
+                    if payload["sub"] == "admin":
+                        payload["user_id"] = 1
+                    else:
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid user subject in token.",
+                            headers={"WWW-Authenticate": "Bearer"},
+                        ) from None
+
+            if "user_id" in payload:
+                await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
+
+            return payload
+        except HTTPException:
+            if settings.auth_enabled:
+                raise
+            return dict(_LOCAL_USER)
+
+    if not settings.auth_enabled:
+        return dict(_LOCAL_USER)
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required.",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def get_required_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    """FastAPI dependency that strictly enforces authentication in cloud mode,
+    or returns the local user when auth is disabled.
+    """
+    settings = get_settings()
+    if credentials is None:
+        if not settings.auth_enabled:
+            return dict(_LOCAL_USER)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
         payload = verify_token(credentials.credentials, expected_type="access")
         payload["auth"] = True
         if "user_id" not in payload and "sub" in payload:
             try:
                 payload["user_id"] = int(payload["sub"])
             except (ValueError, TypeError):
-                # When sub is a username (e.g. legacy 'admin')
                 if payload["sub"] == "admin":
                     payload["user_id"] = 1
                 else:
@@ -311,44 +370,7 @@ async def get_current_user(
             await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
 
         return payload
-
-    if not settings.auth_enabled:
-        return dict(_ANON_USER)
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication required.",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-
-async def get_required_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
-) -> dict[str, Any]:
-    """FastAPI dependency that strictly enforces authentication regardless of server defaults."""
-    if credentials is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    payload = verify_token(credentials.credentials, expected_type="access")
-    payload["auth"] = True
-    if "user_id" not in payload and "sub" in payload:
-        try:
-            payload["user_id"] = int(payload["sub"])
-        except (ValueError, TypeError):
-            if payload["sub"] == "admin":
-                payload["user_id"] = 1
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid user subject in token.",
-                    headers={"WWW-Authenticate": "Bearer"},
-                ) from None
-
-    if "user_id" in payload:
-        await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
-
-    return payload
+    except HTTPException:
+        if settings.auth_enabled:
+            raise
+        return dict(_LOCAL_USER)

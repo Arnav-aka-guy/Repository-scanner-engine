@@ -160,6 +160,22 @@ async def create_user_repository(
     description: str | None = None,
 ) -> Repository:
     """Create a new repository owned by user_id."""
+    if user_id == 1:
+        local_user = await db.get(User, 1)
+        if not local_user:
+            from backend.security.auth import hash_password
+
+            local_user = User(
+                id=1,
+                name="Local User",
+                email="local@localhost",
+                password_hash=hash_password("local_default_pass_123!"),
+                is_active=True,
+                token_version=1,
+            )
+            db.add(local_user)
+            await db.flush()
+
     normalized_path = source_path.replace("\\", "/").rstrip("/")
     repo = Repository(
         user_id=user_id,
