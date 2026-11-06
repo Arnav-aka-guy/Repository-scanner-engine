@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -78,7 +79,7 @@ class HealthHistoryService:
         import datetime
 
         iso_date = datetime.datetime.fromtimestamp(now, tz=datetime.UTC).isoformat()
-        snap_id = f"snap_{int(now * 1000)}"
+        snap_id = f"snap_{uuid.uuid4().hex}"
 
         findings = health_data.get("findings", [])
         findings_keys = [
@@ -110,9 +111,10 @@ class HealthHistoryService:
             findings_keys=findings_keys,
         )
 
-        # Limit historical snapshots to last 50 per repository
+        # Limit historical snapshots to last 50 per repository, sorted by timestamp
         snapshots_data = [asdict(s) for s in snapshots]
         snapshots_data.append(asdict(snapshot))
+        snapshots_data.sort(key=lambda s: s.get("timestamp", 0.0))
         if len(snapshots_data) > 50:
             snapshots_data = snapshots_data[-50:]
 

@@ -169,6 +169,7 @@ def test_health_history_snapshot_and_comparison(tmp_path: Path) -> None:
         ],
     }
     snap2 = service.record_snapshot(str(repo_dir), snap2_data, tech_debt_minutes=20.0)
+    assert snap1.snapshot_id != snap2.snapshot_id
 
     history = service.get_history(str(repo_dir))
     assert len(history) == 2
