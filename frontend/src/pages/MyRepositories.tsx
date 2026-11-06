@@ -29,7 +29,7 @@ import { AddRepositoryModal } from '../components/AddRepositoryModal';
 
 export const MyRepositories: React.FC = () => {
   const navigate = useNavigate();
-  const { user, logout, token } = useAuthStore();
+  const { user, logout, token, authEnabled } = useAuthStore();
   const { scanRepo, activeRepository, setActiveRepository } = useWorkspaceStore();
 
   const [repositories, setRepositories] = useState<SavedRepository[]>([]);
@@ -52,12 +52,16 @@ export const MyRepositories: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!token) {
+    if (authEnabled && !token) {
       navigate('/login', { replace: true });
       return;
     }
-    fetchRepos();
-  }, [token, navigate]);
+    if (token) {
+      fetchRepos();
+    } else {
+      setIsLoading(false);
+    }
+  }, [token, authEnabled, navigate]);
 
   const count = repositories.length;
   const maxLimit = 5;

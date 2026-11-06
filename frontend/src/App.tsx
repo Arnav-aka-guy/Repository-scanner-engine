@@ -42,7 +42,10 @@ const pageVariants = {
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { authEnabled, token } = useAuthStore();
+  const { authEnabled, token, isCheckingAuth } = useAuthStore();
+  if (isCheckingAuth) {
+    return <PageFallback />;
+  }
   if (authEnabled && !token) {
     return <Navigate to="/login" replace />;
   }

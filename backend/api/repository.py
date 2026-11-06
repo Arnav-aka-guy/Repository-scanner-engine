@@ -3,6 +3,8 @@
 import asyncio
 import json
 import logging
+import subprocess
+import sys
 import time
 import uuid
 
@@ -212,6 +214,10 @@ async def browse_folder() -> dict[str, str]:
             import tkinter as tk
             from tkinter import filedialog
 
+            script = "import tkinter as tk\nfrom tkinter import filedialog\ntry:\n    root = tk.Tk()\n    root.withdraw()\n    root.attributes('-topmost', True)\n    path = filedialog.askdirectory(title='Select Repository Folder')\n    root.destroy()\n    print(path or '')\nexcept Exception:\n    print('')\n"
+            res = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=120)
+            return res.stdout.strip()
+            # Legacy in-process fallback
             root = tk.Tk()
             root.withdraw()
             root.attributes("-topmost", True)
@@ -219,7 +225,7 @@ async def browse_folder() -> dict[str, str]:
             root.destroy()
             return str(folder_path or "")
         except Exception as exc:
-            logger.warning("Native folder dialog unavailable: %s", exc)
+            logger.warning("Native folder dialog subprocess failed: %s", exc)
             return ""
 
     folder = await asyncio.to_thread(_open_dialog)

@@ -290,7 +290,7 @@ async def get_current_user(
     """
     settings = get_settings()
 
-    if getattr(settings, "local_mode", False):
+    if getattr(settings, "local_mode", False) or not settings.auth_enabled:
         return dict(_ANON_USER)
 
     if credentials is not None:

@@ -210,7 +210,10 @@ class Settings(BaseSettings):
             self.database_url = f"sqlite+aiosqlite:///{sqlite_db_path.as_posix()}"
 
         mode = self.app_mode.lower().strip()
-        if mode == "cloud":
+        if mode == "local":
+            self.local_mode = True
+            self.auth_enabled = False
+        elif mode == "cloud":
             self.auth_enabled = True
             self.database_enabled = True
             self.local_mode = False

@@ -15,6 +15,7 @@ interface AuthState {
   token: string | null;
   user: UserProfile | null;
   authEnabled: boolean;
+  isCheckingAuth: boolean;
   loginError: string | null;
   isLoggingIn: boolean;
   setToken: (token: string | null) => void;
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       authEnabled: true,
+      isCheckingAuth: true,
       loginError: null,
       isLoggingIn: false,
 
@@ -44,12 +46,13 @@ export const useAuthStore = create<AuthState>()(
           if (res.ok) {
             const data = await res.json();
             const enabled = Boolean(data.auth_enabled);
-            set({ authEnabled: enabled });
+            set({ authEnabled: enabled, isCheckingAuth: false });
             return enabled;
           }
         } catch {
           // ignore network failure on status check
         }
+        set({ isCheckingAuth: false });
         return true;
       },
 
