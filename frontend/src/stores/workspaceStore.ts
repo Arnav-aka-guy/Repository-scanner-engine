@@ -17,7 +17,7 @@ import {
   createUserRepository,
   type ScanJob,
 } from '../services/repository';
-import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph';
+import { getDependencyGraph, getCallGraph, getAnalysis, getSymbolGraph } from '../services/graph';
 import { semanticSearch, SearchResponse } from '../services/search';
 import { sendChatMessageStream, getChatHistory, clearChatHistoryApi } from '../services/chat';
 import { generateDocumentation, GenerateDocsResponse } from '../services/documentation';
@@ -598,7 +598,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (!repoPath) return;
         set({ graphLoading: true, graphError: null, graphType: type });
         try {
-          const { getSymbolGraph } = await import('../services/graph');
           let data;
           if (type === 'dependency') {
             data = await getDependencyGraph(repoPath, targetRepoId);
