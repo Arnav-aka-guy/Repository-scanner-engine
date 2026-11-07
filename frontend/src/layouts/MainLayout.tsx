@@ -60,7 +60,7 @@ export const MainLayout: React.FC = () => {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
-  const setActiveRepository = useWorkspaceStore((s) => s.setActiveRepository);
+  const openRepository = useWorkspaceStore((s) => s.openRepository);
 
   // Sync URL repositoryId if present
   useEffect(() => {
@@ -70,18 +70,14 @@ export const MainLayout: React.FC = () => {
       if (repoId !== activeRepositoryId) {
         getUserRepository(repoId)
           .then((repo) => {
-            if (repo && repo.source_path) {
-              const normRepoPath = repo.source_path.replace(/\\/g, '/').replace(/\/+$/, '');
-              const normActive = activeRepository ? activeRepository.replace(/\\/g, '/').replace(/\/+$/, '') : null;
-              if (normRepoPath !== normActive) {
-                setActiveRepository(normRepoPath, repo.id);
-              }
+            if (repo) {
+              openRepository(repo);
             }
           })
           .catch(() => {});
       }
     }
-  }, [location.pathname, activeRepositoryId, activeRepository, setActiveRepository]);
+  }, [location.pathname, activeRepositoryId, openRepository]);
 
   // On mount, only request scan info if active repository exists and we are not scanning
   useEffect(() => {

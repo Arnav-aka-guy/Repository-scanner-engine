@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { RepositoryInfo, FileInfo, FileTreeNode } from '../types/repository';
+import { RepositoryInfo, FileInfo, FileTreeNode, SavedRepository } from '../types/repository';
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
 import {
@@ -78,6 +78,7 @@ interface WorkspaceState {
 
   // ── Actions ────────────────────────────────────────────────────────
   setActiveRepository: (path: string, repoId?: number | null) => void;
+  openRepository: (repo: SavedRepository) => Promise<void>;
   scanRepo: (path: string, repoId?: number | null) => Promise<void>;
   setSelectedFile: (path: string | null) => void;
   loadFileDetail: (path: string) => Promise<void>;
@@ -207,6 +208,73 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           activeRepository: normPath,
           activeRepositoryId: repoId,
         });
+      },
+
+      openRepository: async (repo: SavedRepository) => {
+        const rawDiskPath = repo.path || repo.source_path || '';
+        const diskPath = rawDiskPath ? rawDiskPath.replace(/\\/g, '/').replace(/\/+$/, '') : '';
+
+        let mappedStatus: 'idle' | 'scanning' | 'indexed' | 'error' = 'idle';
+        if (repo.status === 'READY') mappedStatus = 'indexed';
+        else if (repo.status === 'SCANNING') mappedStatus = 'scanning';
+        else if (repo.status === 'FAILED') mappedStatus = 'error';
+        else mappedStatus = 'idle';
+
+        const repoInfo: RepositoryInfo = {
+          path: diskPath,
+          name: repo.name,
+          total_files: repo.total_files ?? repo.file_count ?? 0,
+          total_lines: repo.total_lines ?? 0,
+          languages: repo.languages || {},
+          scanned_at: repo.last_scanned_at || new Date().toISOString(),
+        };
+
+        const recent = diskPath
+          ? [diskPath, ...get().recentRepositories.filter((p) => p !== diskPath)].slice(0, 5)
+          : get().recentRepositories;
+
+        set({
+          activeRepository: diskPath,
+          activeRepositoryId: repo.id,
+          repositoryInfo: repoInfo,
+          files: [],
+          fileTree: [],
+          selectedFilePath: null,
+          selectedFileDetail: null,
+          scanStatus: mappedStatus,
+          scanProgress: mappedStatus === 'indexed' ? 1.0 : (mappedStatus === 'scanning' ? 0.5 : 0),
+          scanMessage: mappedStatus === 'indexed' ? 'Ready' : '',
+          scanError: null,
+          recentRepositories: recent,
+          graphData: null,
+          graphLoading: false,
+          graphError: null,
+          analysisResult: null,
+          searchResults: [],
+          lastSearchQuery: '',
+          searchLoading: false,
+          searchError: null,
+          chatMessages: [],
+          chatLoading: false,
+          chatError: null,
+          generatedDocs: null,
+          docsLoading: false,
+          docsError: null,
+        });
+
+        if (repo.status === 'READY' && diskPath) {
+          try {
+            const fileList = await listFiles(diskPath, repo.id);
+            if (get().activeRepositoryId === repo.id) {
+              set({
+                files: fileList,
+                fileTree: buildTree(fileList, diskPath),
+              });
+            }
+          } catch (err) {
+            console.error('Failed to preload file list on openRepository:', err);
+          }
+        }
       },
 
       scanRepo: async (path: string, repoId: number | null = null) => {

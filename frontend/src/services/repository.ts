@@ -14,8 +14,12 @@ export async function browseFolder(): Promise<{ path: string }> {
   return apiPost<{ path: string }>('/repository/browse-folder', {});
 }
 
-export async function listFiles(repoPath: string): Promise<FileInfo[]> {
-  return apiGet<FileInfo[]>('/repository/files', { repo_path: repoPath });
+export async function listFiles(repoPath: string, repoId?: number | null): Promise<FileInfo[]> {
+  const params: Record<string, any> = { repo_path: repoPath };
+  if (repoId != null) {
+    params.repository_id = repoId;
+  }
+  return apiGet<FileInfo[]>('/repository/files', params);
 }
 
 export interface ScanJob {

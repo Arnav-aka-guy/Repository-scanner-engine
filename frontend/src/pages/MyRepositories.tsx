@@ -30,7 +30,7 @@ import { AddRepositoryModal } from '../components/AddRepositoryModal';
 export const MyRepositories: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, token, authEnabled } = useAuthStore();
-  const { scanRepo, activeRepository, setActiveRepository } = useWorkspaceStore();
+  const { scanRepo, activeRepository, openRepository } = useWorkspaceStore();
 
   const [repositories, setRepositories] = useState<SavedRepository[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,9 +68,7 @@ export const MyRepositories: React.FC = () => {
   const isLimitReached = count >= maxLimit;
 
   const handleOpen = (repo: SavedRepository) => {
-    const repoPath = repo.source_path;
-    // Set active repository in workspace store without triggering an immediate re-scan
-    setActiveRepository(repoPath, repo.id);
+    openRepository(repo);
     navigate(`/app/repositories/${repo.id}/explorer`);
   };
 
