@@ -11,6 +11,8 @@ import {
   browseFolder,
   listFiles,
   getFile,
+  getUserRepositories,
+  createUserRepository,
   type ScanJob,
 } from '../services/repository';
 import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph';
@@ -283,6 +285,44 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (get().scanStatus === 'scanning') return;
 
         const normInputPath = path.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+        let resolvedRepoId: number | null = repoId;
+
+        // If repoId is not provided, look up or create a saved repository for this path
+        if (resolvedRepoId == null) {
+          try {
+            const listRes = await getUserRepositories();
+            const existing = (listRes.repositories || []).find((r) => {
+              const rSource = r.source_path ? r.source_path.replace(/\\/g, '/').replace(/\/+$/, '') : '';
+              const rPath = r.path ? r.path.replace(/\\/g, '/').replace(/\/+$/, '') : '';
+              return rSource === normInputPath || rPath === normInputPath;
+            });
+            if (existing) {
+              resolvedRepoId = existing.id;
+            } else {
+              const basename = normInputPath.split('/').pop() || 'repository';
+              const isGitHub =
+                normInputPath.startsWith('http://') ||
+                normInputPath.startsWith('https://') ||
+                normInputPath.includes('github.com');
+              const newRepo = await createUserRepository({
+                name: basename,
+                source_path: normInputPath,
+                source_type: isGitHub ? 'github' : 'local',
+              });
+              resolvedRepoId = newRepo.id;
+            }
+          } catch (err: any) {
+            const msg = err?.message || 'Failed to initialize repository record.';
+            set({
+              scanStatus: 'error',
+              scanError: msg,
+              scanMessage: msg,
+            });
+            useToastStore.getState().addToast({ type: 'error', title: 'Repository Error', message: msg });
+            return;
+          }
+        }
+
         set({
           scanStatus: 'scanning',
           scanProgress: 0.1,
@@ -376,7 +416,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const repoChat = get().chatMessagesByRepo[targetPath] || [];
           set({
             activeRepository: targetPath,
-            activeRepositoryId: repoId ?? get().activeRepositoryId,
+            activeRepositoryId: resolvedRepoId,
             repositoryInfo: info,
             files: fileList,
             fileTree: tree,

@@ -104,4 +104,125 @@ describe('useWorkspaceStore', () => {
     expect(state.searchResults).toEqual([]);
     expect(state.graphData).toBeNull();
   });
+
+  it('scanRepo resolves a new repository ID and does not attach to previous activeRepositoryId', async () => {
+    useWorkspaceStore.setState({
+      activeRepository: '/old/repo',
+      activeRepositoryId: 42,
+      scanStatus: 'idle',
+    });
+
+    const completedResult = {
+      path: '/new/fresh-repo',
+      name: 'fresh-repo',
+      total_files: 3,
+      total_lines: 50,
+      languages: { Python: 50 },
+      scanned_at: '2026-11-07T12:00:00Z',
+    };
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any, init?: any) => {
+      const urlStr = String(url);
+      const method = init?.method?.toUpperCase() || 'GET';
+      if (urlStr.endsWith('/repositories') && method === 'POST') {
+        return {
+          ok: true,
+          json: async () => ({
+            id: 88,
+            name: 'fresh-repo',
+            source_type: 'local',
+            source_path: '/new/fresh-repo',
+            status: 'CREATED',
+            file_count: 0,
+            total_files: 0,
+            total_lines: 0,
+            languages: {},
+          }),
+        } as any;
+      }
+      if (urlStr.includes('/repository/scan/events/')) {
+        const stream = new ReadableStream({
+          start(controller) {
+            const dataStr = 'data: ' + JSON.stringify({
+              job_id: 'job-123',
+              status: 'completed',
+              progress: 1.0,
+              message: 'Done',
+              result: completedResult,
+            }) + '\n\n';
+            controller.enqueue(new TextEncoder().encode(dataStr));
+            controller.close();
+          },
+        });
+        return {
+          ok: true,
+          body: stream,
+        } as any;
+      }
+      if (urlStr.includes('/repository/scan/jobs/')) {
+        return {
+          ok: true,
+          json: async () => ({
+            job_id: 'job-123',
+            status: 'completed',
+            progress: 1.0,
+            message: 'Done',
+            result: completedResult,
+          }),
+        } as any;
+      }
+      if (urlStr.endsWith('/repositories')) {
+        return {
+          ok: true,
+          json: async () => ({
+            repositories: [],
+            count: 0,
+            max_limit: 5,
+            available_slots: 5,
+          }),
+        } as any;
+      }
+      if (urlStr.includes('/repository/scan/async')) {
+        return {
+          ok: true,
+          json: async () => ({
+            job_id: 'job-123',
+            status: 'pending',
+            progress: 0.1,
+            message: 'Pending',
+          }),
+        } as any;
+      }
+      if (urlStr.includes('/repository/files')) {
+        return {
+          ok: true,
+          json: async () => [],
+        } as any;
+      }
+      // POST /repositories
+      return {
+        ok: true,
+        json: async () => ({
+          id: 88,
+          name: 'fresh-repo',
+          source_type: 'local',
+          source_path: '/new/fresh-repo',
+          status: 'CREATED',
+          file_count: 0,
+          total_files: 0,
+          total_lines: 0,
+          languages: {},
+        }),
+      } as any;
+    });
+
+    await useWorkspaceStore.getState().scanRepo('/new/fresh-repo');
+
+    const state = useWorkspaceStore.getState();
+    expect(state.activeRepositoryId).toBe(88);
+    expect(state.activeRepositoryId).not.toBe(42);
+    expect(state.activeRepository).toBe('/new/fresh-repo');
+
+    fetchMock.mockRestore();
+  });
 });
