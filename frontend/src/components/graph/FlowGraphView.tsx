@@ -1,406 +1,432 @@
-import React, { useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ReactFlow,
   Background,
   Controls,
-  MiniMap,
   Handle,
-  Position,
-  type Node,
-  type Edge,
-  type NodeProps,
   MarkerType,
-  useNodesState,
-  useEdgesState,
-  useReactFlow,
+  MiniMap,
+  Position,
+  ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
+  type Edge,
+  type Node,
+  type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { colors, radius, font } from '../../design-system/tokens';
+import { ChevronsDownUp, ChevronsUpDown, FolderClosed, FolderOpen } from 'lucide-react';
+import { colors, font, radius } from '../../design-system/tokens';
+import { buildGraphView, CLUSTER_PREFIX, parseGraphData, type GraphFilter } from './graphModel';
+import { layoutGraphView, type LayoutType } from './graphLayout';
 
-/* ── Custom Node Component ─────────────────────────────────────── */
+/* ── visual constants ─────────────────────────────────────────── */
 
-const nodeStyles: Record<string, { bg: string; border: string; text: string; tagBg: string }> = {
-  file: {
-    bg: colors.bg.surface,
-    border: 'rgba(91, 141, 239, 0.4)',
-    text: colors.text.primary,
-    tagBg: colors.accent.blueSubtle,
-  },
-  class: {
-    bg: colors.bg.surface,
-    border: 'rgba(149, 128, 202, 0.4)',
-    text: colors.text.primary,
-    tagBg: colors.accent.purpleSubtle,
-  },
-  function: {
-    bg: colors.bg.surface,
-    border: 'rgba(76, 175, 121, 0.4)',
-    text: colors.text.primary,
-    tagBg: colors.status.successSubtle,
-  },
-  method: {
-    bg: colors.bg.surface,
-    border: 'rgba(201, 148, 58, 0.4)',
-    text: colors.text.primary,
-    tagBg: colors.status.warningSubtle,
-  },
-  default: {
-    bg: colors.bg.surface,
-    border: colors.border.default,
-    text: colors.text.secondary,
-    tagBg: colors.bg.surfaceSecondary,
-  },
+const TYPE_COLOR: Record<string, string> = {
+  file: '#5B8DEF',
+  module: '#5B8DEF',
+  class: '#9580CA',
+  function: '#4CAF79',
+  method: '#C9943A',
+  variable: '#7CC4C9',
+  cluster: '#F2A93B',
 };
+const EDGE_COLOR: Record<string, string> = {
+  imports: '#5B8DEF',
+  calls: '#4CAF79',
+  inherits: '#9580CA',
+  defines: '#6F7887',
+  uses: '#7CC4C9',
+};
+const DEFAULT_EDGE = '#6F7887';
+const MAX_VISIBLE = 400;
 
-function CodeNode({ data, selected }: NodeProps) {
-  const nodeType = ((data.nodeType as string) || 'file').toLowerCase();
-  const theme = nodeStyles[nodeType] || nodeStyles.default;
-  const isHighlighted = Boolean(data.isHighlighted);
-  const isDimmed = Boolean(data.isDimmed);
+type NodeState = 'normal' | 'active' | 'related' | 'dimmed';
 
+interface ItemData {
+  label: string;
+  sublabel: string;
+  nodeType: string;
+  state: NodeState;
+  match: boolean;
+  [key: string]: unknown;
+}
+interface ClusterData extends ItemData {
+  count: number;
+  expanded: boolean;
+}
+
+const hiddenHandle: React.CSSProperties = { opacity: 0, width: 4, height: 4, border: 'none', minWidth: 0, minHeight: 0 };
+
+function stateStyle(state: NodeState, accent: string, match: boolean): React.CSSProperties {
+  return {
+    opacity: state === 'dimmed' ? 0.22 : 1,
+    borderColor: state === 'active' ? accent : match ? '#F2A93B' : colors.border.default,
+    boxShadow: state === 'active' ? `0 0 0 3px ${accent}40` : match ? '0 0 0 2px rgba(242,169,59,0.35)' : 'none',
+  };
+}
+
+function Handles({ vertical }: { vertical: boolean }) {
   return (
-    <div
-      style={{
-        padding: '7px 12px',
-        borderRadius: radius.md,
-        backgroundColor: theme.bg,
-        border: selected
-          ? `2px solid ${colors.accent.blue}`
-          : isHighlighted
-          ? `2px solid #5B8DEF`
-          : `1px solid ${theme.border}`,
-        color: theme.text,
-        fontSize: '11px',
-        fontFamily: font.mono,
-        fontWeight: 500,
-        maxWidth: '220px',
-        minWidth: '120px',
-        overflow: 'hidden',
-        boxShadow: selected ? '0 0 0 2px rgba(91, 141, 239, 0.25)' : 'none',
-        opacity: isDimmed ? 0.35 : 1,
-        transition: 'all 0.15s ease',
-        cursor: 'pointer',
-      }}
-    >
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ background: colors.accent.blue, width: 5, height: 5, border: 'none' }}
-      />
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <span
-          style={{
-            fontSize: '8px',
-            padding: '1px 5px',
-            borderRadius: radius.sm,
-            backgroundColor: theme.tagBg,
-            color: colors.text.primary,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            fontWeight: 700,
-            flexShrink: 0,
-          }}
-        >
-          {nodeType}
-        </span>
-        <span
-          style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            flex: 1,
-          }}
-          title={data.label as string}
-        >
-          {data.label as string}
-        </span>
-      </div>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ background: colors.accent.blue, width: 5, height: 5, border: 'none' }}
-      />
-    </div>
+    <>
+      <Handle type="target" position={vertical ? Position.Top : Position.Left} style={hiddenHandle} isConnectable={false} />
+      <Handle type="source" position={vertical ? Position.Bottom : Position.Right} style={hiddenHandle} isConnectable={false} />
+    </>
   );
 }
 
-const nodeTypes = { codeNode: CodeNode };
+const ItemNode = memo(function ItemNode({ data }: NodeProps) {
+  const d = data as unknown as ItemData & { vertical: boolean };
+  const accent = TYPE_COLOR[d.nodeType] ?? '#8A928B';
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        boxSizing: 'border-box',
+        background: colors.bg.surface,
+        border: '1px solid',
+        borderRadius: radius.md,
+        padding: '5px 10px 5px 12px',
+        position: 'relative',
+        overflow: 'hidden',
+        fontFamily: font.mono,
+        cursor: 'pointer',
+        ...stateStyle(d.state, accent, d.match),
+      }}
+    >
+      <Handles vertical={d.vertical} />
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: accent }} />
+      <div
+        style={{ fontSize: 11.5, fontWeight: 600, color: colors.text.primary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        title={d.label}
+      >
+        {d.label}
+      </div>
+      <div
+        style={{ fontSize: 9.5, color: colors.text.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}
+        title={d.sublabel}
+      >
+        <span style={{ color: accent, textTransform: 'uppercase', fontWeight: 700, marginRight: 6 }}>{d.nodeType}</span>
+        {d.sublabel}
+      </div>
+    </div>
+  );
+});
 
-/* ── Props ─────────────────────────────────────────────────────── */
+const ClusterNode = memo(function ClusterNode({ data }: NodeProps) {
+  const d = data as unknown as ClusterData & { vertical: boolean };
+  const accent = TYPE_COLOR.cluster;
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        boxSizing: 'border-box',
+        background: 'rgba(242, 169, 59, 0.06)',
+        border: '1px dashed',
+        borderRadius: radius.lg,
+        padding: '7px 12px',
+        fontFamily: font.sans,
+        cursor: 'pointer',
+        ...stateStyle(d.state, accent, d.match),
+        borderColor: d.state === 'active' ? accent : 'rgba(242, 169, 59, 0.45)',
+      }}
+      title="Click to open this folder"
+    >
+      <Handles vertical={d.vertical} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: colors.text.primary }}>
+        <FolderClosed size={13} color={accent} />
+        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}</span>
+        <span
+          style={{
+            marginLeft: 'auto',
+            fontSize: 10.5,
+            fontWeight: 700,
+            color: '#151816',
+            background: accent,
+            borderRadius: 8,
+            padding: '0 6px',
+          }}
+        >
+          {d.count}
+        </span>
+      </div>
+      <div style={{ fontSize: 10, color: colors.text.secondary, fontFamily: font.mono, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {d.sublabel}
+      </div>
+    </div>
+  );
+});
+
+const nodeTypes = { codeNode: ItemNode, clusterNode: ClusterNode };
+
+/* ── props (unchanged public API) ─────────────────────────────── */
 
 export interface FlowGraphViewProps {
-  graphData: any;
-  onNodeClick?: (node: any) => void;
+  graphData: unknown;
+  onNodeClick?: (node: { id: string; label: string; node_type: string; file_path: string; metadata: Record<string, unknown> }) => void;
   selectedNodeId?: string | null;
   searchFilter?: string;
-  graphFilter?: 'all' | 'high_connectivity' | 'circular' | 'selected_deps' | 'direct_deps';
-  layoutType?: 'cose' | 'dagre' | 'circle';
+  graphFilter?: GraphFilter;
+  layoutType?: LayoutType;
 }
-
-/* ── Converter: Cytoscape format → React Flow format ─────────── */
-
-function convertToFlowElements(
-  data: any,
-  layoutType: 'cose' | 'dagre' | 'circle' = 'cose'
-): { nodes: Node[]; edges: Edge[] } {
-  if (!data) return { nodes: [], edges: [] };
-
-  const rawNodes: any[] = [];
-  const rawEdges: any[] = [];
-
-  // Handle various formats
-  if (Array.isArray(data)) {
-    data.forEach((el: any) => {
-      if (el.data?.source && el.data?.target) {
-        rawEdges.push(el.data);
-      } else if (el.data?.id) {
-        rawNodes.push(el.data);
-      }
-    });
-  } else if (data.nodes && data.edges) {
-    rawNodes.push(...(Array.isArray(data.nodes) ? data.nodes.map((n: any) => n.data || n) : []));
-    rawEdges.push(...(Array.isArray(data.edges) ? data.edges.map((e: any) => e.data || e) : []));
-  } else if (data.elements) {
-    data.elements.forEach((el: any) => {
-      if (el.data?.source && el.data?.target) {
-        rawEdges.push(el.data);
-      } else if (el.data?.id) {
-        rawNodes.push(el.data);
-      }
-    });
-  }
-
-  // Calculate degree for layout and filtering
-  const degreeMap = new Map<string, number>();
-  rawEdges.forEach((e) => {
-    degreeMap.set(e.source, (degreeMap.get(e.source) || 0) + 1);
-    degreeMap.set(e.target, (degreeMap.get(e.target) || 0) + 1);
-  });
-
-  // Calculate layout coordinates
-  const total = rawNodes.length;
-  const nodes: Node[] = rawNodes.map((n, idx) => {
-    let x = 0;
-    let y = 0;
-
-    if (layoutType === 'circle' && total > 0) {
-      const radiusPx = Math.max(260, total * 32);
-      const angle = (idx / total) * 2 * Math.PI;
-      x = radiusPx + radiusPx * Math.cos(angle);
-      y = radiusPx + radiusPx * Math.sin(angle);
-    } else if (layoutType === 'dagre') {
-      // Tiered flow
-      const rank = degreeMap.get(n.id) || 0;
-      const tier = Math.min(5, Math.floor(rank / 2));
-      const col = idx % Math.max(1, Math.ceil(total / 4));
-      x = col * 260;
-      y = tier * 180;
-    } else {
-      // Force-directed / grid approximation
-      const cols = Math.max(Math.ceil(Math.sqrt(total)), 1);
-      x = (idx % cols) * 280;
-      y = Math.floor(idx / cols) * 120;
-    }
-
-    return {
-      id: n.id,
-      type: 'codeNode',
-      position: { x, y },
-      data: {
-        label: n.label || n.id,
-        nodeType: n.node_type || 'file',
-        filePath: n.file_path || n.id || '',
-        metadata: n.metadata || {},
-        degree: degreeMap.get(n.id) || 0,
-      },
-    };
-  });
-
-  const edges: Edge[] = rawEdges.map((e, idx) => ({
-    id: `edge-${idx}-${e.source}-${e.target}`,
-    source: e.source,
-    target: e.target,
-    type: 'smoothstep',
-    animated: e.edge_type === 'calls',
-    style: {
-      stroke:
-        e.edge_type === 'imports'
-          ? 'rgba(91, 141, 239, 0.45)'
-          : e.edge_type === 'calls'
-          ? 'rgba(76, 175, 121, 0.45)'
-          : e.edge_type === 'inherits'
-          ? 'rgba(149, 128, 202, 0.45)'
-          : 'rgba(111, 120, 135, 0.35)',
-      strokeWidth: 1.5,
-    },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: 'rgba(111, 120, 135, 0.6)',
-      width: 14,
-      height: 9,
-    },
-    label: e.edge_type || '',
-    labelStyle: {
-      fontSize: 8,
-      fill: colors.text.muted,
-      fontFamily: font.mono,
-    },
-    labelBgStyle: {
-      fill: colors.bg.primary,
-      fillOpacity: 0.85,
-    },
-  }));
-
-  return { nodes, edges };
-}
-
-/* ── Internal Flow Component with ReactFlow API hooks ──────────── */
 
 const FlowGraphInner: React.FC<FlowGraphViewProps> = ({
   graphData,
   onNodeClick,
-  selectedNodeId,
+  selectedNodeId = null,
   searchFilter = '',
   graphFilter = 'all',
   layoutType = 'cose',
 }) => {
   const { fitView } = useReactFlow();
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [expandAll, setExpandAll] = useState(false);
+  const [showNoise, setShowNoise] = useState(false);
+  const [hoverId, setHoverId] = useState<string | null>(null);
 
-  const { nodes: rawNodes, edges: rawEdges } = useMemo(
-    () => convertToFlowElements(graphData, layoutType),
-    [graphData, layoutType]
+  const parsed = useMemo(() => parseGraphData(graphData), [graphData]);
+
+  // Debounce search so typing does not re-layout on every key press.
+  const [search, setSearch] = useState(searchFilter);
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchFilter), 250);
+    return () => clearTimeout(t);
+  }, [searchFilter]);
+
+  // Only the "direct deps" filter depends on the selection; other filters must not re-layout on click.
+  const focusSelection = graphFilter === 'direct_deps' || graphFilter === 'selected_deps' ? selectedNodeId : null;
+  const view = useMemo(
+    () =>
+      buildGraphView(parsed, {
+        expanded,
+        filter: graphFilter,
+        selectedId: focusSelection,
+        search,
+        expandAll: expandAll && parsed.nodes.length <= MAX_VISIBLE,
+        maxVisible: MAX_VISIBLE,
+        hideNoise: !showNoise,
+      }),
+    [parsed, expanded, graphFilter, focusSelection, search, expandAll, showNoise]
   );
 
-  // Apply filters to nodes and edges
-  const { filteredNodes, filteredEdges } = useMemo(() => {
-    let validNodeIds = new Set(rawNodes.map((n) => n.id));
-
-    // High connectivity filter: degree >= 3
-    if (graphFilter === 'high_connectivity') {
-      const highNodes = rawNodes.filter((n) => (n.data.degree as number) >= 3);
-      validNodeIds = new Set(highNodes.map((n) => n.id));
-    } else if (graphFilter === 'direct_deps' && selectedNodeId) {
-      const neighborIds = new Set<string>([selectedNodeId]);
-      rawEdges.forEach((e) => {
-        if (e.source === selectedNodeId) neighborIds.add(e.target);
-        if (e.target === selectedNodeId) neighborIds.add(e.source);
-      });
-      validNodeIds = neighborIds;
-    }
-
-    const q = (searchFilter || '').trim().toLowerCase();
-
-    const nodesWithHighlight = rawNodes
-      .filter((n) => validNodeIds.has(n.id))
-      .map((n) => {
-        const matchesQuery = q ? (n.data.label as string).toLowerCase().includes(q) : false;
-        const isSelected = selectedNodeId === n.id;
-        return {
-          ...n,
-          selected: isSelected,
-          data: {
-            ...n.data,
-            isHighlighted: matchesQuery,
-            isDimmed: q.length > 0 && !matchesQuery && !isSelected,
-          },
-        };
-      });
-
-    const activeIds = new Set(nodesWithHighlight.map((n) => n.id));
-    const edgesFiltered = rawEdges.filter(
-      (e) => activeIds.has(e.source) && activeIds.has(e.target)
-    );
-
-    return { filteredNodes: nodesWithHighlight, filteredEdges: edgesFiltered };
-  }, [rawNodes, rawEdges, graphFilter, selectedNodeId, searchFilter]);
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(filteredNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(filteredEdges);
+  const vertical = layoutType !== 'dagre';
+  const positions = useMemo(() => layoutGraphView(view, layoutType), [view, layoutType]);
 
   useEffect(() => {
-    setNodes(filteredNodes);
-    setEdges(filteredEdges);
-  }, [filteredNodes, filteredEdges, setNodes, setEdges]);
+    const t = setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 40);
+    return () => clearTimeout(t);
+  }, [positions, fitView]);
+
+  const focusId = hoverId ?? selectedNodeId;
+  const neighbours = useMemo(() => {
+    if (!focusId) return null;
+    const set = new Set<string>([focusId]);
+    view.edges.forEach((e) => {
+      if (e.source === focusId) set.add(e.target);
+      if (e.target === focusId) set.add(e.source);
+    });
+    return set;
+  }, [focusId, view]);
+
+  const nodes: Node[] = useMemo(
+    () =>
+      view.nodes.map((n) => {
+        const p = positions.get(n.id)!;
+        const state: NodeState = !neighbours
+          ? 'normal'
+          : n.id === focusId
+            ? 'active'
+            : neighbours.has(n.id)
+              ? 'related'
+              : 'dimmed';
+        return {
+          id: n.id,
+          type: n.kind === 'cluster' ? 'clusterNode' : 'codeNode',
+          position: { x: p.x, y: p.y },
+          width: p.width,
+          height: p.height,
+          style: { width: p.width, height: p.height },
+          draggable: false,
+          data: {
+            label: n.label,
+            sublabel: n.sublabel,
+            nodeType: n.nodeType,
+            state,
+            match: n.matches,
+            count: n.count,
+            expanded: false,
+            vertical,
+          },
+        };
+      }),
+    [view, positions, neighbours, focusId, vertical]
+  );
+
+  const maxWeight = useMemo(() => Math.max(1, ...view.edges.map((e) => e.weight)), [view]);
+  const edges: Edge[] = useMemo(
+    () =>
+      view.edges.map((e) => {
+        const color = EDGE_COLOR[e.edgeType] ?? DEFAULT_EDGE;
+        const touching = focusId != null && (e.source === focusId || e.target === focusId);
+        const dim = focusId != null && !touching;
+        return {
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          type: 'default',
+          label: touching && e.weight > 1 ? `${e.weight}` : undefined,
+          labelStyle: { fill: colors.text.primary, fontSize: 10, fontFamily: font.mono },
+          labelBgStyle: { fill: colors.bg.primary, fillOpacity: 0.9 },
+          style: {
+            stroke: color,
+            strokeWidth: touching ? 2.2 : 1 + (e.weight / maxWeight) * 1.6,
+            opacity: dim ? 0.06 : touching ? 0.95 : 0.35,
+          },
+          markerEnd: { type: MarkerType.ArrowClosed, color, width: 12, height: 12 },
+          zIndex: touching ? 5 : 0,
+        };
+      }),
+    [view, focusId, maxWeight]
+  );
+
+  const toggleCluster = useCallback((clusterId: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(clusterId)) next.delete(clusterId);
+      else next.add(clusterId);
+      return next;
+    });
+  }, []);
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      if (onNodeClick) {
-        onNodeClick({
-          id: node.id,
-          label: node.data.label,
-          node_type: node.data.nodeType,
-          file_path: node.data.filePath,
-          metadata: node.data.metadata,
-        });
+      if (node.type === 'clusterNode') {
+        toggleCluster(node.id.slice(CLUSTER_PREFIX.length));
+        return;
+      }
+      const raw = view.nodes.find((n) => n.id === node.id)?.raw;
+      if (raw && onNodeClick) {
+        onNodeClick({ id: raw.id, label: raw.label, node_type: raw.nodeType, file_path: raw.filePath, metadata: raw.metadata });
       }
     },
-    [onNodeClick]
+    [onNodeClick, toggleCluster, view]
   );
 
+  const openFolders = [...expanded];
+  const tooBigToExpandAll = parsed.nodes.length > MAX_VISIBLE;
+
   return (
-    <div style={{ width: '100%', height: '100%', backgroundColor: colors.bg.primary }}>
+    <div style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: colors.bg.primary }}>
+      <style>{CONTROLS_CSS}</style>
+      {(view.isClustered || openFolders.length > 0 || view.truncated || view.hiddenNoise > 0 || showNoise) && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+            maxWidth: 'calc(100% - 200px)',
+            padding: '6px 10px',
+            borderRadius: radius.md,
+            background: 'rgba(21,25,34,0.92)',
+            border: `1px solid ${colors.border.default}`,
+            fontSize: 11.5,
+            color: colors.text.secondary,
+            fontFamily: font.sans,
+          }}
+        >
+          {view.isClustered && (
+            <span>
+              {view.totalNodes} items in {view.clusterCount} folders. Click a folder to open it.
+            </span>
+          )}
+          {view.truncated && <span style={{ color: colors.status.warning }}>Showing the most connected items only.</span>}
+          {openFolders.length > 0 && (
+            <button type="button" onClick={() => setExpanded(new Set())} style={toolbarButton}>
+              <ChevronsDownUp size={12} /> Close all folders
+            </button>
+          )}
+          {view.isClustered && !tooBigToExpandAll && (
+            <button type="button" onClick={() => setExpandAll(true)} style={toolbarButton}>
+              <ChevronsUpDown size={12} /> Show everything
+            </button>
+          )}
+          {view.hiddenNoise > 0 && (
+            <button type="button" onClick={() => setShowNoise(true)} style={toolbarButton}>
+              Show {view.hiddenNoise} import / library nodes
+            </button>
+          )}
+          {showNoise && (
+            <button type="button" onClick={() => setShowNoise(false)} style={toolbarButton}>
+              Hide import / library nodes
+            </button>
+          )}
+          {expandAll && !view.isClustered && (
+            <button type="button" onClick={() => setExpandAll(false)} style={toolbarButton}>
+              <FolderOpen size={12} /> Group by folder
+            </button>
+          )}
+        </div>
+      )}
       <ReactFlow
+        className="graph-canvas"
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
+        onNodeClick={handleNodeClick}
+        onNodeMouseEnter={(_, n) => setHoverId(n.id)}
+        onNodeMouseLeave={() => setHoverId(null)}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        onlyRenderVisibleElements
         minZoom={0.05}
         maxZoom={2.5}
-        defaultEdgeOptions={{
-          type: 'smoothstep',
-        }}
+        fitView
+        fitViewOptions={{ padding: 0.15 }}
         proOptions={{ hideAttribution: true }}
         style={{ background: 'transparent' }}
       >
         <Background color="rgba(111, 120, 135, 0.08)" gap={24} size={1} />
-        <Controls
-          position="bottom-right"
-          showInteractive={false}
-          style={{
-            backgroundColor: colors.bg.surface,
-            border: `1px solid ${colors.border.default}`,
-            borderRadius: radius.md,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-          }}
-        />
+        <Controls position="bottom-right" showInteractive={false} />
         <MiniMap
           position="top-right"
-          style={{
-            backgroundColor: colors.bg.surface,
-            border: `1px solid ${colors.border.default}`,
-            borderRadius: radius.md,
-            width: 140,
-            height: 90,
-          }}
+          pannable
+          zoomable
+          style={{ backgroundColor: colors.bg.surface, border: `1px solid ${colors.border.default}`, width: 150, height: 96 }}
           maskColor="rgba(15, 17, 21, 0.7)"
-          nodeColor={(node) => {
-            const type = (node.data?.nodeType as string) || 'default';
-            const colorsMap: Record<string, string> = {
-              file: colors.accent.blue,
-              class: '#9580CA',
-              function: '#4CAF79',
-              method: '#C9943A',
-              default: colors.text.muted,
-            };
-            return colorsMap[type] || colorsMap.default;
-          }}
+          nodeColor={(n) => TYPE_COLOR[(n.data as ItemData)?.nodeType] ?? '#8A928B'}
         />
       </ReactFlow>
     </div>
   );
 };
 
-/* ── Wrapped FlowGraphView ───────────────────────────────────────── */
-
-export const FlowGraphView: React.FC<FlowGraphViewProps> = (props) => {
-  return (
-    <ReactFlowProvider>
-      <FlowGraphInner {...props} />
-    </ReactFlowProvider>
-  );
+const toolbarButton: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  padding: '2px 8px',
+  borderRadius: radius.sm,
+  border: `1px solid ${colors.border.default}`,
+  background: colors.bg.surfaceSecondary,
+  color: colors.text.primary,
+  fontSize: 11,
+  cursor: 'pointer',
 };
+
+const CONTROLS_CSS = `
+.graph-canvas .react-flow__controls { box-shadow: 0 4px 16px rgba(0,0,0,0.35); border-radius: 6px; overflow: hidden; }
+.graph-canvas .react-flow__controls-button { background: #151922; border-bottom: 1px solid #292F38; fill: #E6EAF0; color: #E6EAF0; }
+.graph-canvas .react-flow__controls-button:hover { background: #1B2028; }
+`;
+
+export const FlowGraphView: React.FC<FlowGraphViewProps> = (props) => (
+  <ReactFlowProvider>
+    <FlowGraphInner {...props} />
+  </ReactFlowProvider>
+);
