@@ -231,8 +231,15 @@ export async function deleteUserRepository(id: number): Promise<{ status: string
   return apiDelete<{ status: string; message: string }>(`/repositories/${id}`);
 }
 
-export async function scanUserRepository(id: number): Promise<SavedRepository> {
-  return apiPost<SavedRepository>(`/repositories/${id}/scan`, {});
+export interface ScanJobTriggerResponse {
+  job_id: string;
+  status: string;
+  message: string;
+  repository_id: number;
+}
+
+export async function scanUserRepository(id: number): Promise<ScanJobTriggerResponse> {
+  return apiPost<ScanJobTriggerResponse>(`/repositories/${id}/scan`, {});
 }
 
 

@@ -21,8 +21,11 @@ import { useAuthStore } from '../stores/authStore';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import {
   getUserRepositories,
+  getUserRepository,
   deleteUserRepository,
   scanUserRepository,
+  subscribeScanEvents,
+  getScanJobStatus,
 } from '../services/repository';
 import { SavedRepository } from '../types/repository';
 import { AddRepositoryModal } from '../components/AddRepositoryModal';
@@ -32,12 +35,29 @@ export const MyRepositories: React.FC = () => {
   const { user, logout, token, authEnabled } = useAuthStore();
   const { scanRepo, activeRepository, openRepository } = useWorkspaceStore();
 
+  interface ActiveScan {
+    jobId: string;
+    status: string;
+    progress: number;
+    message: string;
+    error?: string;
+  }
+
   const [repositories, setRepositories] = useState<SavedRepository[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scanningRepoId, setScanningRepoId] = useState<number | null>(null);
+  const [activeScans, setActiveScans] = useState<Record<number, ActiveScan>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [maxLimit, setMaxLimit] = useState(5);
+
+  const activeSubsRef = React.useRef<Map<number, () => void>>(new Map());
+
+  useEffect(() => {
+    return () => {
+      activeSubsRef.current.forEach((cleanup) => cleanup());
+      activeSubsRef.current.clear();
+    };
+  }, []);
 
   const fetchRepos = async () => {
     setIsLoading(true);
@@ -72,16 +92,133 @@ export const MyRepositories: React.FC = () => {
   };
 
   const handleScan = async (repo: SavedRepository) => {
-    setScanningRepoId(repo.id);
+    setRepositories((prev) =>
+      prev.map((r) => (r.id === repo.id ? { ...r, status: 'SCANNING' } : r))
+    );
+    setActiveScans((prev) => ({
+      ...prev,
+      [repo.id]: { jobId: '', status: 'scanning', progress: 0, message: 'Initiating scan…' },
+    }));
+
     try {
-      const updated = await scanUserRepository(repo.id);
-      setRepositories((prev) =>
-        prev.map((r) => (r.id === repo.id ? updated : r))
-      );
+      const trigger = await scanUserRepository(repo.id);
+      const jobId = trigger.job_id;
+
+      setActiveScans((prev) => ({
+        ...prev,
+        [repo.id]: { jobId, status: 'scanning', progress: 0, message: 'Scan queued…' },
+      }));
+
+      const onComplete = async () => {
+        try {
+          const fresh = await getUserRepository(repo.id);
+          setRepositories((prev) =>
+            prev.map((r) => (r.id === repo.id ? fresh : r))
+          );
+        } catch {
+          setRepositories((prev) =>
+            prev.map((r) => (r.id === repo.id ? { ...r, status: 'READY' } : r))
+          );
+        } finally {
+          setActiveScans((prev) => {
+            const next = { ...prev };
+            delete next[repo.id];
+            return next;
+          });
+          const cleanup = activeSubsRef.current.get(repo.id);
+          if (cleanup) {
+            cleanup();
+            activeSubsRef.current.delete(repo.id);
+          }
+        }
+      };
+
+      const onFailed = (errMsg: string) => {
+        setRepositories((prev) =>
+          prev.map((r) => (r.id === repo.id ? { ...r, status: 'FAILED' } : r))
+        );
+        setActiveScans((prev) => ({
+          ...prev,
+          [repo.id]: { jobId, status: 'failed', progress: 0, message: '', error: errMsg },
+        }));
+        const cleanup = activeSubsRef.current.get(repo.id);
+        if (cleanup) {
+          cleanup();
+          activeSubsRef.current.delete(repo.id);
+        }
+      };
+
+      const startPolling = () => {
+        const intervalId = window.setInterval(async () => {
+          try {
+            const jobStatus = await getScanJobStatus(jobId);
+            if (jobStatus.status === 'completed') {
+              window.clearInterval(intervalId);
+              await onComplete();
+            } else if (jobStatus.status === 'failed' || jobStatus.status === 'cancelled') {
+              window.clearInterval(intervalId);
+              onFailed(jobStatus.error || jobStatus.message || 'Scan failed.');
+            } else {
+              setActiveScans((prev) => ({
+                ...prev,
+                [repo.id]: {
+                  jobId,
+                  status: jobStatus.status,
+                  progress: jobStatus.progress || 0,
+                  message: jobStatus.message || 'Scanning…',
+                },
+              }));
+            }
+          } catch {
+            // Polling retry
+          }
+        }, 1500);
+
+        activeSubsRef.current.set(repo.id, () => window.clearInterval(intervalId));
+      };
+
+      try {
+        const unsubscribe = subscribeScanEvents(
+          jobId,
+          (job) => {
+            setActiveScans((prev) => ({
+              ...prev,
+              [repo.id]: {
+                jobId,
+                status: job.status,
+                progress: job.progress || 0,
+                message: job.message || 'Scanning…',
+              },
+            }));
+            if (job.status === 'completed') {
+              onComplete();
+            } else if (job.status === 'failed' || job.status === 'cancelled') {
+              onFailed(job.error || job.message || 'Scan failed.');
+            }
+          },
+          (status) => {
+            if (status === 'completed') {
+              onComplete();
+            } else if (status === 'failed' || status === 'cancelled') {
+              onFailed('Scan failed.');
+            }
+          },
+          () => {
+            startPolling();
+          }
+        );
+        activeSubsRef.current.set(repo.id, unsubscribe);
+      } catch {
+        startPolling();
+      }
     } catch (err: any) {
-      setError(err.message || 'Scan failed.');
-    } finally {
-      setScanningRepoId(null);
+      setRepositories((prev) =>
+        prev.map((r) => (r.id === repo.id ? { ...r, status: 'FAILED' } : r))
+      );
+      setActiveScans((prev) => ({
+        ...prev,
+        [repo.id]: { jobId: '', status: 'failed', progress: 0, message: '', error: err.message || 'Failed to trigger scan.' },
+      }));
     }
   };
 
@@ -347,12 +484,19 @@ export const MyRepositories: React.FC = () => {
           /* Repository List */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {repositories.map((repo) => {
-              const isScanning = scanningRepoId === repo.id;
-              const hasScanned = repo.status === 'READY' || (repo.file_count > 0);
+              const scanInfo = activeScans[repo.id];
+              const isScanning = Boolean(
+                (scanInfo && (scanInfo.status === 'scanning' || scanInfo.status === 'pending')) ||
+                repo.status === 'SCANNING'
+              );
+              const hasScanned =
+                !isScanning &&
+                (repo.status === 'READY' || (repo.file_count > 0 || (repo.total_files ?? 0) > 0));
 
               return (
                 <div
                   key={repo.id}
+                  data-testid={`repo-card-${repo.id}`}
                   style={{
                     backgroundColor: '#151922',
                     border: '1px solid #292F38',
@@ -400,25 +544,25 @@ export const MyRepositories: React.FC = () => {
                           padding: '2px 6px',
                           borderRadius: '4px',
                           backgroundColor:
-                            repo.status === 'READY'
+                            repo.status === 'READY' && !isScanning
                               ? 'rgba(76, 175, 121, 0.1)'
-                              : repo.status === 'SCANNING' || isScanning
+                              : isScanning
                               ? 'rgba(91, 141, 239, 0.1)'
                               : repo.status === 'FAILED'
                               ? 'rgba(201, 90, 90, 0.1)'
                               : '#1B2028',
                           color:
-                            repo.status === 'READY'
+                            repo.status === 'READY' && !isScanning
                               ? '#4CAF79'
-                              : repo.status === 'SCANNING' || isScanning
+                              : isScanning
                               ? '#5B8DEF'
                               : repo.status === 'FAILED'
                               ? '#C95A5A'
                               : '#A0A8B5',
                           border: `1px solid ${
-                            repo.status === 'READY'
+                            repo.status === 'READY' && !isScanning
                               ? 'rgba(76, 175, 121, 0.2)'
-                              : repo.status === 'SCANNING' || isScanning
+                              : isScanning
                               ? 'rgba(91, 141, 239, 0.2)'
                               : repo.status === 'FAILED'
                               ? 'rgba(201, 90, 90, 0.2)'
@@ -426,7 +570,11 @@ export const MyRepositories: React.FC = () => {
                           }`,
                         }}
                       >
-                        {isScanning ? 'SCANNING' : repo.status}
+                        {isScanning
+                          ? scanInfo?.progress
+                            ? `Scanning… ${Math.round(scanInfo.progress * 100)}%`
+                            : 'Scanning…'
+                          : repo.status}
                       </span>
                     </div>
 
@@ -452,17 +600,34 @@ export const MyRepositories: React.FC = () => {
                       </p>
                     )}
 
+                    {/* Scanning Error message if failed */}
+                    {scanInfo?.error && (
+                      <div
+                        style={{
+                          fontSize: '11px',
+                          color: '#C95A5A',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        <AlertCircle size={12} />
+                        <span>{scanInfo.error}</span>
+                      </div>
+                    )}
+
                     {/* Metadata chips */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '11px', color: '#6F7887' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <FileCode size={12} />
-                        <span style={{ color: '#A0A8B5' }}>{repo.file_count || repo.total_files || 0}</span> files
+                        <span style={{ color: '#A0A8B5' }}>{repo.file_count ?? repo.total_files ?? 0}</span> files
                       </span>
 
-                      {repo.total_lines > 0 && (
+                      {(repo.total_lines ?? 0) > 0 && (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           <Layers size={12} />
-                          <span style={{ color: '#A0A8B5' }}>{repo.total_lines.toLocaleString()}</span> lines
+                          <span style={{ color: '#A0A8B5' }}>{repo.total_lines?.toLocaleString()}</span> lines
                         </span>
                       )}
 
@@ -492,19 +657,19 @@ export const MyRepositories: React.FC = () => {
                       style={{ height: '32px', padding: '0 10px' }}
                     >
                       <RefreshCw size={13} style={{ animation: isScanning ? 'ds-spin 1s linear infinite' : 'none' }} />
-                      <span style={{ fontSize: '12px' }}>{hasScanned ? 'Rescan' : 'Scan'}</span>
+                      <span style={{ fontSize: '12px' }}>{isScanning ? 'Scanning…' : hasScanned ? 'Rescan' : 'Scan'}</span>
                     </button>
 
                     <button
                       onClick={() => handleOpen(repo)}
-                      disabled={isScanning || (!hasScanned && repo.status !== 'READY')}
+                      disabled={isScanning || !hasScanned}
                       className="btn-primary"
-                      title={!hasScanned ? 'Scan repository before opening' : 'Open repository workspace'}
+                      title={isScanning ? 'Scan in progress' : !hasScanned ? 'Scan repository before opening' : 'Open repository workspace'}
                       style={{
                         height: '32px',
                         padding: '0 14px',
-                        opacity: isScanning || (!hasScanned && repo.status !== 'READY') ? 0.5 : 1,
-                        cursor: isScanning || (!hasScanned && repo.status !== 'READY') ? 'not-allowed' : 'pointer',
+                        opacity: isScanning || !hasScanned ? 0.5 : 1,
+                        cursor: isScanning || !hasScanned ? 'not-allowed' : 'pointer',
                       }}
                     >
                       <Play size={13} />
