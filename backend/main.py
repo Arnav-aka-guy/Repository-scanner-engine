@@ -234,6 +234,11 @@ app.include_router(debt_router, dependencies=_auth_deps)
 app.include_router(risk_router, dependencies=_auth_deps)
 app.include_router(compare_router, dependencies=_auth_deps)
 
+# System design diagram feature (add-on)
+from backend.api.system_design import router as system_design_router  # noqa: E402
+
+app.include_router(system_design_router, dependencies=_auth_deps)
+
 
 # ── Static SPA fallback ─────────────────────────────────────────────────
 

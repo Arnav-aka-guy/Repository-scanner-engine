@@ -25,6 +25,7 @@ const Signup = lazy(() => import('./pages/Signup').then((m) => ({ default: m.Sig
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword').then((m) => ({ default: m.ForgotPassword })));
 const ResetPassword = lazy(() => import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })));
 const MyRepositories = lazy(() => import('./pages/MyRepositories').then((m) => ({ default: m.MyRepositories })));
+const SystemDesign = lazy(() => import('./pages/SystemDesign'));
 const NotFound = lazy(() => import('./pages/NotFound').then((m) => ({ default: m.NotFound })));
 
 const PageFallback: React.FC = () => (
@@ -135,6 +136,7 @@ function AnimatedRoutes() {
           <Route path="/impact" element={<LegacyRouteRedirect targetPage="impact" />} />
           <Route path="/review" element={<LegacyRouteRedirect targetPage="review" />} />
           <Route path="/settings" element={<LegacyRouteRedirect targetPage="settings" />} />
+          <Route path="/system-design" element={<LegacyRouteRedirect targetPage="system-design" />} />
 
           {/* Scoped Repository Routes: /app/repositories/:repositoryId/* */}
           <Route
@@ -202,6 +204,14 @@ function AnimatedRoutes() {
             element={
               <ErrorBoundary resetKey={location.pathname}>
                 <HealthDashboard />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/app/repositories/:repositoryId/system-design"
+            element={
+              <ErrorBoundary resetKey={location.pathname}>
+                <SystemDesign />
               </ErrorBoundary>
             }
           />

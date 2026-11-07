@@ -16,6 +16,7 @@ import {
   X,
   GitBranch,
   ShieldCheck,
+  Boxes,
   type LucideIcon,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -53,6 +54,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { name: 'Dependencies', path: '/graph', icon: Share2 },
       { name: 'Architecture', path: '/architecture', icon: Tv },
+      { name: 'System Design', path: '/system-design', icon: Boxes },
       { name: 'Code Health', path: '/health-dashboard', icon: Activity },
       { name: 'Change Impact', path: '/impact', icon: GitBranch },
       { name: 'Code Review', path: '/review', icon: ShieldCheck },

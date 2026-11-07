@@ -14,6 +14,7 @@ import {
   Compass,
   Trash2,
   Sparkles,
+  Boxes,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useRepoNavigate } from '../hooks/useRepoNavigate';
@@ -106,6 +107,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       icon: <Tv size={15} />,
       shortcut: 'G C',
       run: () => navigateRepo('architecture'),
+    },
+    {
+      id: 'nav-system-design',
+      title: 'Draw System Design',
+      subtitle: 'Layered system design diagram (Groq AI)',
+      category: 'Navigation',
+      icon: <Boxes size={15} />,
+      run: () => navigateRepo('system-design'),
     },
     {
       id: 'nav-health',

@@ -16,6 +16,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.endsWith('/explorer')) return 'Explorer';
   if (pathname.endsWith('/graph')) return 'Dependencies';
   if (pathname.endsWith('/architecture')) return 'Architecture';
+  if (pathname.endsWith('/system-design')) return 'System Design';
   if (pathname.endsWith('/search')) return 'Search';
   if (pathname.endsWith('/chat')) return 'Assistant';
   if (pathname.endsWith('/documentation')) return 'Documentation';
