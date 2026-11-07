@@ -14,10 +14,15 @@ export async function browseFolder(): Promise<{ path: string }> {
   return apiPost<{ path: string }>('/repository/browse-folder', {});
 }
 
-export async function listFiles(repoPath: string, repoId?: number | null): Promise<FileInfo[]> {
-  const params: Record<string, any> = { repo_path: repoPath };
+export async function listFiles(
+  repoPath?: string | null,
+  repoId?: number | null
+): Promise<FileInfo[]> {
+  const params: Record<string, any> = {};
   if (repoId != null) {
     params.repository_id = repoId;
+  } else if (repoPath) {
+    params.repo_path = repoPath;
   }
   return apiGet<FileInfo[]>('/repository/files', params);
 }
@@ -146,22 +151,23 @@ export function subscribeScanEvents(
 
 export async function getFile(
   filePath: string,
-  repoPath?: string
+  repoPath?: string | null,
+  repositoryId?: number | null
 ): Promise<{
   file_path: string;
   content: string;
   language: string;
   entities: CodeEntity[];
 }> {
-  // Encode path segments individually so slashes are preserved for FastAPI {file_path:path}
-  // while special characters like '#', '?', '%', and spaces are safely percent-encoded.
   const safePath = filePath
     .replace(/\\/g, '/')
     .split('/')
     .map(encodeURIComponent)
     .join('/');
   const params: Record<string, string> = {};
-  if (repoPath) {
+  if (repositoryId != null) {
+    params.repository_id = String(repositoryId);
+  } else if (repoPath) {
     params.repo_path = repoPath;
   }
   return apiGet<{

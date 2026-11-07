@@ -8,7 +8,7 @@ import sys
 import time
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -566,7 +566,8 @@ async def stream_scan_job_events(
 @limiter.limit(FILE_RATE)
 async def list_files(
     request: Request,
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    repo_path: str | None = Query(None, description="Absolute path to the repository root"),
+    repository_id: int | None = Query(None, description="Repository database ID"),
     parser: ParserService = Depends(get_parser),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -574,8 +575,15 @@ async def list_files(
     """Return a flat list of all source files discovered in the repository."""
     from backend.security.repo_auth import authorize_repository_access
 
-    sanitized = SanitizedRepoPath(path=repo_path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path)
+    ident = (
+        repository_id if repository_id is not None else (SanitizedRepoPath(path=repo_path).path if repo_path else None)
+    )
+    if ident is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Either repo_path or repository_id must be provided.",
+        )
+    _, path = await authorize_repository_access(db, current_user, ident)
 
     if not is_repo_scanned(path):
         raise HTTPException(
@@ -600,7 +608,8 @@ async def list_files(
 async def get_file(
     request: Request,
     file_path: str,
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    repo_path: str | None = Query(None, description="Absolute path to the repository root"),
+    repository_id: int | None = Query(None, description="Repository database ID"),
     parser: ParserService = Depends(get_parser),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -612,8 +621,15 @@ async def get_file(
     """
     from backend.security.repo_auth import authorize_repository_access
 
-    sanitized_repo = SanitizedRepoPath(path=repo_path)
-    _, root = await authorize_repository_access(db, current_user, sanitized_repo.path)
+    ident = (
+        repository_id if repository_id is not None else (SanitizedRepoPath(path=repo_path).path if repo_path else None)
+    )
+    if ident is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Either repo_path or repository_id must be provided.",
+        )
+    _, root = await authorize_repository_access(db, current_user, ident)
 
     if not is_repo_scanned(root):
         raise HTTPException(

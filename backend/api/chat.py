@@ -65,7 +65,8 @@ class ChatRequest(BaseModel):
     """Body for the chat endpoint."""
 
     question: str = Field(..., min_length=1, description="User question about the codebase")
-    repo_path: str = Field(..., description="Absolute path to the repository root")
+    repo_path: str | None = Field(default=None, description="Absolute path to the repository root")
+    repository_id: int | None = Field(default=None, description="Optional repository ID")
     conversation_id: str | None = Field(default=None, description="Optional conversation session ID")
 
 
@@ -96,8 +97,11 @@ async def chat(
     LLM response back as Server-Sent Events (``text/event-stream``).
     """
     # Sanitize inputs before processing
-    sanitized = SanitizedChatInput(question=body.question, repo_path=body.repo_path)
-    repo, path = await authorize_repository_access(db, current_user, sanitized.repo_path)
+    ident = body.repository_id if body.repository_id is not None else body.repo_path
+    if not ident:
+        raise HTTPException(status_code=400, detail="Either repo_path or repository_id must be provided.")
+    repo, path = await authorize_repository_access(db, current_user, ident)
+    sanitized = SanitizedChatInput(question=body.question, repo_path=str(path))
     repo_key = str(path)
 
     try:
@@ -272,6 +276,7 @@ async def chat(
 @router.get("/history", response_model=list[ChatHistoryEntry])
 async def get_history(
     repo_path: str | None = None,
+    repository_id: int | None = None,
     conversation_id: str | None = None,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -281,8 +286,9 @@ async def get_history(
     repo_id: int | None = None
     path_key: str | None = None
 
-    if repo_path:
-        repo, path = await authorize_repository_access(db, current_user, repo_path)
+    ident = repository_id if repository_id is not None else repo_path
+    if ident:
+        repo, path = await authorize_repository_access(db, current_user, ident)
         repo_id = repo.id if repo else None
         path_key = str(path).replace("\\", "/").rstrip("/")
 
@@ -343,6 +349,7 @@ async def get_history(
 @router.delete("/history")
 async def clear_chat_history(
     repo_path: str | None = None,
+    repository_id: int | None = None,
     conversation_id: str | None = None,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -354,8 +361,9 @@ async def clear_chat_history(
     repo_id: int | None = None
     path_key: str | None = None
 
-    if repo_path:
-        repo, path = await authorize_repository_access(db, current_user, repo_path)
+    ident = repository_id if repository_id is not None else repo_path
+    if ident:
+        repo, path = await authorize_repository_access(db, current_user, ident)
         repo_id = repo.id if repo else None
         path_key = str(path).replace("\\", "/").rstrip("/")
 

@@ -29,16 +29,31 @@ export interface ComparisonDelta {
   improving_modules: string[];
 }
 
-export async function fetchHealthHistory(repoPath: string): Promise<HealthSnapshot[]> {
-  return apiGet<HealthSnapshot[]>('/health-score/history', { path: repoPath });
+export async function fetchHealthHistory(
+  repoPath?: string | null,
+  repositoryId?: number | null
+): Promise<HealthSnapshot[]> {
+  const params: Record<string, string> = {};
+  if (repositoryId != null) {
+    params.repository_id = String(repositoryId);
+  } else if (repoPath) {
+    params.repo_path = repoPath;
+  }
+  return apiGet<HealthSnapshot[]>('/health-score/history', params);
 }
 
 export async function compareHealthSnapshots(
-  repoPath: string,
+  repoPath?: string | null,
   baselineId?: string,
-  currentId?: string
+  currentId?: string,
+  repositoryId?: number | null
 ): Promise<ComparisonDelta> {
-  const params: Record<string, string> = { path: repoPath };
+  const params: Record<string, string> = {};
+  if (repositoryId != null) {
+    params.repository_id = String(repositoryId);
+  } else if (repoPath) {
+    params.repo_path = repoPath;
+  }
   if (baselineId) params.baseline_id = baselineId;
   if (currentId) params.current_id = currentId;
   return apiGet<ComparisonDelta>('/health-score/compare', params);

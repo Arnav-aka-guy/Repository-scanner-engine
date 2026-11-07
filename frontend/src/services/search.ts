@@ -10,13 +10,16 @@ export interface SearchResponse {
 export async function semanticSearch(
   query: string,
   topK: number = 10,
-  repoPath?: string
+  repoPath?: string | null,
+  repositoryId?: number | null
 ): Promise<SearchResponse> {
-  const payload: { query: string; top_k: number; repo_path?: string } = {
+  const payload: { query: string; top_k: number; repo_path?: string; repository_id?: number } = {
     query,
     top_k: topK,
   };
-  if (repoPath) {
+  if (repositoryId != null) {
+    payload.repository_id = repositoryId;
+  } else if (repoPath) {
     payload.repo_path = repoPath;
   }
   return apiPost<SearchResponse>('/search/', payload);

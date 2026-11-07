@@ -465,7 +465,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set({ fileLoading: true });
         try {
           const repoPath = get().activeRepository || '';
-          const detail = await getFile(path, repoPath);
+          const detail = await getFile(path, repoPath, get().activeRepositoryId);
           set({
             selectedFileDetail: {
               content: detail.content,
@@ -488,11 +488,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const { getSymbolGraph } = await import('../services/graph');
           let data;
           if (type === 'dependency') {
-            data = await getDependencyGraph(repoPath);
+            data = await getDependencyGraph(repoPath, get().activeRepositoryId);
           } else if (type === 'call') {
-            data = await getCallGraph(repoPath);
+            data = await getCallGraph(repoPath, get().activeRepositoryId);
           } else {
-            data = await getSymbolGraph(repoPath);
+            data = await getSymbolGraph(repoPath, get().activeRepositoryId);
           }
           set({ graphData: data, graphLoading: false });
         } catch (err: unknown) {
@@ -506,7 +506,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (!repoPath) return;
         set({ graphLoading: true, graphError: null });
         try {
-          const result = await getAnalysis(repoPath);
+          const result = await getAnalysis(repoPath, get().activeRepositoryId);
           set({ analysisResult: result, graphLoading: false });
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Failed to analyze repository.';
@@ -519,7 +519,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set({ searchLoading: true, searchError: null, lastSearchQuery: query });
         try {
           const repoPath = get().activeRepository || undefined;
-          const response: SearchResponse = await semanticSearch(query, topK, repoPath);
+          const response: SearchResponse = await semanticSearch(query, topK, repoPath, get().activeRepositoryId);
           set({
             searchResults: response.results,
             searchTotal: response.total,
@@ -601,7 +601,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                   };
                 });
               }
-            }
+            },
+            get().activeRepositoryId
           );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Error during streaming.';
@@ -628,7 +629,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const repoPath = get().activeRepository;
         if (!repoPath) return;
         try {
-          const history = await getChatHistory(repoPath, get().activeConversationId || undefined);
+          const history = await getChatHistory(repoPath, get().activeConversationId || undefined, get().activeRepositoryId);
           if (history && history.length > 0) {
             const msgs: ChatMessage[] = [];
             history.forEach((h, idx) => {
@@ -661,7 +662,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       clearChatHistory: () => {
         const repoPath = get().activeRepository;
         if (repoPath) {
-          clearChatHistoryApi(repoPath, get().activeConversationId || undefined).catch(() => {});
+          clearChatHistoryApi(repoPath, get().activeConversationId || undefined, get().activeRepositoryId).catch(() => {});
         }
         set((state) => ({
           chatMessages: [],
@@ -677,7 +678,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (!repoPath) return;
         set({ docsLoading: true, docsError: null });
         try {
-          const docs = await generateDocumentation(repoPath, format);
+          const docs = await generateDocumentation(repoPath, format, get().activeRepositoryId);
           set({ generatedDocs: docs, docsLoading: false });
           useToastStore.getState().addToast({
             type: 'success',
