@@ -190,3 +190,55 @@ def test_a2_endpoints_user_isolation(client: TestClient, tmp_path: Path, monkeyp
         headers=user_b["headers"],
     )
     assert resp_review.status_code in (403, 404), resp_review.text
+
+
+def test_ts_js_file_dependency_resolution():
+    """A5: File dependency graph creates edges for TypeScript/JavaScript relative specifiers, index files, and path aliases, while skipping external packages."""
+    from backend.graph.builder import GraphBuilder
+    from backend.parser.models import ImportInfo, ParsedFile
+
+    parsed_files = {
+        "src/index.ts": ParsedFile(
+            file_path="src/index.ts",
+            imports=[
+                ImportInfo(module="./components/Button"),
+                ImportInfo(module="./components"),
+                ImportInfo(module="@/utils"),
+                ImportInfo(module="react"),
+                ImportInfo(module="@tanstack/react-query"),
+            ],
+        ),
+        "src/components/Button.tsx": ParsedFile(file_path="src/components/Button.tsx"),
+        "src/components/index.ts": ParsedFile(file_path="src/components/index.ts"),
+        "src/utils.ts": ParsedFile(file_path="src/utils.ts"),
+    }
+
+    builder = GraphBuilder()
+    g = builder.build_dependency_graph(parsed_files)
+
+    # Asserts that edges are created for every local import and none for external libraries
+    assert ("src/index.ts", "src/components/Button.tsx") in g.edges
+    assert ("src/index.ts", "src/components/index.ts") in g.edges
+    assert ("src/index.ts", "src/utils.ts") in g.edges
+    assert len(g.edges) == 3
+
+    # Also test with Windows absolute paths
+    parsed_files_win = {
+        r"C:\code\repo\src\index.ts": ParsedFile(
+            file_path=r"C:\code\repo\src\index.ts",
+            imports=[
+                ImportInfo(module="./components/Button"),
+                ImportInfo(module="./components"),
+                ImportInfo(module="@/utils"),
+                ImportInfo(module="react"),
+            ],
+        ),
+        r"C:\code\repo\src\components\Button.tsx": ParsedFile(file_path=r"C:\code\repo\src\components\Button.tsx"),
+        r"C:\code\repo\src\components\index.ts": ParsedFile(file_path=r"C:\code\repo\src\components\index.ts"),
+        r"C:\code\repo\src\utils.ts": ParsedFile(file_path=r"C:\code\repo\src\utils.ts"),
+    }
+    g_win = builder.build_dependency_graph(parsed_files_win)
+    assert (r"C:\code\repo\src\index.ts", r"C:\code\repo\src\components\Button.tsx") in g_win.edges
+    assert (r"C:\code\repo\src\index.ts", r"C:\code\repo\src\components\index.ts") in g_win.edges
+    assert (r"C:\code\repo\src\index.ts", r"C:\code\repo\src\utils.ts") in g_win.edges
+    assert len(g_win.edges) == 3

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import os
+import sys
 from pathlib import Path
 
 import networkx as nx
@@ -232,11 +235,14 @@ class GraphBuilder:
 
     # ── Private helpers ─────────────────────────────────────────────────
 
-    @staticmethod
+    _JS_TS_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts")
+
+    @classmethod
     def _build_module_index(
+        cls,
         parsed_files: dict[str, ParsedFile],
     ) -> dict[str, str]:
-        """Map module identifiers to absolute file paths.
+        """Map module identifiers to absolute or relative file paths.
 
         Handles both Python dotted paths (``backend.core.config``) and
         TypeScript/JavaScript slash paths (``./services/api``).
@@ -244,6 +250,14 @@ class GraphBuilder:
         index: dict[str, str] = {}
         for fpath in parsed_files:
             p = Path(fpath)
+
+            posix_path = fpath.replace("\\", "/").lower()
+            index[posix_path] = fpath
+            try:
+                res_posix = p.resolve().as_posix().lower()
+                index[res_posix] = fpath
+            except Exception:
+                pass
 
             # 1. Python-style dotted module name
             parts = list(p.with_suffix("").parts)
@@ -266,8 +280,9 @@ class GraphBuilder:
 
         return index
 
-    @staticmethod
+    @classmethod
     def _resolve_import(
+        cls,
         module: str,
         current_file: str,
         module_index: dict[str, str],
@@ -276,9 +291,63 @@ class GraphBuilder:
         if not module:
             return None
 
-        # Check Python standard library first if applicable
-        import sys
+        curr_p = Path(current_file)
+        curr_ext = curr_p.suffix.lower()
+        is_js_ts = curr_ext in cls._JS_TS_EXTENSIONS or module.startswith(("./", "../", "@/"))
 
+        # ── TypeScript / JavaScript resolution ─────────────────────────
+        if is_js_ts:
+            if not module.startswith((".", "/", "@/")):
+                return None
+
+            clean_module = module.rstrip("/")
+            candidates: list[Path] = []
+            if clean_module.startswith((".", "/")):
+                candidates.append(curr_p.parent / clean_module)
+            elif clean_module.startswith("@/"):
+                rel = clean_module[2:]
+                roots = cls._find_alias_roots(current_file, module_index)
+                for r in roots:
+                    candidates.append(r / rel)
+
+            for base in candidates:
+
+                def _check(cand: Path) -> str | None:
+                    norm = os.path.normpath(cand.as_posix()).replace("\\", "/").lower()
+                    if norm in module_index:
+                        t = module_index[norm]
+                        if t != current_file:
+                            return t
+                    try:
+                        res = cand.resolve().as_posix().lower()
+                        if res in module_index:
+                            t = module_index[res]
+                            if t != current_file:
+                                return t
+                    except Exception:
+                        pass
+                    return None
+
+                # 1. Exact match
+                hit = _check(base)
+                if hit:
+                    return hit
+
+                # 2. Match with extensions (.ts, .tsx, .js, etc.)
+                for ext in cls._JS_TS_EXTENSIONS:
+                    hit = _check(base.parent / (base.name + ext))
+                    if hit:
+                        return hit
+
+                # 3. Match /index.* variants
+                for ext in cls._JS_TS_EXTENSIONS:
+                    hit = _check(base / f"index{ext}")
+                    if hit:
+                        return hit
+
+            return None
+
+        # ── Python / other languages resolution ─────────────────────────
         stdlib_modules = set(getattr(sys, "stdlib_module_names", ())) | set(getattr(sys, "builtin_module_names", ()))
         root_pkg = module.split(".")[0].split("/")[0]
         if root_pkg in stdlib_modules:
@@ -294,24 +363,7 @@ class GraphBuilder:
         if stripped in module_index:
             return module_index[stripped]
 
-        # 3. For TS/JS: resolve relative paths like ./services/api or ../hooks/useChat
-        if module.startswith("."):
-            current_dir = Path(current_file).parent
-            # Normalise the path
-            resolved = (current_dir / module).resolve()
-            resolved_str = str(resolved)
-
-            # Try with common extensions
-            for ext in ("", ".ts", ".tsx", ".js", ".jsx", ".py"):
-                candidate = resolved_str + ext
-                if candidate in module_index.values():
-                    return candidate
-                # Also try /index variants
-                idx_candidate = str(resolved / ("index" + ext)) if not ext else ""
-                if idx_candidate and idx_candidate in module_index.values():
-                    return idx_candidate
-
-        # 4. Try the last path segment as bare name
+        # 3. Try bare name
         bare = module.rsplit("/", 1)[-1].rsplit(".", 1)[0]
         if bare in module_index:
             target = module_index[bare]
@@ -321,6 +373,64 @@ class GraphBuilder:
             return None
 
         return target
+
+    @classmethod
+    def _find_alias_roots(
+        cls,
+        current_file: str,
+        module_index: dict[str, str],
+    ) -> list[Path]:
+        """Locate base directories for '@/' alias resolution."""
+        roots: list[Path] = []
+        p = Path(current_file)
+        try:
+            curr = p.resolve().parent
+            for _ in range(6):
+                if curr == curr.parent:
+                    break
+                for cfg_name in ("tsconfig.json", "tsconfig.app.json", "tsconfig.base.json", "jsconfig.json"):
+                    cfg_path = curr / cfg_name
+                    if cfg_path.exists():
+                        try:
+                            with open(cfg_path, encoding="utf-8") as f:
+                                data = json.load(f)
+                            paths_map = data.get("compilerOptions", {}).get("paths", {})
+                            if "@/*" in paths_map:
+                                for target in paths_map["@/*"]:
+                                    clean_target = target.rstrip("*").rstrip("/")
+                                    target_dir = (curr / clean_target).resolve()
+                                    if target_dir.exists() and target_dir not in roots:
+                                        roots.append(target_dir)
+                        except Exception:
+                            pass
+                src_dir = curr / "src"
+                if src_dir.is_dir() and src_dir.resolve() not in roots:
+                    roots.append(src_dir.resolve())
+                curr = curr.parent
+        except Exception:
+            pass
+
+        cf_norm = current_file.replace("\\", "/").lower()
+        if cf_norm.startswith(("src/", "./src/")):
+            roots.append(Path("src"))
+        elif "/src/" in cf_norm:
+            prefix = current_file[: cf_norm.find("/src/") + 4]
+            inferred = Path(prefix)
+            if inferred not in roots:
+                roots.append(inferred)
+
+        for val in module_index.values():
+            val_norm = val.replace("\\", "/").lower()
+            if val_norm.startswith(("src/", "./src/")):
+                if Path("src") not in roots:
+                    roots.append(Path("src"))
+            elif "/src/" in val_norm:
+                prefix = val[: val_norm.find("/src/") + 4]
+                inferred = Path(prefix)
+                if inferred not in roots:
+                    roots.append(inferred)
+
+        return roots
 
     @staticmethod
     def _find_class_node(
