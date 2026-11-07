@@ -98,7 +98,7 @@ async def generate_docs(
         ) from exc
 
     return GenerateResponse(
-        repo_path=body.repo_path,
+        repo_path=str(path),
         format=body.format,
         modules=len(docs.get("modules", docs)),
         output_dir=str(output_dir),
