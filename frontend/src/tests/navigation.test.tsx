@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
+import { MainLayout } from '../layouts/MainLayout';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -99,6 +100,41 @@ describe('Phase 1 Navigation & Shell Structure', () => {
     expect(container.innerHTML).not.toContain('Something went wrong');
 
     spy.mockRestore();
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  });
+
+  it('MainLayout clears workspace and redirects to /app if repository returns 404', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ detail: 'Not found' }),
+    } as any);
+
+    useWorkspaceStore.setState({
+      activeRepository: '/deleted/repo',
+      activeRepositoryId: 999,
+    });
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/app/repositories/999/explorer']}>
+          <MainLayout />
+        </MemoryRouter>
+      );
+    });
+
+    expect(useWorkspaceStore.getState().activeRepositoryId).toBeNull();
+    expect(useWorkspaceStore.getState().activeRepository).toBeNull();
+
+    fetchMock.mockRestore();
     act(() => {
       root.unmount();
     });

@@ -1,6 +1,6 @@
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { Menu, Search, RefreshCw, Folder, FolderOpen, ChevronDown } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
@@ -59,25 +59,57 @@ export const MainLayout: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
+  const navigate = useNavigate();
+  const clearWorkspace = useWorkspaceStore((s) => s.clearWorkspace);
   const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
   const openRepository = useWorkspaceStore((s) => s.openRepository);
+  const isInitialMount = useRef(true);
 
-  // Sync URL repositoryId if present
+  // Verify and restore repository on mount or route sync
   useEffect(() => {
     const match = location.pathname.match(/\/app\/repositories\/(\d+)/);
-    if (match) {
-      const repoId = parseInt(match[1], 10);
-      if (repoId !== activeRepositoryId) {
-        getUserRepository(repoId)
+    const urlRepoId = match ? parseInt(match[1], 10) : null;
+    const targetRepoId = urlRepoId ?? activeRepositoryId;
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      if (targetRepoId) {
+        getUserRepository(targetRepoId)
           .then((repo) => {
             if (repo) {
               openRepository(repo);
+            } else {
+              clearWorkspace();
+              navigate('/app', { replace: true });
             }
           })
-          .catch(() => {});
+          .catch(() => {
+            clearWorkspace();
+            navigate('/app', { replace: true });
+          });
+      } else {
+        navigate('/app', { replace: true });
       }
+      return;
     }
-  }, [location.pathname, activeRepositoryId, openRepository]);
+
+    // Subsequent route navigation: sync URL repo id if switched
+    if (urlRepoId && urlRepoId !== activeRepositoryId) {
+      getUserRepository(urlRepoId)
+        .then((repo) => {
+          if (repo) {
+            openRepository(repo);
+          } else {
+            clearWorkspace();
+            navigate('/app', { replace: true });
+          }
+        })
+        .catch(() => {
+          clearWorkspace();
+          navigate('/app', { replace: true });
+        });
+    }
+  }, [location.pathname, activeRepositoryId, openRepository, clearWorkspace, navigate]);
 
   // On mount, only request scan info if active repository exists and we are not scanning
   useEffect(() => {
