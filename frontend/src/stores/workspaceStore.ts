@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { RepositoryInfo, FileInfo, FileTreeNode, SavedRepository } from '../types/repository';
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
@@ -160,6 +160,49 @@ function buildTree(fileList: FileInfo[], rootPath: string): FileTreeNode[] {
 }
 
 // ── Store ────────────────────────────────────────────────────────────
+
+
+// ── Multi-user isolated workspace storage ────────────────────────────
+
+export function getWorkspaceStorageKey(): string {
+  try {
+    const authData = localStorage.getItem('antigravity-auth');
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      const userId = parsed?.state?.user?.id;
+      if (userId !== undefined && userId !== null) {
+        return `antigravity-workspace:user-${userId}`;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return 'antigravity-workspace:local';
+}
+
+const userNamespacedStorage = {
+  getItem: (_name: string): string | null => {
+    try {
+      return localStorage.getItem(getWorkspaceStorageKey());
+    } catch {
+      return null;
+    }
+  },
+  setItem: (_name: string, value: string): void => {
+    try {
+      localStorage.setItem(getWorkspaceStorageKey(), value);
+    } catch {
+      // ignore quota errors
+    }
+  },
+  removeItem: (_name: string): void => {
+    try {
+      localStorage.removeItem(getWorkspaceStorageKey());
+    } catch {
+      // ignore
+    }
+  },
+};
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
@@ -782,6 +825,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           scanProgress: 0,
           scanMessage: '',
           scanError: null,
+          fileError: null,
+          currentScanJobId: null,
+          pendingChatMessage: null,
+          recentRepositories: [],
           graphData: null,
           analysisResult: null,
           searchResults: [],
@@ -828,6 +875,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: 'antigravity-workspace',
+      storage: createJSONStorage(() => userNamespacedStorage),
       // Only persist these keys (not loading states or transient data)
       partialize: (state) => ({
         activeRepository: state.activeRepository,

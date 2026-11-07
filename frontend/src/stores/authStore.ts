@@ -89,12 +89,22 @@ export const useAuthStore = create<AuthState>()(
 
           if (res.ok) {
             const data = await res.json();
+            const prevUser = get().user;
+            const nextUser = data.user || null;
+            if (prevUser?.id !== nextUser?.id) {
+              try {
+                useWorkspaceStore.getState().clearWorkspace({ silent: true });
+              } catch {}
+            }
             set({
               token: data.access_token,
-              user: data.user || null,
+              user: nextUser,
               isLoggingIn: false,
               loginError: null,
             });
+            try {
+              (useWorkspaceStore as any).persist?.rehydrate();
+            } catch {}
             return { success: true };
           }
 
@@ -153,12 +163,22 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const data = await res.json();
+          const prevUser = get().user;
+          const nextUser = data.user || null;
+          if (prevUser?.id !== nextUser?.id) {
+            try {
+              useWorkspaceStore.getState().clearWorkspace({ silent: true });
+            } catch {}
+          }
           set({
             token: data.access_token,
-            user: data.user || null,
+            user: nextUser,
             isLoggingIn: false,
             loginError: null,
           });
+          try {
+            (useWorkspaceStore as any).persist?.rehydrate();
+          } catch {}
           return { success: true };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Network error during registration.';
