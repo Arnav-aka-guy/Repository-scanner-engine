@@ -6,8 +6,6 @@ Routes (all repository-scoped and ownership-checked):
 * ``GET  /api/system-design``          – return the last cached diagram, or ``null`` if none.
 """
 
-from __future__ import annotations
-
 import logging
 from typing import Any, Literal
 
