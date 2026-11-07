@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '../stores/workspaceStore';
 import { MainLayout } from '../layouts/MainLayout';
 import { Sidebar } from '../components/Sidebar';
 import * as repoService from '../services/repository';
+import { SavedRepository, FileInfo } from '../types/repository';
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -30,7 +31,12 @@ describe('Section C End-to-End Target Workflow Verification', () => {
 
   // Step 4: Add repository -> creates row -> starts background scan -> turns READY/indexed
   it('Step 4: scanRepo initiates background job, tracks progress, and marks repository as indexed', async () => {
-    vi.spyOn(repoService, 'getUserRepositories').mockResolvedValue([]);
+    vi.spyOn(repoService, 'getUserRepositories').mockResolvedValue({
+      repositories: [],
+      count: 0,
+      max_limit: 10,
+      available_slots: 10,
+    });
     vi.spyOn(repoService, 'createUserRepository').mockResolvedValue({
       id: 55,
       name: 'alpha-repo',
@@ -39,7 +45,9 @@ describe('Section C End-to-End Target Workflow Verification', () => {
       path: '/repos/alpha-repo',
       status: 'SCANNING',
       total_files: 0,
+      file_count: 0,
       total_lines: 0,
+      languages: {},
     });
     vi.spyOn(repoService, 'scanRepositoryAsync').mockResolvedValue({
       job_id: 'job-55',
@@ -61,14 +69,22 @@ describe('Section C End-to-End Target Workflow Verification', () => {
             total_files: 12,
             total_lines: 840,
             languages: { TypeScript: 12 },
+            scanned_at: new Date().toISOString(),
           },
         });
       }, 50);
       return () => {};
     });
-    vi.spyOn(repoService, 'listFiles').mockResolvedValue([
-      { name: 'index.ts', path: '/repos/alpha-repo/src/index.ts', size: 100, extension: '.ts' },
-    ]);
+
+    const mockFile: FileInfo = {
+      name: 'index.ts',
+      path: '/repos/alpha-repo/src/index.ts',
+      size_bytes: 100,
+      line_count: 20,
+      language: 'typescript',
+      extension: '.ts',
+    };
+    vi.spyOn(repoService, 'listFiles').mockResolvedValue([mockFile]);
 
     await useWorkspaceStore.getState().scanRepo('/repos/alpha-repo');
 
@@ -83,11 +99,17 @@ describe('Section C End-to-End Target Workflow Verification', () => {
 
   // Step 5: Clicking a repo -> loads files, tree, and scoped sidebar links stay inside /app/repositories/:id/...
   it('Step 5: openRepository loads repository data and Sidebar links reflect scoped URL', async () => {
-    vi.spyOn(repoService, 'listFiles').mockResolvedValue([
-      { name: 'app.py', path: '/repos/beta-repo/app.py', size: 250, extension: '.py' },
-    ]);
+    const mockFile: FileInfo = {
+      name: 'app.py',
+      path: '/repos/beta-repo/app.py',
+      size_bytes: 250,
+      line_count: 35,
+      language: 'python',
+      extension: '.py',
+    };
+    vi.spyOn(repoService, 'listFiles').mockResolvedValue([mockFile]);
 
-    await useWorkspaceStore.getState().openRepository({
+    const betaRepo: SavedRepository = {
       id: 77,
       name: 'beta-repo',
       source_type: 'local',
@@ -95,9 +117,12 @@ describe('Section C End-to-End Target Workflow Verification', () => {
       path: '/repos/beta-repo',
       status: 'READY',
       total_files: 5,
+      file_count: 5,
       total_lines: 450,
       languages: { Python: 5 },
-    });
+    };
+
+    await useWorkspaceStore.getState().openRepository(betaRepo);
 
     const state = useWorkspaceStore.getState();
     expect(state.activeRepositoryId).toBe(77);
@@ -122,29 +147,46 @@ describe('Section C End-to-End Target Workflow Verification', () => {
 
   // Step 7: Switching repos clears old data and loads new repo without stale data
   it('Step 7: switching repositories resets previous files, graphs, and search results', async () => {
-    // Repo 1 active with populated state
+    const mockFile1: FileInfo = {
+      name: 'r1.py',
+      path: '/repos/repo-1/r1.py',
+      size_bytes: 10,
+      line_count: 5,
+      language: 'python',
+      extension: '.py',
+    };
     useWorkspaceStore.setState({
       activeRepositoryId: 10,
       activeRepository: '/repos/repo-1',
-      files: [{ name: 'r1.py', path: '/repos/repo-1/r1.py', size: 10, extension: '.py' }],
+      files: [mockFile1],
       graphData: { nodes: [{ id: 'n1', label: 'r1' }], edges: [] } as any,
       searchResults: [{ entity_name: 'func1' } as any],
     });
 
-    vi.spyOn(repoService, 'listFiles').mockResolvedValue([
-      { name: 'r2.ts', path: '/repos/repo-2/r2.ts', size: 20, extension: '.ts' },
-    ]);
+    const mockFile2: FileInfo = {
+      name: 'r2.ts',
+      path: '/repos/repo-2/r2.ts',
+      size_bytes: 20,
+      line_count: 10,
+      language: 'typescript',
+      extension: '.ts',
+    };
+    vi.spyOn(repoService, 'listFiles').mockResolvedValue([mockFile2]);
 
-    // Switch to Repo 2
-    await useWorkspaceStore.getState().openRepository({
+    const repo2: SavedRepository = {
       id: 20,
       name: 'repo-2',
       source_type: 'local',
       source_path: '/repos/repo-2',
       status: 'READY',
       total_files: 1,
+      file_count: 1,
       total_lines: 50,
-    });
+      languages: { TypeScript: 1 },
+    };
+
+    // Switch to Repo 2
+    await useWorkspaceStore.getState().openRepository(repo2);
 
     const state = useWorkspaceStore.getState();
     expect(state.activeRepositoryId).toBe(20);
@@ -164,6 +206,7 @@ describe('Section C End-to-End Target Workflow Verification', () => {
       path: '/repos/gamma-repo',
       status: 'READY',
       total_files: 8,
+      file_count: 8,
       total_lines: 600,
       languages: { Python: 8 },
     });

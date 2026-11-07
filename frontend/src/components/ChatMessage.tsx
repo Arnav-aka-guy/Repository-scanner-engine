@@ -2,10 +2,10 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { User, Sparkles, AlertTriangle, FileCode, ExternalLink, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { ChatMessage as ChatMessageType, SearchResult } from '../types/chat';
+import { User, Sparkles, AlertTriangle, FileCode, ExternalLink, ArrowRight } from 'lucide-react';
+import { ChatMessage as ChatMessageType } from '../types/chat';
 import { colors, radius, font } from '../design-system/tokens';
-import { Badge, Button, FilePath } from '../design-system/primitives';
+
 
 interface ChatMessageProps {
   message: ChatMessageType;

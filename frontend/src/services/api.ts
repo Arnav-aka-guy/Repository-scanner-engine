@@ -152,7 +152,8 @@ export async function request<T>(path: string, options: ApiRequestOptions = {}):
     } catch (parseErr) {
       if (text.trim().startsWith('<')) {
         throw new Error(
-          `Unexpected HTML response from server (HTTP ${response.status}). The requested API endpoint may not exist.`
+          `Unexpected HTML response from server (HTTP ${response.status}). The requested API endpoint may not exist.`,
+          { cause: parseErr }
         );
       }
       throw new Error(`Invalid JSON response from server: ${text.slice(0, 100)}`, { cause: parseErr });
