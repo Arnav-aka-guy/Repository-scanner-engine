@@ -195,10 +195,9 @@ class JavaParser:
                     else:
                         in_char = True
                     quote_char = c
-                elif (c == '"' and in_string) or (c == "'" and in_char):
-                    if c == quote_char:
-                        in_string = False
-                        in_char = False
+                elif ((c == '"' and in_string) or (c == "'" and in_char)) and c == quote_char:
+                    in_string = False
+                    in_char = False
                 continue
 
             if in_string or in_char:
