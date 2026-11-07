@@ -9,6 +9,8 @@ import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { useRepoNavigate } from '../hooks/useRepoNavigate';
+import * as repoService from '../services/repository';
+import { SavedRepository } from '../types/repository';
 
 describe('Phase 1 Navigation & Shell Structure', () => {
   it('renders all required category headers and navigation items in Sidebar', () => {
@@ -165,5 +167,48 @@ describe('Phase 1 Navigation & Shell Structure', () => {
       </MemoryRouter>
     );
     expect(navigateResult).toBe('/app');
+  });
+  it('B2: mounts MainLayout at /app/repositories/42/overview and calls getUserRepository exactly once', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const mockRepo: SavedRepository = {
+      id: 42,
+      name: 'dedup-repo',
+      source_path: '/repos/dedup-repo',
+      source_type: 'local',
+      status: 'READY',
+      file_count: 5,
+      total_files: 5,
+      total_lines: 100,
+      language: 'TypeScript',
+      languages: { TypeScript: 5 },
+      created_at: '2026-01-01',
+    };
+
+    const getUserRepoSpy = vi.spyOn(repoService, 'getUserRepository').mockResolvedValue(mockRepo);
+
+    useWorkspaceStore.setState({
+      activeRepository: null,
+      activeRepositoryId: null,
+    });
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/app/repositories/42/overview']}>
+          <MainLayout />
+        </MemoryRouter>
+      );
+    });
+
+    expect(getUserRepoSpy).toHaveBeenCalledTimes(1);
+    expect(getUserRepoSpy).toHaveBeenCalledWith(42);
+
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
   });
 });

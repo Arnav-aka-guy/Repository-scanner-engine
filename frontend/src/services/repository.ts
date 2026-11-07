@@ -216,8 +216,18 @@ export async function createUserRepository(data: {
   return apiPost<SavedRepository>('/repositories', data);
 }
 
+const inFlightRepoRequests = new Map<number, Promise<SavedRepository>>();
+
 export async function getUserRepository(id: number): Promise<SavedRepository> {
-  return apiGet<SavedRepository>(`/repositories/${id}`);
+  const existing = inFlightRepoRequests.get(id);
+  if (existing) {
+    return existing;
+  }
+  const promise = apiGet<SavedRepository>(`/repositories/${id}`).finally(() => {
+    inFlightRepoRequests.delete(id);
+  });
+  inFlightRepoRequests.set(id, promise);
+  return promise;
 }
 
 export async function updateUserRepository(

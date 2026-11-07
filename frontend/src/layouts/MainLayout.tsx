@@ -64,38 +64,25 @@ export const MainLayout: React.FC = () => {
   const clearWorkspace = useWorkspaceStore((s) => s.clearWorkspace);
   const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
   const openRepository = useWorkspaceStore((s) => s.openRepository);
+  const lastFetchedRepoId = useRef<number | null>(null);
   const isInitialMount = useRef(true);
 
-  // Verify and restore repository on mount or route sync
+  // Centralized route-based repository sync with dedup
   useEffect(() => {
     const match = location.pathname.match(/\/app\/repositories\/(\d+)/);
     const urlRepoId = match ? parseInt(match[1], 10) : null;
-    const targetRepoId = urlRepoId ?? activeRepositoryId;
 
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      if (targetRepoId) {
-        getUserRepository(targetRepoId)
-          .then((repo) => {
-            if (repo) {
-              openRepository(repo);
-            } else {
-              clearWorkspace();
-              navigate('/app', { replace: true });
-            }
-          })
-          .catch(() => {
-            clearWorkspace();
-            navigate('/app', { replace: true });
-          });
-      } else {
+    if (!urlRepoId) {
+      if (!activeRepositoryId) {
         navigate('/app', { replace: true });
       }
       return;
     }
 
-    // Subsequent route navigation: sync URL repo id if switched
-    if (urlRepoId && urlRepoId !== activeRepositoryId) {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      lastFetchedRepoId.current = urlRepoId;
+
       getUserRepository(urlRepoId)
         .then((repo) => {
           if (repo) {
@@ -109,7 +96,29 @@ export const MainLayout: React.FC = () => {
           clearWorkspace();
           navigate('/app', { replace: true });
         });
+      return;
     }
+
+    // Subsequent route navigation: if same repo as already active or already fetching, skip
+    if (activeRepositoryId === urlRepoId || lastFetchedRepoId.current === urlRepoId) {
+      return;
+    }
+
+    lastFetchedRepoId.current = urlRepoId;
+
+    getUserRepository(urlRepoId)
+      .then((repo) => {
+        if (repo) {
+          openRepository(repo);
+        } else {
+          clearWorkspace();
+          navigate('/app', { replace: true });
+        }
+      })
+      .catch(() => {
+        clearWorkspace();
+        navigate('/app', { replace: true });
+      });
   }, [location.pathname, activeRepositoryId, openRepository, clearWorkspace, navigate]);
 
   // On mount, only request scan info if active repository exists and we are not scanning

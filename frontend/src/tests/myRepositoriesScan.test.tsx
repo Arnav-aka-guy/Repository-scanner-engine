@@ -25,8 +25,8 @@ describe('B1 MyRepositories scan tracking', () => {
       file_count: 0,
       total_files: 0,
       total_lines: 0,
-      primary_language: 'TypeScript',
       language: 'TypeScript',
+      languages: { TypeScript: 1 },
       created_at: '2026-01-01',
     };
 
@@ -40,8 +40,9 @@ describe('B1 MyRepositories scan tracking', () => {
 
     vi.spyOn(repoService, 'getUserRepositories').mockResolvedValue({
       repositories: [initialRepo],
-      total: 1,
+      count: 1,
       max_limit: 5,
+      available_slots: 4,
     });
 
     vi.spyOn(repoService, 'scanUserRepository').mockResolvedValue({
