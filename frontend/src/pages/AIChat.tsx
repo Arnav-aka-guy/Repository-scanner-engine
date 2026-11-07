@@ -42,6 +42,7 @@ export const AIChat: React.FC = () => {
   const error = useWorkspaceStore((s) => s.chatError);
   const sendMessage = useWorkspaceStore((s) => s.sendChatMessage);
   const clearHistory = useWorkspaceStore((s) => s.clearChatHistory);
+  const consumePendingChatMessage = useWorkspaceStore((s) => s.consumePendingChatMessage);
   const loadPersistentChatHistory = useWorkspaceStore((s) => s.loadPersistentChatHistory);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
   const files = useWorkspaceStore((s) => s.files);
@@ -50,12 +51,17 @@ export const AIChat: React.FC = () => {
   const [showContextPane, setShowContextPane] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load persistent chat history on mount if store has no messages
+  // Load persistent chat history or consume queued message on mount
   useEffect(() => {
-    if (repoPath && messages.length === 0) {
-      loadPersistentChatHistory();
+    if (repoPath) {
+      const pending = consumePendingChatMessage();
+      if (pending) {
+        sendMessage(pending);
+      } else if (messages.length === 0) {
+        loadPersistentChatHistory();
+      }
     }
-  }, [repoPath, messages.length, loadPersistentChatHistory]);
+  }, [repoPath, consumePendingChatMessage, sendMessage, messages.length, loadPersistentChatHistory]);
 
   // Auto-scroll chat box to bottom on messages updates
   useEffect(() => {

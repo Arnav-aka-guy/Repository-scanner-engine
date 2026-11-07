@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { User, Sparkles, FileCode, ExternalLink, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { User, Sparkles, AlertTriangle, FileCode, ExternalLink, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { ChatMessage as ChatMessageType, SearchResult } from '../types/chat';
 import { colors, radius, font } from '../design-system/tokens';
 import { Badge, Button, FilePath } from '../design-system/primitives';
@@ -141,6 +142,31 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500 }}>
               {message.content}
             </p>
+          ) : message.content.includes('LLM Error:') || message.content.includes('Failed to connect') || message.content.includes('ollama:') ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: colors.status.warning }}>
+                <AlertTriangle size={15} />
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>AI Provider Not Configured or Unavailable</span>
+              </div>
+              <p style={{ margin: 0, color: colors.text.secondary, fontSize: '12px', lineHeight: 1.5 }}>
+                Could not connect to the local LLM engine. Ensure Ollama is running or configure an AI provider in Settings.
+              </p>
+              <div style={{ marginTop: '4px' }}>
+                <Link
+                  to="/settings"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '12px',
+                    color: colors.accent.blue,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Configure AI Providers in Settings &rarr;
+                </Link>
+              </div>
+            </div>
           ) : (
             <div className="prose-chat select-text">
               <Markdown remarkPlugins={[remarkGfm]}>{cleanedContent}</Markdown>

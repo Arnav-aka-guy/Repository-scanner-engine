@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Folder,
@@ -79,6 +79,8 @@ export const Overview: React.FC = () => {
   const navigate = useNavigate();
 
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
+  const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
+  const queueChatMessage = useWorkspaceStore((s) => s.queueChatMessage);
   const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
   const scanStatus = useWorkspaceStore((s) => s.scanStatus);
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
@@ -128,14 +130,44 @@ export const Overview: React.FC = () => {
   };
 
   const handleAskAIAboutWalkthrough = () => {
-    navigate('/chat');
-    setTimeout(() => {
-      const store = useWorkspaceStore.getState();
-      store.sendChatMessage('Explain the overall purpose, architecture structure, and data flow of this codebase.');
-    }, 100);
+    queueChatMessage('Explain the overall purpose, architecture structure, and data flow of this codebase.');
+    navigate(activeRepositoryId ? `/app/repositories/${activeRepositoryId}/chat` : '/app');
   };
 
   const isScanning = scanStatus === 'scanning';
+
+  const fetchHealthData = useCallback(async () => {
+    if (!activeRepository) return;
+    const cached = useWorkspaceStore.getState().cachedHealthScore[activeRepository];
+    if (!cached) {
+      setHealthLoading(true);
+    }
+    setHealthError(null);
+    try {
+      const params: Record<string, string> = { repo_path: activeRepository };
+      if (activeRepositoryId) {
+        params.repository_id = String(activeRepositoryId);
+      }
+      const [hs, td, dr] = await Promise.all([
+        apiGet<HealthScore>('/health-score', params),
+        apiGet<TechDebt>('/tech-debt', params).catch(() => null),
+        apiGet<DependencyRisk>('/dependency-risk', params).catch(() => null),
+      ]);
+
+      if (hs) {
+        setHealthScore(hs);
+        setCachedHealthScore(activeRepository, hs);
+      }
+      if (td) setTechDebt(td);
+      if (dr) setDepRisk(dr);
+    } catch (err: any) {
+      if (!useWorkspaceStore.getState().cachedHealthScore[activeRepository]) {
+        setHealthError(err?.message || 'Failed to calculate health metrics.');
+      }
+    } finally {
+      setHealthLoading(false);
+    }
+  }, [activeRepository, activeRepositoryId, setCachedHealthScore]);
 
   // Fetch health and analysis data when repository is loaded
   useEffect(() => {
@@ -146,46 +178,13 @@ export const Overview: React.FC = () => {
       return;
     }
 
-    if (cachedHealthScore[activeRepository]) {
-      setHealthScore(cachedHealthScore[activeRepository]);
+    const cached = useWorkspaceStore.getState().cachedHealthScore[activeRepository];
+    if (cached) {
+      setHealthScore(cached);
     }
 
-    let isMounted = true;
-    const fetchHealthData = async () => {
-      if (!cachedHealthScore[activeRepository]) {
-        setHealthLoading(true);
-      }
-      setHealthError(null);
-      try {
-        const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
-        const [hs, td, dr] = await Promise.all([
-          Promise.race([apiGet<HealthScore>('/health-score', { repo_path: activeRepository }), timeoutPromise]).catch(() => null),
-          Promise.race([apiGet<TechDebt>('/tech-debt', { repo_path: activeRepository }), timeoutPromise]).catch(() => null),
-          Promise.race([apiGet<DependencyRisk>('/dependency-risk', { repo_path: activeRepository }), timeoutPromise]).catch(() => null),
-        ]);
-
-        if (isMounted) {
-          if (hs) {
-            setHealthScore(hs);
-            setCachedHealthScore(activeRepository, hs);
-          }
-          if (td) setTechDebt(td);
-          if (dr) setDepRisk(dr);
-        }
-      } catch (err: any) {
-        if (isMounted && !cachedHealthScore[activeRepository]) {
-          setHealthError(err.message || 'Failed to calculate health metrics.');
-        }
-      } finally {
-        if (isMounted) setHealthLoading(false);
-      }
-    };
-
     fetchHealthData();
-    return () => {
-      isMounted = false;
-    };
-  }, [activeRepository, scanStatus]);
+  }, [activeRepository, activeRepositoryId, scanStatus, fetchHealthData]);
 
   const handleScanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1083,6 +1082,22 @@ export const Overview: React.FC = () => {
         {healthLoading ? (
           <Panel padding="24px">
             <LoadingState label="Computing health dimensions and analyzing code debt..." />
+          </Panel>
+        ) : healthError && !healthScore ? (
+          <Panel padding="20px" style={{ borderLeft: `3px solid ${colors.status.danger}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <div>
+                <span style={{ fontSize: font.size.sm, fontWeight: font.weight.semibold, color: colors.status.danger }}>
+                  Health Metrics Unavailable
+                </span>
+                <p style={{ fontSize: font.size.xs, color: colors.text.secondary, marginTop: '4px' }}>
+                  {healthError}
+                </p>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => fetchHealthData()} icon={<RefreshCw size={12} />}>
+                Retry
+              </Button>
+            </div>
           </Panel>
         ) : (
           <div

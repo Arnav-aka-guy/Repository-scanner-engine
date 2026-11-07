@@ -45,8 +45,12 @@ interface WorkspaceState {
   scanProgress: number;
   scanMessage: string;
   scanError: string | null;
+  fileError: string | null;
   fileLoading: boolean;
   recentRepositories: string[];
+  pendingChatMessage: string | null;
+  queueChatMessage: (question: string) => void;
+  consumePendingChatMessage: () => string | null;
 
   // ── Graph ──────────────────────────────────────────────────────────
   graphData: GraphData | null;
@@ -169,8 +173,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       scanProgress: 0,
       scanMessage: '',
       scanError: null,
+      fileError: null,
       fileLoading: false,
       recentRepositories: [],
+      pendingChatMessage: null,
+      queueChatMessage: (question: string) => set({ pendingChatMessage: question }),
+      consumePendingChatMessage: () => {
+        const pending = get().pendingChatMessage;
+        if (pending) {
+          set({ pendingChatMessage: null });
+        }
+        return pending;
+      },
       isRepoModalOpen: false,
 
       graphData: null,
@@ -455,7 +469,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       setSelectedFile: (path: string | null) => {
-        set({ selectedFilePath: path, selectedFileDetail: null });
+        set({ selectedFilePath: path, selectedFileDetail: null, fileError: null });
         if (path) {
           get().loadFileDetail(path);
         }
@@ -479,7 +493,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         } catch (err: unknown) {
           if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== targetRepoPath) return;
           const msg = err instanceof Error ? err.message : 'Unknown error';
-          set({ fileLoading: false, scanError: `Failed to read file: ${msg}` });
+          set({ fileLoading: false, fileError: `Failed to read file: ${msg}` });
         }
       },
 
