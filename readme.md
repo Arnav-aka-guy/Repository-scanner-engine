@@ -9,8 +9,8 @@
 <br/>
 
 <a href="https://github.com/Arnav-aka-guy/Repository-scanner-engine/actions/workflows/ci.yml"><img src="https://github.com/Arnav-aka-guy/Repository-scanner-engine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-<img src="https://img.shields.io/badge/version-2.0.0-6366f1?style=flat" alt="Version" />
-<img src="https://img.shields.io/badge/tests-211_passing-22c55e?style=flat&logo=pytest&logoColor=white" alt="Tests" />
+<img src="https://img.shields.io/badge/version-2.1.0-6366f1?style=flat" alt="Version" />
+<img src="https://img.shields.io/badge/tests-332_passing-22c55e?style=flat&logo=pytest&logoColor=white" alt="Tests" />
 <img src="https://img.shields.io/badge/license-MIT-0ea5e9?style=flat" alt="License" />
 <img src="https://img.shields.io/github/last-commit/Arnav-aka-guy/Repository-scanner-engine?style=flat&color=a855f7" alt="Last commit" />
 <img src="https://img.shields.io/github/stars/Arnav-aka-guy/Repository-scanner-engine?style=flat&color=f59e0b" alt="Stars" />
