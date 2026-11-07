@@ -26,11 +26,15 @@ export const RepositorySwitcher: React.FC = () => {
   const { activeRepository, activeRepositoryId, scanRepo, openRepository } = useWorkspaceStore();
   const [repositories, setRepositories] = useState<SavedRepository[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [maxLimit, setMaxLimit] = useState(5);
 
   const fetchRepos = async () => {
     try {
       const res = await getUserRepositories();
       setRepositories(res.repositories || []);
+      if (typeof res.max_limit === 'number') {
+        setMaxLimit(res.max_limit);
+      }
     } catch {
       // silently fail if unauthenticated or error
     }
@@ -55,7 +59,6 @@ export const RepositorySwitcher: React.FC = () => {
     activeRepo?.name ||
     (activeRepository ? activeRepository.split(/[\\/]/).pop() : 'Select Repository');
   const count = repositories.length;
-  const maxLimit = 5;
 
   const handleSelect = (repo: SavedRepository) => {
     openRepository(repo);

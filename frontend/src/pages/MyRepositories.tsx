@@ -37,6 +37,7 @@ export const MyRepositories: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [scanningRepoId, setScanningRepoId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [maxLimit, setMaxLimit] = useState(5);
 
   const fetchRepos = async () => {
     setIsLoading(true);
@@ -44,6 +45,9 @@ export const MyRepositories: React.FC = () => {
     try {
       const res = await getUserRepositories();
       setRepositories(res.repositories || []);
+      if (typeof res.max_limit === 'number') {
+        setMaxLimit(res.max_limit);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch repositories.');
     } finally {
@@ -52,19 +56,14 @@ export const MyRepositories: React.FC = () => {
   };
 
   useEffect(() => {
-    if (authEnabled && !token) {
-      navigate('/login', { replace: true });
-      return;
-    }
-    if (token) {
+    if (!authEnabled || !!token) {
       fetchRepos();
     } else {
-      setIsLoading(false);
+      navigate('/login', { replace: true });
     }
   }, [token, authEnabled, navigate]);
 
   const count = repositories.length;
-  const maxLimit = 5;
   const isLimitReached = count >= maxLimit;
 
   const handleOpen = (repo: SavedRepository) => {
