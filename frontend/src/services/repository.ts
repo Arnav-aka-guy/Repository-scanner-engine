@@ -29,7 +29,7 @@ export async function listFiles(
 
 export interface ScanJob {
   job_id: string;
-  status: 'pending' | 'scanning' | 'completed' | 'failed';
+  status: 'pending' | 'scanning' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   message: string;
   result?: RepositoryInfo | null;
@@ -225,3 +225,7 @@ export async function scanUserRepository(id: number): Promise<SavedRepository> {
   return apiPost<SavedRepository>(`/repositories/${id}/scan`, {});
 }
 
+
+export async function cancelScanJob(jobId: string): Promise<ScanJob> {
+  return apiPost<ScanJob>(`/repository/scan/jobs/${jobId}/cancel`, {});
+}

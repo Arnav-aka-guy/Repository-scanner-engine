@@ -7,6 +7,7 @@ import {
   scanGitHubRepository,
   scanRepositoryAsync,
   getScanJobStatus,
+  cancelScanJob,
   subscribeScanEvents,
   browseFolder,
   listFiles,
@@ -47,6 +48,8 @@ interface WorkspaceState {
   scanError: string | null;
   fileError: string | null;
   fileLoading: boolean;
+  currentScanJobId: string | null;
+  cancelScan: () => Promise<void>;
   recentRepositories: string[];
   pendingChatMessage: string | null;
   queueChatMessage: (question: string) => void;
@@ -175,7 +178,29 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       scanError: null,
       fileError: null,
       fileLoading: false,
+      currentScanJobId: null,
       recentRepositories: [],
+      cancelScan: async () => {
+        const jobId = get().currentScanJobId;
+        if (jobId) {
+          try {
+            await cancelScanJob(jobId);
+          } catch (err) {
+            console.warn('Failed to cancel scan job:', err);
+          }
+        }
+        set({
+          scanStatus: 'idle',
+          scanProgress: 0,
+          scanMessage: 'Scan cancelled.',
+          currentScanJobId: null,
+        });
+        useToastStore.getState().addToast({
+          type: 'info',
+          title: 'Scan Cancelled',
+          message: 'The repository scan job was stopped.',
+        });
+      },
       pendingChatMessage: null,
       queueChatMessage: (question: string) => set({ pendingChatMessage: question }),
       consumePendingChatMessage: () => {
@@ -357,19 +382,27 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           } else {
             // Queue async background job with SSE progress streaming and polling fallback
             const job = await scanRepositoryAsync(normInputPath);
+            set({ currentScanJobId: job.job_id });
             info = await new Promise<RepositoryInfo>((resolve, reject) => {
               let settled = false;
-              let pollInterval: ReturnType<typeof setInterval> | null = null;
-              let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+              let sseActive = true;
+              let lastProgressTime = Date.now();
+              let lastProgressValue = -1;
+              let lastProgressMsg = '';
+              let watchdogTimer: ReturnType<typeof setInterval> | null = null;
 
               const cleanup = () => {
                 settled = true;
-                if (pollInterval) clearInterval(pollInterval);
-                if (timeoutTimer) clearTimeout(timeoutTimer);
+                if (watchdogTimer) clearInterval(watchdogTimer);
                 unsubscribe();
               };
 
               const handleJobUpdate = (progressJob: ScanJob) => {
+                if (progressJob.progress !== lastProgressValue || progressJob.message !== lastProgressMsg) {
+                  lastProgressTime = Date.now();
+                  lastProgressValue = progressJob.progress;
+                  lastProgressMsg = progressJob.message;
+                }
                 set({
                   scanProgress: progressJob.progress,
                   scanMessage: progressJob.message,
@@ -380,6 +413,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 } else if (progressJob.status === 'failed') {
                   cleanup();
                   reject(new Error(progressJob.error || progressJob.message || 'Scan failed'));
+                } else if (progressJob.status === 'cancelled') {
+                  cleanup();
+                  reject(new Error('Scan cancelled by user'));
                 }
               };
 
@@ -393,28 +429,31 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                   }
                 },
                 (err) => {
+                  sseActive = false;
                   console.warn('Scan SSE streaming disconnected, falling back to polling', err);
                 }
               );
 
-              // Periodic polling fallback in case SSE events are buffered or interrupted
-              pollInterval = setInterval(async () => {
+              // Watchdog: poll ONLY when SSE is inactive or quiet for > 3 seconds,
+              // and timeout only if no progress occurs for 5 minutes (300,000 ms).
+              watchdogTimer = setInterval(async () => {
                 if (settled) return;
-                try {
-                  const statusJob = await getScanJobStatus(job.job_id);
-                  handleJobUpdate(statusJob);
-                } catch {
-                  // transient polling error
+
+                if (Date.now() - lastProgressTime > 300000) {
+                  cleanup();
+                  reject(new Error('Scan job stalled with no progress for 5 minutes'));
+                  return;
+                }
+
+                if (!sseActive || Date.now() - lastProgressTime > 3000) {
+                  try {
+                    const statusJob = await getScanJobStatus(job.job_id);
+                    handleJobUpdate(statusJob);
+                  } catch {
+                    // transient polling error
+                  }
                 }
               }, 1000);
-
-              // 120s timeout safeguard
-              timeoutTimer = setTimeout(() => {
-                if (!settled) {
-                  cleanup();
-                  reject(new Error('Scan job timed out after 120 seconds'));
-                }
-              }, 120000);
             });
           }
 
@@ -447,6 +486,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             generatedDocs: null,
             recentRepositories: recent,
           });
+          set({ currentScanJobId: null });
           useToastStore.getState().addToast({
             type: 'success',
             title: isGitHub ? 'GitHub Repository Cloned & Indexed' : 'Repository Indexed',
@@ -460,6 +500,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             scanMessage: '',
             scanError: msg,
           });
+          set({ currentScanJobId: null });
           useToastStore.getState().addToast({
             type: 'error',
             title: 'Scan Failed',
