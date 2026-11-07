@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import React from 'react';
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -56,5 +58,50 @@ describe('Phase 1 Navigation & Shell Structure', () => {
     // Simulate switching active repository route without rescan
     useWorkspaceStore.getState().setActiveRepository('d:/projects/summer-project-1', 1);
     expect(scanSpy).not.toHaveBeenCalled();
+  });
+
+  it('ErrorBoundary recovers and clears errors when resetKey changes', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    let shouldThrow = true;
+    function FragileChild() {
+      if (shouldThrow) {
+        throw new Error('Boom in route');
+      }
+      return <div>Recovered Component</div>;
+    }
+
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      root.render(
+        <ErrorBoundary resetKey="/old-route">
+          <FragileChild />
+        </ErrorBoundary>
+      );
+    });
+
+    expect(container.innerHTML).toContain('Something went wrong');
+
+    shouldThrow = false;
+    await act(async () => {
+      root.render(
+        <ErrorBoundary resetKey="/new-route">
+          <FragileChild />
+        </ErrorBoundary>
+      );
+    });
+
+    expect(container.innerHTML).toContain('Recovered Component');
+    expect(container.innerHTML).not.toContain('Something went wrong');
+
+    spy.mockRestore();
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
   });
 });

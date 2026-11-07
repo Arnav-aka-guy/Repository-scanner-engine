@@ -1,9 +1,9 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
 import { MainLayout } from './layouts/MainLayout';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/ToastContainer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuthStore } from './stores/authStore';
 
 // Lazy-loaded pages for optimal initial bundle size (< 300KB)
@@ -35,12 +35,6 @@ const PageFallback: React.FC = () => (
   </div>
 );
 
-const pageVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
-};
-
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { authEnabled, token, isCheckingAuth } = useAuthStore();
   if (isCheckingAuth) {
@@ -57,21 +51,57 @@ function AnimatedRoutes() {
 
   return (
     <Suspense fallback={<PageFallback />}>
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
+      <Routes>
         {/* Public Pages */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route
+          path="/"
+          element={
+            <ErrorBoundary resetKey={location.pathname}>
+              <LandingPage />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <ErrorBoundary resetKey={location.pathname}>
+              <Login />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <ErrorBoundary resetKey={location.pathname}>
+              <Signup />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <ErrorBoundary resetKey={location.pathname}>
+              <ForgotPassword />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <ErrorBoundary resetKey={location.pathname}>
+              <ResetPassword />
+            </ErrorBoundary>
+          }
+        />
 
         {/* Authenticated Workspace Hub */}
         <Route
           path="/app"
           element={
             <ProtectedRoute>
-              <MyRepositories />
+              <ErrorBoundary resetKey={location.pathname}>
+                <MyRepositories />
+              </ErrorBoundary>
             </ProtectedRoute>
           }
         />
@@ -88,89 +118,89 @@ function AnimatedRoutes() {
           <Route
             path="/overview"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <Overview />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/explorer"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <RepositoryExplorer />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/graph"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <DependencyGraph />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/architecture"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <ArchitectureViewer />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/search"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <SemanticSearch />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/chat"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <AIChat />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/documentation"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <DocumentationGenerator />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/health-dashboard"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <HealthDashboard />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/impact"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <ChangeImpact />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/review"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <CodeReview />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/settings"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <Settings />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
 
@@ -182,99 +212,98 @@ function AnimatedRoutes() {
           <Route
             path="/app/repositories/:repositoryId/overview"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <Overview />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/explorer"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <RepositoryExplorer />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/graph"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <DependencyGraph />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/architecture"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <ArchitectureViewer />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/search"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <SemanticSearch />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/chat"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <AIChat />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/documentation"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <DocumentationGenerator />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/health-dashboard"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <HealthDashboard />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/impact"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <ChangeImpact />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/review"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <CodeReview />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
           <Route
             path="/app/repositories/:repositoryId/settings"
             element={
-              <motion.div className="flex-1 flex flex-col overflow-hidden" {...pageVariants}>
+              <ErrorBoundary resetKey={location.pathname}>
                 <Settings />
-              </motion.div>
+              </ErrorBoundary>
             }
           />
 
-          {/* Catch-all route */}
+          {/* Catch-all route inside MainLayout */}
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </AnimatePresence>
-  </Suspense>
+    </Suspense>
   );
 }
 

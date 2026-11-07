@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import { Menu, Search, RefreshCw, Folder, FolderOpen, ChevronDown } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
@@ -29,6 +30,21 @@ function getRepoBasename(path: string): string {
   const segments = normalized.split('/').filter(Boolean);
   return segments[segments.length - 1] || path;
 }
+
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
+};
+
+const PageFallback: React.FC = () => (
+  <div className="flex-1 flex items-center justify-center min-h-[200px]">
+    <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+      <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+      <span>Loading module...</span>
+    </div>
+  </div>
+);
 
 export const MainLayout: React.FC = () => {
   const location = useLocation();
@@ -318,8 +334,18 @@ export const MainLayout: React.FC = () => {
 
           {/* Dynamic Page Outlet */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-            <ErrorBoundary>
+            <ErrorBoundary resetKey={location.pathname}>
+              <Suspense fallback={<PageFallback />}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={location.pathname}
+                    className="flex-1 flex flex-col overflow-hidden"
+                    {...pageVariants}
+                  >
               <Outlet />
+                  </motion.div>
+                </AnimatePresence>
+              </Suspense>
             </ErrorBoundary>
           </div>
         </div>
