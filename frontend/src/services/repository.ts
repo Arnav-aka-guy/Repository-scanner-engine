@@ -189,8 +189,18 @@ export interface RepoOnboardingGuide {
   starting_points: string[];
 }
 
-export async function getOnboardingGuide(repoPath: string): Promise<RepoOnboardingGuide> {
-  return apiGet<RepoOnboardingGuide>('/repository/onboarding', { repo_path: repoPath });
+export async function getOnboardingGuide(
+  repoPath: string,
+  repositoryId?: number | null
+): Promise<RepoOnboardingGuide> {
+  const params: Record<string, string> = {};
+  if (repositoryId != null) {
+    params.repository_id = String(repositoryId);
+  }
+  if (repoPath) {
+    params.repo_path = repoPath;
+  }
+  return apiGet<RepoOnboardingGuide>('/repository/onboarding', params);
 }
 
 export async function getUserRepositories(): Promise<RepositoryListResponse> {

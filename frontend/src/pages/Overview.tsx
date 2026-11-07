@@ -113,7 +113,7 @@ export const Overview: React.FC = () => {
     if (!showWalkthrough && !onboardingGuide && activeRepository) {
       setWalkthroughLoading(true);
       try {
-        const guide = await getOnboardingGuide(activeRepository);
+        const guide = await getOnboardingGuide(activeRepository, activeRepositoryId);
         setOnboardingGuide(guide);
       } catch (err) {
         console.error('Failed to load onboarding guide', err);

@@ -24,7 +24,8 @@ export interface ImpactReport {
 }
 
 export interface ImpactRequest {
-  repo_path: string;
+  repo_path?: string;
+  repository_id?: number | null;
   target_files: string[];
   target_symbols?: string[];
 }
@@ -32,24 +33,30 @@ export interface ImpactRequest {
 export async function analyzeChangeImpact(
   repoPath: string,
   targetFiles: string[],
-  targetSymbols: string[] = []
+  targetSymbols: string[] = [],
+  repositoryId?: number | null
 ): Promise<ImpactReport> {
-  return apiPost<ImpactReport>('/impact/analyze', {
-    repo_path: repoPath,
+  const payload: Record<string, unknown> = {
     target_files: targetFiles,
     target_symbols: targetSymbols,
-  });
+  };
+  if (repositoryId != null) payload.repository_id = repositoryId;
+  if (repoPath) payload.repo_path = repoPath;
+  return apiPost<ImpactReport>('/impact/analyze', payload);
 }
 
 export async function exportChangeImpact(
   repoPath: string,
   targetFiles: string[],
   targetSymbols: string[] = [],
-  format = 'markdown'
+  format = 'markdown',
+  repositoryId?: number | null
 ): Promise<{ format: string; report: string }> {
-  return apiPost<{ format: string; report: string }>(`/impact/export?format=${format}`, {
-    repo_path: repoPath,
+  const payload: Record<string, unknown> = {
     target_files: targetFiles,
     target_symbols: targetSymbols,
-  });
+  };
+  if (repositoryId != null) payload.repository_id = repositoryId;
+  if (repoPath) payload.repo_path = repoPath;
+  return apiPost<{ format: string; report: string }>(`/impact/export?format=${format}`, payload);
 }

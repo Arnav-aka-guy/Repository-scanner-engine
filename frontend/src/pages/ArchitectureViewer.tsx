@@ -71,7 +71,7 @@ export const ArchitectureViewer: React.FC = () => {
   const abortRef = React.useRef<AbortController | null>(null);
 
   const runAnalysis = React.useCallback(async () => {
-    if (!repoPath) {
+    if (!repoPath && repoId == null) {
       setReport(null);
       setError(null);
       return;
@@ -83,17 +83,21 @@ export const ArchitectureViewer: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      const payload: Record<string, unknown> = {};
+      if (repoId != null) payload.repository_id = repoId;
+      if (repoPath) payload.repo_path = repoPath;
       const res = await apiPost<ArchitectureReport>(
         '/architecture/report',
-        { repo_path: repoPath, repository_id: repoId },
+        payload,
         { signal: controller.signal }
       );
       if (controller.signal.aborted) return;
       setReport(res);
       setExpandedLayers(new Set(Object.keys(res.layers)));
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (controller.signal.aborted) return;
-      setError(err?.message || 'Architecture analysis failed.');
+      const msg = err instanceof Error ? err.message : 'Architecture analysis failed.';
+      setError(msg);
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);

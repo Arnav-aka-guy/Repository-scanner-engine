@@ -4,7 +4,9 @@ import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph
 import { semanticSearch } from '../services/search';
 import { getChatHistory, clearChatHistoryApi } from '../services/chat';
 import { generateDocumentation } from '../services/documentation';
-import { listFiles, getFile } from '../services/repository';
+import { listFiles, getFile, getOnboardingGuide } from '../services/repository';
+import { analyzeChangeImpact, exportChangeImpact } from '../services/impact';
+import { runCodeReview } from '../services/review';
 
 describe('B7 & B8 Service Parameter Construction', () => {
   let capturedUrl: string | null = null;
@@ -96,5 +98,44 @@ describe('B7 & B8 Service Parameter Construction', () => {
 
     await getFile('src/index.ts', '/my/repo', 42);
     expect(capturedUrl).toContain('/repository/file/src/index.ts?repository_id=42');
+  });
+
+  it('getOnboardingGuide sends repository_id and repo_path query params', async () => {
+    await getOnboardingGuide('/my/repo', 42);
+    expect(capturedUrl).toContain('/repository/onboarding');
+    expect(capturedUrl).toContain('repository_id=42');
+    expect(capturedUrl).toContain('repo_path=%2Fmy%2Frepo');
+
+    await getOnboardingGuide('', 42);
+    expect(capturedUrl).toContain('/repository/onboarding?repository_id=42');
+  });
+
+  it('analyzeChangeImpact and exportChangeImpact send repository_id in body', async () => {
+    await analyzeChangeImpact('/my/repo', ['file.ts'], ['sym'], 42);
+    expect(capturedUrl).toContain('/impact/analyze');
+    let body = JSON.parse(capturedOptions?.body as string);
+    expect(body).toEqual({
+      target_files: ['file.ts'],
+      target_symbols: ['sym'],
+      repository_id: 42,
+      repo_path: '/my/repo',
+    });
+
+    await exportChangeImpact('/my/repo', ['file.ts'], ['sym'], 'markdown', 42);
+    expect(capturedUrl).toContain('/impact/export?format=markdown');
+    body = JSON.parse(capturedOptions?.body as string);
+    expect(body.repository_id).toBe(42);
+  });
+
+  it('runCodeReview sends repository_id in body', async () => {
+    await runCodeReview('/my/repo', 'diff...', false, 42);
+    expect(capturedUrl).toContain('/review/analyze');
+    const body = JSON.parse(capturedOptions?.body as string);
+    expect(body).toEqual({
+      diff_text: 'diff...',
+      use_llm: false,
+      repository_id: 42,
+      repo_path: '/my/repo',
+    });
   });
 });

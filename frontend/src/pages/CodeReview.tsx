@@ -57,7 +57,7 @@ export const CodeReview: React.FC = () => {
     setError(null);
     try {
       const diffToSend = inputMode === 'custom_diff' ? customDiff : undefined;
-      const res = await runCodeReview(repoPath || '.', diffToSend, useLlm);
+      const res = await runCodeReview(repoPath || '.', diffToSend, useLlm, repoId);
       if (controller.signal.aborted) return;
       setReport(res);
     } catch (err: unknown) {

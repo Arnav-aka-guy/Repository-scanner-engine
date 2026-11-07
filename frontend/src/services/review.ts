@@ -29,11 +29,14 @@ export interface CodeReviewResponse {
 export async function runCodeReview(
   repoPath: string,
   diffText?: string,
-  useLlm = false
+  useLlm = false,
+  repositoryId?: number | null
 ): Promise<CodeReviewResponse> {
-  return apiPost<CodeReviewResponse>('/review/analyze', {
-    repo_path: repoPath,
+  const payload: Record<string, unknown> = {
     diff_text: diffText || undefined,
     use_llm: useLlm,
-  });
+  };
+  if (repositoryId != null) payload.repository_id = repositoryId;
+  if (repoPath) payload.repo_path = repoPath;
+  return apiPost<CodeReviewResponse>('/review/analyze', payload);
 }

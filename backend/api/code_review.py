@@ -6,7 +6,7 @@ import subprocess
 from dataclasses import asdict
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +14,6 @@ from backend.api.dependencies import get_llm
 from backend.db.database import get_db
 from backend.llm.service import LLMService
 from backend.security.auth import get_current_user
-from backend.security.input_sanitizer import SanitizedRepoPath
 from backend.security.repo_auth import authorize_repository_access
 from backend.services.code_review import CodeReviewReport, get_code_review_service
 
@@ -26,7 +25,8 @@ router = APIRouter(prefix="/api/review", tags=["review"])
 class ReviewRequest(BaseModel):
     """Payload to trigger an automated code review."""
 
-    repo_path: str = Field(..., description="Repository root path")
+    repo_path: str | None = Field(default=None, description="Repository root path")
+    repository_id: int | None = Field(default=None, description="Optional repository database ID")
     diff_text: str | None = Field(default=None, description="Optional raw git diff or patch")
     use_llm: bool = Field(default=False, description="Whether to include LLM evaluation or run static-only")
 
@@ -53,8 +53,12 @@ async def analyze_code_review(
     db: AsyncSession = Depends(get_db),
 ) -> ReviewResponse:
     """Analyze changed code via git diff or repository working tree."""
-    sanitized = SanitizedRepoPath(path=body.repo_path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path)
+    ident = (
+        body.repository_id if body.repository_id is not None else (body.repo_path.strip() if body.repo_path else None)
+    )
+    if not ident:
+        raise HTTPException(status_code=400, detail="Either repo_path or repository_id must be provided.")
+    _, path = await authorize_repository_access(db, current_user, ident)
 
     diff_content = body.diff_text
     # If no diff is passed, try to extract git diff against HEAD in the repository

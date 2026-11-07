@@ -701,7 +701,8 @@ async def get_file(
 
 @router.get("/onboarding", response_model=RepoOnboardingGuide)
 async def get_onboarding_guide(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    repo_path: str | None = Query(default=None, description="Absolute path to the repository root"),
+    repository_id: int | None = Query(default=None, description="Optional repository database ID"),
     parser: ParserService = Depends(get_parser),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -709,8 +710,10 @@ async def get_onboarding_guide(
     """Generate a high-level developer onboarding guide grounded in repository structure."""
     from backend.security.repo_auth import authorize_repository_access
 
-    sanitized = SanitizedRepoPath(path=repo_path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path)
+    ident = repository_id if repository_id is not None else (repo_path.strip() if repo_path else None)
+    if not ident:
+        raise HTTPException(status_code=400, detail="Either repo_path or repository_id must be provided.")
+    _, path = await authorize_repository_access(db, current_user, ident)
 
     parsed_files = await parser.parse_repository(str(path))
     files = parser._scanner.get_files(str(path))

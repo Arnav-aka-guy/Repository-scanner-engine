@@ -67,7 +67,7 @@ export const ChangeImpact: React.FC = () => {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
-      const res = await analyzeChangeImpact(repoPath, [target], symbols);
+      const res = await analyzeChangeImpact(repoPath, [target], symbols, repoId);
       if (controller.signal.aborted) return;
       setReport(res);
     } catch (err: unknown) {
@@ -87,7 +87,8 @@ export const ChangeImpact: React.FC = () => {
         repoPath,
         report.target_files,
         report.target_symbols,
-        'markdown'
+        'markdown',
+        repoId
       );
       const blob = new Blob([data.report], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);

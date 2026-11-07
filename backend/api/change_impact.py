@@ -13,7 +13,6 @@ from backend.db.database import get_db
 from backend.graph.service import GraphService
 from backend.parser.service import ParserService
 from backend.security.auth import get_current_user
-from backend.security.input_sanitizer import SanitizedRepoPath
 from backend.security.repo_auth import authorize_repository_access
 from backend.services.change_impact import ChangeImpactReport, get_change_impact_service
 
@@ -25,7 +24,8 @@ router = APIRouter(prefix="/api/impact", tags=["impact"])
 class ImpactAnalysisRequest(BaseModel):
     """Payload to trigger change impact analysis."""
 
-    repo_path: str = Field(..., description="Repository root path")
+    repo_path: str | None = Field(default=None, description="Repository root path")
+    repository_id: int | None = Field(default=None, description="Optional repository database ID")
     target_files: list[str] = Field(..., min_length=1, description="List of modified or target files")
     target_symbols: list[str] = Field(default_factory=list, description="Optional list of changed symbols")
 
@@ -61,8 +61,12 @@ async def analyze_change_impact(
     db: AsyncSession = Depends(get_db),
 ) -> ImpactResponse:
     """Analyze change impact for modified files and symbols in a repository."""
-    sanitized = SanitizedRepoPath(path=body.repo_path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path)
+    ident = (
+        body.repository_id if body.repository_id is not None else (body.repo_path.strip() if body.repo_path else None)
+    )
+    if not ident:
+        raise HTTPException(status_code=400, detail="Either repo_path or repository_id must be provided.")
+    _, path = await authorize_repository_access(db, current_user, ident)
 
     try:
         parsed_files = await parser.parse_repository(str(path))
@@ -111,8 +115,12 @@ async def export_impact_report(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Generate and export a complete Change Impact report as Markdown or JSON."""
-    sanitized = SanitizedRepoPath(path=body.repo_path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path)
+    ident = (
+        body.repository_id if body.repository_id is not None else (body.repo_path.strip() if body.repo_path else None)
+    )
+    if not ident:
+        raise HTTPException(status_code=400, detail="Either repo_path or repository_id must be provided.")
+    _, path = await authorize_repository_access(db, current_user, ident)
 
     try:
         parsed_files = await parser.parse_repository(str(path))
