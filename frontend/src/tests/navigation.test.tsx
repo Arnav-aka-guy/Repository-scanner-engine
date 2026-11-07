@@ -8,6 +8,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 
 describe('Phase 1 Navigation & Shell Structure', () => {
   it('renders all required category headers and navigation items in Sidebar', () => {
@@ -139,5 +140,30 @@ describe('Phase 1 Navigation & Shell Structure', () => {
       root.unmount();
     });
     container.remove();
+  });
+
+  it('useRepoNavigate constructs scoped repo URLs when active, otherwise falls back to /app', () => {
+    let navigateResult = '';
+    function TestComponent() {
+      const { buildRepoUrl } = useRepoNavigate();
+      navigateResult = buildRepoUrl('graph');
+      return null;
+    }
+
+    useWorkspaceStore.setState({ activeRepositoryId: 42 });
+    renderToString(
+      <MemoryRouter initialEntries={['/app/repositories/42/explorer']}>
+        <TestComponent />
+      </MemoryRouter>
+    );
+    expect(navigateResult).toBe('/app/repositories/42/graph');
+
+    useWorkspaceStore.setState({ activeRepositoryId: null });
+    renderToString(
+      <MemoryRouter initialEntries={['/']}>
+        <TestComponent />
+      </MemoryRouter>
+    );
+    expect(navigateResult).toBe('/app');
   });
 });

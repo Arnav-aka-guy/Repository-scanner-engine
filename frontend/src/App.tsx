@@ -5,6 +5,7 @@ import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuthStore } from './stores/authStore';
+import { useWorkspaceStore } from './stores/workspaceStore';
 
 // Lazy-loaded pages for optimal initial bundle size (< 300KB)
 const Overview = lazy(() => import('./pages/Overview').then((m) => ({ default: m.Overview })));
@@ -44,6 +45,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
+};
+
+const LegacyRouteRedirect: React.FC<{ targetPage: string }> = ({ targetPage }) => {
+  const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
+  if (activeRepositoryId) {
+    return <Navigate to={`/app/repositories/${activeRepositoryId}/${targetPage}`} replace />;
+  }
+  return <Navigate to="/app" replace />;
 };
 
 function AnimatedRoutes() {
@@ -114,95 +123,18 @@ function AnimatedRoutes() {
             </ProtectedRoute>
           }
         >
-          {/* Direct Analysis Routes */}
-          <Route
-            path="/overview"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <Overview />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/explorer"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <RepositoryExplorer />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/graph"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <DependencyGraph />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/architecture"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <ArchitectureViewer />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/search"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <SemanticSearch />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/chat"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <AIChat />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/documentation"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <DocumentationGenerator />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/health-dashboard"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <HealthDashboard />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/impact"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <ChangeImpact />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/review"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <CodeReview />
-              </ErrorBoundary>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ErrorBoundary resetKey={location.pathname}>
-                <Settings />
-              </ErrorBoundary>
-            }
-          />
+          {/* Unscoped Direct Routes (Redirect to Canonical Scoped Routes or /app) */}
+          <Route path="/overview" element={<LegacyRouteRedirect targetPage="overview" />} />
+          <Route path="/explorer" element={<LegacyRouteRedirect targetPage="explorer" />} />
+          <Route path="/graph" element={<LegacyRouteRedirect targetPage="graph" />} />
+          <Route path="/architecture" element={<LegacyRouteRedirect targetPage="architecture" />} />
+          <Route path="/search" element={<LegacyRouteRedirect targetPage="search" />} />
+          <Route path="/chat" element={<LegacyRouteRedirect targetPage="chat" />} />
+          <Route path="/documentation" element={<LegacyRouteRedirect targetPage="documentation" />} />
+          <Route path="/health-dashboard" element={<LegacyRouteRedirect targetPage="health-dashboard" />} />
+          <Route path="/impact" element={<LegacyRouteRedirect targetPage="impact" />} />
+          <Route path="/review" element={<LegacyRouteRedirect targetPage="review" />} />
+          <Route path="/settings" element={<LegacyRouteRedirect targetPage="settings" />} />
 
           {/* Scoped Repository Routes: /app/repositories/:repositoryId/* */}
           <Route
@@ -298,9 +230,8 @@ function AnimatedRoutes() {
             }
           />
 
-          {/* Catch-all route inside MainLayout */}
-          <Route path="*" element={<NotFound />} />
         </Route>
+        {/* Single canonical catch-all route at root level */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

@@ -134,7 +134,7 @@ export const Login: React.FC = () => {
             </span>
             <button
               type="button"
-              onClick={() => navigate('/overview')}
+              onClick={() => navigate('/app')}
               style={{
                 padding: '6px 12px',
                 borderRadius: '4px',

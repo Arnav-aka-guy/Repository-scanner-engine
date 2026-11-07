@@ -91,8 +91,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
   const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
 
+  const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
   const repoMatch = location.pathname.match(/^\/app\/repositories\/([^/]+)/);
-  const repoPrefix = repoMatch ? `/app/repositories/${repoMatch[1]}` : '';
+  const currentRepoId = repoMatch ? repoMatch[1] : activeRepositoryId;
+  const repoPrefix = currentRepoId ? `/app/repositories/${currentRepoId}` : '';
 
   const repoName = activeRepository ? getRepoBasename(activeRepository) : null;
   const isScanning = scanStatus === 'scanning';
