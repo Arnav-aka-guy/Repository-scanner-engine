@@ -14,12 +14,12 @@ from backend.main import app
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
+    import contextlib
+
     from backend.security.rate_limiter import limiter
 
-    try:
+    with contextlib.suppress(Exception):
         limiter.reset()
-    except Exception:
-        pass
     with TestClient(app) as c:
         yield c
 
@@ -376,7 +376,9 @@ class TestGithubRepositoryDiskPath:
     def test_scan_user_repository_returns_202_and_job_id(self, client: TestClient, tmp_path: Path):
         """POST /api/repositories/{id}/scan must return 202 Accepted with a job_id."""
         email = f"user_scan_{tempfile.mktemp()[-6:]}@example.com"
-        reg = client.post("/api/auth/register", json={"name": "Scanner User", "email": email, "password": "password123!"})
+        reg = client.post(
+            "/api/auth/register", json={"name": "Scanner User", "email": email, "password": "password123!"}
+        )
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -409,9 +411,12 @@ class TestLocalModeRepositoryWorkflow:
         # Ensure local mode with auth disabled
         assert not settings.auth_enabled
 
-        # 1. List repositories with no token -> 200
+        # 1. List repositories with no token -> 200 and clean leftover test repositories
         list_resp = client.get("/api/repositories")
         assert list_resp.status_code == 200
+        for r in list_resp.json().get("repositories", []):
+            client.delete(f"/api/repositories/{r['id']}")
+        list_resp = client.get("/api/repositories")
         initial_count = list_resp.json()["count"]
 
         # 2. Create repository with no token -> 201
