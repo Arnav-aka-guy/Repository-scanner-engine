@@ -183,7 +183,7 @@ export const useAuthStore = create<AuthState>()(
         }
         set({ token: null, user: null, loginError: null });
         try {
-          useWorkspaceStore.getState().clearWorkspace();
+          useWorkspaceStore.getState().clearWorkspace({ silent: true });
         } catch {
           // Ignore if workspace store is not ready
         }

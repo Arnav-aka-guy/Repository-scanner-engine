@@ -91,7 +91,7 @@ interface WorkspaceState {
   loadPersistentChatHistory: () => Promise<void>;
   clearChatHistory: () => void;
   generateDocs: (format?: 'markdown' | 'html') => Promise<void>;
-  clearWorkspace: () => void;
+  clearWorkspace: (options?: { silent?: boolean }) => void;
   selectLocalDirectory: () => Promise<void>;
   isRepoModalOpen: boolean;
   setRepoModalOpen: (open: boolean) => void;
@@ -696,7 +696,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
       },
 
-      clearWorkspace: () => {
+      clearWorkspace: (options?: { silent?: boolean }) => {
         set({
           activeRepository: null,
           activeRepositoryId: null,
@@ -716,11 +716,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           chatMessagesByRepo: {},
           generatedDocs: null,
         });
-        useToastStore.getState().addToast({
-          type: 'info',
-          title: 'Workspace Cleared',
-          message: 'All scan data, graphs, and chat history have been reset.',
-        });
+        if (!options?.silent) {
+          useToastStore.getState().addToast({
+            type: 'info',
+            title: 'Workspace Cleared',
+            message: 'All scan data, graphs, and chat history have been reset.',
+          });
+        }
       },
 
       setRepoModalOpen: (open: boolean) => {
