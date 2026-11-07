@@ -13,9 +13,7 @@ import {
   GitFork,
   LogOut,
   AlertCircle,
-  CheckCircle,
   Loader2,
-  ChevronRight,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -30,18 +28,20 @@ import {
 import { SavedRepository } from '../types/repository';
 import { AddRepositoryModal } from '../components/AddRepositoryModal';
 
+interface ActiveScan {
+  jobId: string;
+  status: string;
+  progress: number;
+  message: string;
+  error?: string;
+}
+
 export const MyRepositories: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout, token, authEnabled } = useAuthStore();
-  const { scanRepo, activeRepository, openRepository } = useWorkspaceStore();
+  const { openRepository } = useWorkspaceStore();
 
-  interface ActiveScan {
-    jobId: string;
-    status: string;
-    progress: number;
-    message: string;
-    error?: string;
-  }
+
 
   const [repositories, setRepositories] = useState<SavedRepository[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,9 +53,10 @@ export const MyRepositories: React.FC = () => {
   const activeSubsRef = React.useRef<Map<number, () => void>>(new Map());
 
   useEffect(() => {
+    const subs = activeSubsRef.current;
     return () => {
-      activeSubsRef.current.forEach((cleanup) => cleanup());
-      activeSubsRef.current.clear();
+      subs.forEach((cleanup) => cleanup());
+      subs.clear();
     };
   }, []);
 
@@ -68,8 +69,9 @@ export const MyRepositories: React.FC = () => {
       if (typeof res.max_limit === 'number') {
         setMaxLimit(res.max_limit);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch repositories.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch repositories.';
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -211,13 +213,14 @@ export const MyRepositories: React.FC = () => {
       } catch {
         startPolling();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to trigger scan.';
       setRepositories((prev) =>
         prev.map((r) => (r.id === repo.id ? { ...r, status: 'FAILED' } : r))
       );
       setActiveScans((prev) => ({
         ...prev,
-        [repo.id]: { jobId: '', status: 'failed', progress: 0, message: '', error: err.message || 'Failed to trigger scan.' },
+        [repo.id]: { jobId: '', status: 'failed', progress: 0, message: '', error: msg },
       }));
     }
   };
@@ -229,8 +232,9 @@ export const MyRepositories: React.FC = () => {
     try {
       await deleteUserRepository(repo.id);
       setRepositories((prev) => prev.filter((r) => r.id !== repo.id));
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete repository.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete repository.';
+      setError(msg);
     }
   };
 

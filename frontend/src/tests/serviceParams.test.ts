@@ -15,13 +15,13 @@ describe('B7 & B8 Service Parameter Construction', () => {
   beforeEach(() => {
     capturedUrl = null;
     capturedOptions = undefined;
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any, options?: RequestInit) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: RequestInfo | URL, options?: RequestInit) => {
       capturedUrl = String(url);
       capturedOptions = options;
-      return {
-        ok: true,
-        json: async () => ({}),
-      } as any;
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     });
   });
 

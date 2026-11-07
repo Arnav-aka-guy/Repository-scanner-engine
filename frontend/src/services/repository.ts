@@ -18,9 +18,9 @@ export async function listFiles(
   repoPath?: string | null,
   repoId?: number | null
 ): Promise<FileInfo[]> {
-  const params: Record<string, any> = {};
+  const params: Record<string, string> = {};
   if (repoId != null) {
-    params.repository_id = repoId;
+    params.repository_id = String(repoId);
   } else if (repoPath) {
     params.repo_path = repoPath;
   }

@@ -7,7 +7,7 @@ import * as repoService from '../services/repository';
 import { useAuthStore } from '../stores/authStore';
 import { SavedRepository } from '../types/repository';
 
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('B1 MyRepositories scan tracking', () => {
   beforeEach(() => {

@@ -9,18 +9,12 @@ import {
   Share2,
   Tv,
   FileText,
-  Activity,
   AlertTriangle,
   CheckCircle2,
   Clock,
   Compass,
   ArrowRight,
-  Shield,
-  Layers,
-  Code2,
-  HelpCircle,
   FolderOpen,
-  BookOpen,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { apiGet } from '../services/api';
@@ -40,7 +34,6 @@ import {
   SectionHeader,
   FilePath,
   LoadingState,
-  Divider,
 } from '../design-system/primitives';
 
 // Helper to format relative time
@@ -87,7 +80,6 @@ export const Overview: React.FC = () => {
   const selectLocalDirectory = useWorkspaceStore((s) => s.selectLocalDirectory);
   const recentRepositories = useWorkspaceStore((s) => s.recentRepositories);
   const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
-  const cachedHealthScore = useWorkspaceStore((s) => s.cachedHealthScore);
   const setCachedHealthScore = useWorkspaceStore((s) => s.setCachedHealthScore);
 
   const [inputPath, setInputPath] = useState('');
@@ -160,9 +152,10 @@ export const Overview: React.FC = () => {
       }
       if (td) setTechDebt(td);
       if (dr) setDepRisk(dr);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!useWorkspaceStore.getState().cachedHealthScore[activeRepository]) {
-        setHealthError(err?.message || 'Failed to calculate health metrics.');
+        const msg = err instanceof Error ? err.message : 'Failed to calculate health metrics.';
+        setHealthError(msg);
       }
     } finally {
       setHealthLoading(false);
@@ -1176,7 +1169,7 @@ export const Overview: React.FC = () => {
               const pct = Math.round((dim.score / (dim.max_score || 20)) * 100);
               const hasDeductions = dim.deductions && dim.deductions.length > 0;
               const explanation = hasDeductions
-                ? (typeof dim.deductions[0] === 'string' ? dim.deductions[0] : (dim.deductions[0] as any).reason)
+                ? (typeof dim.deductions[0] === 'string' ? dim.deductions[0] : (dim.deductions[0] as { reason?: string })?.reason || 'Criteria assessed')
                 : 'Meets standard maintainability criteria';
 
               return (
