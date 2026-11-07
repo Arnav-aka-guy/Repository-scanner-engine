@@ -182,7 +182,7 @@ describe('useWorkspaceStore', () => {
           }),
         } as any;
       }
-      if (urlStr.includes('/repository/scan/async')) {
+      if (urlStr.includes('/repository/scan/async') || urlStr.includes('/scan')) {
         return {
           ok: true,
           json: async () => ({
@@ -222,6 +222,68 @@ describe('useWorkspaceStore', () => {
     expect(state.activeRepositoryId).toBe(88);
     expect(state.activeRepositoryId).not.toBe(42);
     expect(state.activeRepository).toBe('/new/fresh-repo');
+
+    fetchMock.mockRestore();
+  });
+  it('A3: scanRepo calls /api/repositories/{id}/scan when activeRepositoryId is known', async () => {
+    const capturedUrls: string[] = [];
+    const completedResult = {
+      path: '/scoped/project',
+      name: 'scoped-project',
+      total_files: 5,
+      total_lines: 200,
+      languages: { TypeScript: 200 },
+      structure: [],
+      files: [],
+      frameworks: [],
+      dependencies: [],
+      scan_duration_ms: 100,
+    };
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url: any) => {
+      const urlStr = String(url);
+      capturedUrls.push(urlStr);
+      if (urlStr.includes('/repository/scan/jobs/')) {
+        return {
+          ok: true,
+          json: async () => ({
+            job_id: 'job-scoped',
+            status: 'completed',
+            progress: 1.0,
+            message: 'Completed',
+            result: completedResult,
+          }),
+        } as any;
+      }
+      if (urlStr.includes('/repositories/42/scan')) {
+        return {
+          ok: true,
+          json: async () => ({
+            job_id: 'job-scoped',
+            status: 'pending',
+            progress: 0.1,
+            message: 'Queued',
+            repository_id: 42,
+          }),
+        } as any;
+      }
+      if (urlStr.includes('/repository/files')) {
+        return {
+          ok: true,
+          json: async () => [],
+        } as any;
+      }
+      return {
+        ok: true,
+        json: async () => ({}),
+      } as any;
+    });
+
+    // Provide repoId 42 directly to scanRepo
+    await useWorkspaceStore.getState().scanRepo('/scoped/project', 42);
+
+    expect(capturedUrls.some((u) => u.includes('/repositories/42/scan'))).toBe(true);
+    expect(capturedUrls.some((u) => u.includes('/repository/scan/async'))).toBe(false);
 
     fetchMock.mockRestore();
   });

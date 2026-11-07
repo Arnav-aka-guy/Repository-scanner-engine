@@ -6,6 +6,7 @@ import { AnalysisResult } from '../types/graph';
 import {
   scanGitHubRepository,
   scanRepositoryAsync,
+  scanUserRepository,
   getScanJobStatus,
   cancelScanJob,
   subscribeScanEvents,
@@ -420,11 +421,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
           let info: RepositoryInfo;
 
-          if (isGitHub) {
+          if (isGitHub && resolvedRepoId == null) {
             info = await scanGitHubRepository(normInputPath);
           } else {
-            // Queue async background job with SSE progress streaming and polling fallback
-            const job = await scanRepositoryAsync(normInputPath);
+            // Queue async background job with SSE progress streaming and polling fallback.
+            // When repository_id is known, use the canonical /api/repositories/{id}/scan endpoint;
+            // fall back to path-based scanRepositoryAsync only when no database ID exists.
+            const job =
+              resolvedRepoId != null
+                ? await scanUserRepository(resolvedRepoId)
+                : await scanRepositoryAsync(normInputPath);
             set({ currentScanJobId: job.job_id });
             info = await new Promise<RepositoryInfo>((resolve, reject) => {
               let settled = false;
