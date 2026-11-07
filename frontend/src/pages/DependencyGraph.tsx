@@ -79,6 +79,13 @@ export const DependencyGraph: React.FC = () => {
   const [impactResult, setImpactResult] = useState<any | null>(null);
   const [impactLoading, setImpactLoading] = useState(false);
 
+  const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
+
+  useEffect(() => {
+    setSelectedNode(null);
+    setImpactResult(null);
+  }, [repoPath, repoId]);
+
   useEffect(() => {
     if (repoPath) {
       fetchGraph(activeType);

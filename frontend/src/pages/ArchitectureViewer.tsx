@@ -60,6 +60,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 export const ArchitectureViewer: React.FC = () => {
   const navigate = useNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
+  const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
 
   const [loading, setLoading] = useState(false);
@@ -67,26 +68,45 @@ export const ArchitectureViewer: React.FC = () => {
   const [report, setReport] = useState<ArchitectureReport | null>(null);
   const [expandedLayers, setExpandedLayers] = useState<Set<string>>(new Set());
 
-  const runAnalysis = async () => {
-    if (!repoPath) return;
+  const abortRef = React.useRef<AbortController | null>(null);
+
+  const runAnalysis = React.useCallback(async () => {
+    if (!repoPath) {
+      setReport(null);
+      setError(null);
+      return;
+    }
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
-      const res = await apiPost<ArchitectureReport>('/architecture/report', { repo_path: repoPath });
+      const res = await apiPost<ArchitectureReport>(
+        '/architecture/report',
+        { repo_path: repoPath, repository_id: repoId },
+        { signal: controller.signal }
+      );
+      if (controller.signal.aborted) return;
       setReport(res);
       setExpandedLayers(new Set(Object.keys(res.layers)));
     } catch (err: any) {
-      setError(err.message || 'Architecture analysis failed.');
+      if (controller.signal.aborted) return;
+      setError(err?.message || 'Architecture analysis failed.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, [repoPath, repoId]);
 
   useEffect(() => {
-    if (repoPath) {
-      runAnalysis();
-    }
-  }, [repoPath]);
+    runAnalysis();
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [runAnalysis]);
 
   const toggleLayer = (layer: string) => {
     setExpandedLayers((prev) => {

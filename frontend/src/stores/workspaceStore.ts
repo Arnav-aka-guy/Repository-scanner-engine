@@ -462,10 +462,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       loadFileDetail: async (path: string) => {
+        const targetRepoId = get().activeRepositoryId;
+        const targetRepoPath = get().activeRepository;
         set({ fileLoading: true });
         try {
-          const repoPath = get().activeRepository || '';
-          const detail = await getFile(path, repoPath, get().activeRepositoryId);
+          const detail = await getFile(path, targetRepoPath || '', targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== targetRepoPath) return;
           set({
             selectedFileDetail: {
               content: detail.content,
@@ -475,6 +477,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             fileLoading: false,
           });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== targetRepoPath) return;
           const msg = err instanceof Error ? err.message : 'Unknown error';
           set({ fileLoading: false, scanError: `Failed to read file: ${msg}` });
         }
@@ -482,20 +485,23 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       fetchGraph: async (type: 'dependency' | 'call' | 'symbol') => {
         const repoPath = get().activeRepository;
+        const targetRepoId = get().activeRepositoryId;
         if (!repoPath) return;
         set({ graphLoading: true, graphError: null, graphType: type });
         try {
           const { getSymbolGraph } = await import('../services/graph');
           let data;
           if (type === 'dependency') {
-            data = await getDependencyGraph(repoPath, get().activeRepositoryId);
+            data = await getDependencyGraph(repoPath, targetRepoId);
           } else if (type === 'call') {
-            data = await getCallGraph(repoPath, get().activeRepositoryId);
+            data = await getCallGraph(repoPath, targetRepoId);
           } else {
-            data = await getSymbolGraph(repoPath, get().activeRepositoryId);
+            data = await getSymbolGraph(repoPath, targetRepoId);
           }
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           set({ graphData: data, graphLoading: false });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           const msg = err instanceof Error ? err.message : `Failed to fetch ${type} graph.`;
           set({ graphError: msg, graphLoading: false });
         }
@@ -503,12 +509,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       runAnalysis: async () => {
         const repoPath = get().activeRepository;
+        const targetRepoId = get().activeRepositoryId;
         if (!repoPath) return;
         set({ graphLoading: true, graphError: null });
         try {
-          const result = await getAnalysis(repoPath, get().activeRepositoryId);
+          const result = await getAnalysis(repoPath, targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           set({ analysisResult: result, graphLoading: false });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           const msg = err instanceof Error ? err.message : 'Failed to analyze repository.';
           set({ graphError: msg, graphLoading: false });
         }
@@ -516,16 +525,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       searchCode: async (query: string, topK: number = 10) => {
         if (!query) return;
+        const targetRepoId = get().activeRepositoryId;
+        const repoPath = get().activeRepository || undefined;
         set({ searchLoading: true, searchError: null, lastSearchQuery: query });
         try {
-          const repoPath = get().activeRepository || undefined;
-          const response: SearchResponse = await semanticSearch(query, topK, repoPath, get().activeRepositoryId);
+          const response: SearchResponse = await semanticSearch(query, topK, repoPath, targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId) return;
           set({
             searchResults: response.results,
             searchTotal: response.total,
             searchLoading: false,
           });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId) return;
           const msg = err instanceof Error ? err.message : 'Search failed.';
           set({ searchError: msg, searchLoading: false });
         }
@@ -627,9 +639,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       loadPersistentChatHistory: async () => {
         const repoPath = get().activeRepository;
+        const targetRepoId = get().activeRepositoryId;
         if (!repoPath) return;
         try {
-          const history = await getChatHistory(repoPath, get().activeConversationId || undefined, get().activeRepositoryId);
+          const history = await getChatHistory(repoPath, get().activeConversationId || undefined, targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           if (history && history.length > 0) {
             const msgs: ChatMessage[] = [];
             history.forEach((h, idx) => {
@@ -655,6 +669,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             }));
           }
         } catch (err) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           console.warn('Could not load persistent chat history:', err);
         }
       },
@@ -675,10 +690,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       generateDocs: async (format: 'markdown' | 'html' = 'markdown') => {
         const repoPath = get().activeRepository;
+        const targetRepoId = get().activeRepositoryId;
         if (!repoPath) return;
         set({ docsLoading: true, docsError: null });
         try {
-          const docs = await generateDocumentation(repoPath, format, get().activeRepositoryId);
+          const docs = await generateDocumentation(repoPath, format, targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           set({ generatedDocs: docs, docsLoading: false });
           useToastStore.getState().addToast({
             type: 'success',
@@ -686,6 +703,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             message: `${docs.modules || 0} module references generated.`,
           });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           const msg = err instanceof Error ? err.message : 'Failed to generate docs.';
           set({ docsError: msg, docsLoading: false });
           useToastStore.getState().addToast({

@@ -153,6 +153,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 export const SemanticSearch: React.FC = () => {
   const navigate = useNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
+  const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
   const searchResultsFromStore = useWorkspaceStore((s) => s.searchResults);
   const lastSearchQuery = useWorkspaceStore((s) => s.lastSearchQuery);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
@@ -162,6 +163,16 @@ export const SemanticSearch: React.FC = () => {
   const [searchResponse, setSearchResponse] = useState<SearchResponse | null>(null);
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+
+  const abortRef = React.useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setSearchResponse(null);
+    setError(null);
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [repoPath, repoId]);
 
   // Sync if pre-seeded from workspaceStore
   useEffect(() => {
@@ -179,11 +190,16 @@ export const SemanticSearch: React.FC = () => {
       setError('Please select and scan a repository first.');
       return;
     }
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     setExpandedIndices(new Set());
     try {
-      const response = await semanticSearch(query, 15, repoPath);
+      const response = await semanticSearch(query, 15, repoPath, repoId);
+      if (controller.signal.aborted) return;
       setSearchResponse(response);
       // Sync into workspaceStore
       useWorkspaceStore.setState({
@@ -192,9 +208,12 @@ export const SemanticSearch: React.FC = () => {
         lastSearchQuery: query,
       });
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       setError(err.message || 'Semantic search request failed.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   };
 

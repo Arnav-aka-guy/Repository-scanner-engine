@@ -20,6 +20,7 @@ import { Button, Panel as Card, Badge, FilePath } from '../design-system/primiti
 
 export const CodeReview: React.FC = () => {
   const repoPath = useWorkspaceStore((s) => s.activeRepository);
+  const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
 
   const [inputMode, setInputMode] = useState<'working_tree' | 'custom_diff'>('working_tree');
   const [customDiff, setCustomDiff] = useState<string>('');
@@ -27,6 +28,16 @@ export const CodeReview: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<CodeReviewResponse | null>(null);
+
+  const abortRef = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => {
+    setReport(null);
+    setError(null);
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [repoPath, repoId]);
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -38,16 +49,24 @@ export const CodeReview: React.FC = () => {
       return;
     }
 
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
       const diffToSend = inputMode === 'custom_diff' ? customDiff : undefined;
       const res = await runCodeReview(repoPath || '.', diffToSend, useLlm);
+      if (controller.signal.aborted) return;
       setReport(res);
     } catch (err: unknown) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : 'Code review failed.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   };
 

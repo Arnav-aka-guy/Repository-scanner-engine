@@ -18,6 +18,7 @@ import { Button, Badge, Panel as Card, FilePath } from '../design-system/primiti
 
 export const ChangeImpact: React.FC = () => {
   const repoPath = useWorkspaceStore((s) => s.activeRepository);
+  const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
   const files = useWorkspaceStore((s) => s.files);
 
   const [selectedFile, setSelectedFile] = useState<string>(files[0]?.path || '');
@@ -28,6 +29,17 @@ export const ChangeImpact: React.FC = () => {
   const [report, setReport] = useState<ImpactReport | null>(null);
   const [copiedTestCmd, setCopiedTestCmd] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'direct' | 'indirect' | 'consumers' | 'tests'>('direct');
+
+  const abortRef = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => {
+    setReport(null);
+    setError(null);
+    setSelectedFile(files[0]?.path || '');
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [repoPath, repoId]);
 
   const filteredFiles = files.filter((f) =>
     f.path.toLowerCase().includes(searchTerm.toLowerCase())
@@ -44,6 +56,10 @@ export const ChangeImpact: React.FC = () => {
       return;
     }
 
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
@@ -52,11 +68,15 @@ export const ChangeImpact: React.FC = () => {
         .map((s) => s.trim())
         .filter(Boolean);
       const res = await analyzeChangeImpact(repoPath, [target], symbols);
+      if (controller.signal.aborted) return;
       setReport(res);
     } catch (err: unknown) {
+      if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : 'Change impact analysis failed.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   };
 
