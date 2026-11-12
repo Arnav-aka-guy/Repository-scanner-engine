@@ -7,17 +7,19 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.llm.exceptions import ProviderHTTPError
 from backend.services.system_design import service as sd_service
 from backend.services.system_design.builder import build_diagram
-from backend.services.system_design.enricher import build_prompt, parse_json_reply
+from backend.services.system_design.enricher import SYSTEM_PROMPT, build_prompt, parse_json_reply
 from backend.services.system_design.facts import collect_repo_facts
 from backend.services.system_design.mermaid import to_mermaid
 from backend.services.system_design.schema import MAX_NODES, sanitize_diagram
-from backend.services.system_design.service import SystemDesignService
+from backend.services.system_design.service import SystemDesignService, default_llm_factory
 
 # ── fixtures ────────────────────────────────────────────────────────────
 
@@ -74,14 +76,29 @@ def sample_repo(tmp_path: Path) -> Path:
 
 
 class FakeLLM:
-    def __init__(self, reply: str | Exception) -> None:
+    def __init__(self, reply: str | Exception | list[str | Exception]) -> None:
         self.reply = reply
         self.calls = 0
         self.last_prompt = ""
+        self.extra_bodies: list[dict | None] = []
 
-    async def generate(self, prompt: str, system_prompt: str | None = None, temperature: float = 0.7) -> str:
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        *,
+        extra_body: dict | None = None,
+        model: str | None = None,
+    ) -> str:
         self.calls += 1
         self.last_prompt = prompt
+        self.extra_bodies.append(extra_body)
+        if isinstance(self.reply, list):
+            item = self.reply[min(self.calls - 1, len(self.reply) - 1)]
+            if isinstance(item, Exception):
+                raise item
+            return item
         if isinstance(self.reply, Exception):
             raise self.reply
         return self.reply
@@ -325,3 +342,268 @@ def test_api_other_user_cannot_generate(client: TestClient, sample_repo: Path) -
     ).json()["id"]
     resp = client.post("/api/system-design/generate", headers=other, json={"repository_id": repo_id})
     assert resp.status_code in (403, 404)
+
+
+# ── Step 4: Provider chain, rate limits, and fallback tests ─────────────
+
+
+def test_prompt_and_system_prompt_length_under_12k_chars(sample_repo: Path) -> None:
+    """4a: Total length of facts prompt and system prompt is under 12,000 characters."""
+    facts = collect_repo_facts(sample_repo)
+    draft = build_diagram(facts, "overview")
+    prompt = build_prompt(facts, draft)
+    total_len = len(prompt) + len(SYSTEM_PROMPT)
+    assert total_len < 12_000, f"Expected < 12000 chars, got {total_len}"
+
+
+@pytest.mark.asyncio
+async def test_chain_groq_succeeds_first_time(sample_repo: Path, tmp_path: Path) -> None:
+    """1. Groq answers first time -> generated_by starts with groq:, OpenRouter is never called."""
+    groq_llm = FakeLLM(GOOD_REPLY)
+    openrouter_llm = FakeLLM(RuntimeError("should not be called"))
+    chain = [
+        (groq_llm, "groq:openai/gpt-oss-120b", {}, "groq"),
+        (openrouter_llm, "openrouter:openai/gpt-oss-120b:free", {}, "openrouter"),
+    ]
+    svc = SystemDesignService(tmp_path / "cache", llm_factory=lambda: chain)
+    result = await svc.generate(sample_repo, "overview")
+
+    assert result["generated_by"].startswith("groq:")
+    assert groq_llm.calls == 1
+    assert openrouter_llm.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_chain_groq_429_retry_after_succeeds_without_openrouter(sample_repo: Path, tmp_path: Path) -> None:
+    """2. Groq returns 429 with retry-after: 1, then succeeds -> one retry with sleep(1), no OpenRouter call."""
+    groq_llm = FakeLLM(
+        [
+            ProviderHTTPError(429, "rate limit exceeded", retry_after=1.0),
+            GOOD_REPLY,
+        ]
+    )
+    openrouter_llm = FakeLLM(RuntimeError("should not be called"))
+    chain = [
+        (groq_llm, "groq:openai/gpt-oss-120b", {}, "groq"),
+        (openrouter_llm, "openrouter:openai/gpt-oss-120b:free", {}, "openrouter"),
+    ]
+    svc = SystemDesignService(tmp_path / "cache", llm_factory=lambda: chain)
+
+    with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        result = await svc.generate(sample_repo, "overview")
+        mock_sleep.assert_awaited_once_with(1.0)
+
+    assert result["generated_by"].startswith("groq:")
+    assert groq_llm.calls == 2
+    assert openrouter_llm.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_chain_groq_429_twice_openrouter_answers(sample_repo: Path, tmp_path: Path) -> None:
+    """3. Groq returns 429 twice -> OpenRouter answers -> generated_by starts with openrouter:."""
+    groq_llm = FakeLLM(
+        [
+            ProviderHTTPError(429, "rate limit exceeded", retry_after=1.0),
+            ProviderHTTPError(429, "still rate limited", retry_after=1.0),
+        ]
+    )
+    openrouter_llm = FakeLLM(GOOD_REPLY)
+    chain = [
+        (groq_llm, "groq:openai/gpt-oss-120b", {}, "groq"),
+        (openrouter_llm, "openrouter:openai/gpt-oss-120b:free", {}, "openrouter"),
+    ]
+    svc = SystemDesignService(tmp_path / "cache", llm_factory=lambda: chain)
+
+    with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        result = await svc.generate(sample_repo, "overview")
+        assert mock_sleep.await_count == 1
+
+    assert result["generated_by"].startswith("openrouter:")
+    assert groq_llm.calls == 2
+    assert openrouter_llm.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_chain_groq_413_no_retry_openrouter_tried(sample_repo: Path, tmp_path: Path) -> None:
+    """4. Groq returns 413 -> no retry on Groq -> OpenRouter is tried."""
+    groq_llm = FakeLLM(ProviderHTTPError(413, "payload too large"))
+    openrouter_llm = FakeLLM(GOOD_REPLY)
+    chain = [
+        (groq_llm, "groq:openai/gpt-oss-120b", {}, "groq"),
+        (openrouter_llm, "openrouter:openai/gpt-oss-120b:free", {}, "openrouter"),
+    ]
+    svc = SystemDesignService(tmp_path / "cache", llm_factory=lambda: chain)
+
+    with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+        result = await svc.generate(sample_repo, "overview")
+        mock_sleep.assert_not_called()
+
+    assert result["generated_by"].startswith("openrouter:")
+    assert groq_llm.calls == 1
+    assert openrouter_llm.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_chain_groq_400_response_format_retried_once_without_it(sample_repo: Path, tmp_path: Path) -> None:
+    """5. Groq returns 400 because of response_format -> retried once without it -> success."""
+    call_count = 0
+
+    class FormatSensitiveFakeLLM:
+        async def generate(
+            self,
+            prompt: str,
+            system_prompt: str | None = None,
+            temperature: float = 0.7,
+            *,
+            extra_body: dict | None = None,
+            model: str | None = None,
+        ) -> str:
+            nonlocal call_count
+            call_count += 1
+            if extra_body and "response_format" in extra_body:
+                raise ProviderHTTPError(400, "response_format is not supported for this model")
+            return GOOD_REPLY
+
+    groq_llm = FormatSensitiveFakeLLM()
+    chain = [
+        (
+            groq_llm,
+            "groq:openai/gpt-oss-120b",
+            {"max_completion_tokens": 2500, "reasoning_effort": "low", "response_format": {"type": "json_object"}},
+            "groq",
+        )
+    ]
+    svc = SystemDesignService(tmp_path / "cache", llm_factory=lambda: chain)
+    result = await svc.generate(sample_repo, "overview")
+
+    assert result["generated_by"].startswith("groq:")
+    assert call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_chain_both_fail_gives_code_analysis_warning_http_200(
+    client: TestClient, sample_repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """6. Both fail -> code-analysis diagram plus warning, and no exception reaches the API (HTTP 200)."""
+    groq_llm = FakeLLM(ProviderHTTPError(429, "rate limited"))
+    openrouter_llm = FakeLLM(ProviderHTTPError(500, "openrouter service down"))
+    chain = [
+        (groq_llm, "groq:openai/gpt-oss-120b", {}, "groq"),
+        (openrouter_llm, "openrouter:openai/gpt-oss-120b:free", {}, "openrouter"),
+    ]
+    svc = SystemDesignService(tmp_path / "sd-cache-both-fail", llm_factory=lambda: chain)
+
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        result = await svc.generate(sample_repo, "overview")
+
+    assert result["generated_by"] == "analysis"
+    assert any("over its free limit right now" in w for w in result["warnings"])
+
+    # Test via API endpoint
+    monkeypatch.setattr(sd_service, "_service", svc)
+    headers = _register(client, "RateLimitedUser")
+    created = client.post("/api/repositories", headers=headers, json={"name": "shop", "source_path": str(sample_repo)})
+    repo_id = created.json()["id"]
+
+    with patch("asyncio.sleep", new_callable=AsyncMock):
+        resp = client.post("/api/system-design/generate", headers=headers, json={"repository_id": repo_id})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["generated_by"] == "analysis"
+    assert any("over its free limit right now" in w for w in data["warnings"])
+
+
+@pytest.mark.asyncio
+async def test_chain_only_openrouter_key_set(
+    sample_repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """7. Only OPENROUTER_API_KEY is set (no Groq key) -> OpenRouter is used."""
+    from backend.core.config import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "groq_api_key", "")
+    monkeypatch.setattr(settings, "openrouter_api_key", "sk-or-test-key")
+
+    factory_res = default_llm_factory()
+    assert isinstance(factory_res, list)
+    assert len(factory_res) == 1
+    llm_instance, name, extra, ptype = factory_res[0]
+    assert name.startswith("openrouter:")
+    assert ptype == "openrouter"
+
+    fake_or = FakeLLM(GOOD_REPLY)
+    svc = SystemDesignService(
+        tmp_path / "cache",
+        llm_factory=lambda: [(fake_or, "openrouter:openai/gpt-oss-120b:free", {}, "openrouter")],
+    )
+    result = await svc.generate(sample_repo, "overview")
+    assert result["generated_by"].startswith("openrouter:")
+    assert fake_or.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_chain_neither_key_set(sample_repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """8. Neither key is set -> code-analysis diagram with the existing 'not set' warning."""
+    from backend.core.config import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "groq_api_key", "")
+    monkeypatch.setattr(settings, "openrouter_api_key", "")
+
+    factory_res = default_llm_factory()
+    assert isinstance(factory_res, tuple)
+    assert factory_res[0] is None
+    assert "GROQ_API_KEY is not set" in factory_res[1]
+
+    svc = SystemDesignService(tmp_path / "cache", llm_factory=default_llm_factory)
+    result = await svc.generate(sample_repo, "overview")
+    assert result["generated_by"] == "analysis"
+    assert any("GROQ_API_KEY is not set" in w for w in result["warnings"])
+
+
+@pytest.mark.asyncio
+async def test_groq_request_body_contains_options_chat_does_not() -> None:
+    """9. Groq request body for system design contains max_completion_tokens, reasoning_effort, and response_format; chat does not."""
+    from backend.llm.groq import GroqProvider
+
+    provider = GroqProvider(api_key="sk-test-key", model="openai/gpt-oss-120b")
+    captured_payloads: list[dict] = []
+
+    async def mock_post(url, json=None, headers=None):
+        captured_payloads.append(dict(json))
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
+        return resp
+
+    with patch.object(provider, "_get_client") as mock_client_factory:
+        mock_client = AsyncMock()
+        mock_client.post = mock_post
+        mock_client_factory.return_value = mock_client
+
+        # 1. System design call path with extra_body
+        sys_design_extra = {
+            "max_completion_tokens": 2500,
+            "reasoning_effort": "low",
+            "response_format": {"type": "json_object"},
+        }
+        await provider.generate("Design prompt", extra_body=sys_design_extra)
+
+        # 2. Chat call path (standard generate without extra_body)
+        await provider.generate("Chat prompt", system_prompt="You are a helpful assistant")
+
+    assert len(captured_payloads) == 2
+    sd_payload = captured_payloads[0]
+    chat_payload = captured_payloads[1]
+
+    # System design payload checks
+    assert sd_payload["max_completion_tokens"] == 2500
+    assert sd_payload["reasoning_effort"] == "low"
+    assert sd_payload["response_format"] == {"type": "json_object"}
+
+    # Chat payload checks: must NOT have system design options
+    assert "max_completion_tokens" not in chat_payload
+    assert "reasoning_effort" not in chat_payload
+    assert "response_format" not in chat_payload
+    assert chat_payload["messages"][0]["content"] == "You are a helpful assistant"

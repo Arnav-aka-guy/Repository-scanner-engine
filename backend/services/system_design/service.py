@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from backend.llm.exceptions import ProviderHTTPError
 from backend.services.system_design.builder import build_diagram
 from backend.services.system_design.enricher import TextGenerator, enrich_with_llm
 from backend.services.system_design.facts import collect_repo_facts
@@ -113,29 +114,174 @@ class SystemDesignService:
             ai_available = False
 
             if use_ai:
-                llm, name_or_reason = self._llm_factory()
-                if llm is None:
-                    warnings.append(f"{name_or_reason} Showing the diagram built from code analysis only.")
+                raw_factory_res = self._llm_factory()
+                providers: list[tuple[TextGenerator, str, dict[str, Any], str]] = []
+                unconfigured_reason = ""
+
+                if isinstance(raw_factory_res, list):
+                    for item in raw_factory_res:
+                        if isinstance(item, tuple):
+                            llm_gen = item[0]
+                            name = item[1]
+                            extra = item[2] if len(item) > 2 else {}
+                            ptype = (
+                                item[3]
+                                if len(item) > 3
+                                else (
+                                    "groq"
+                                    if "groq" in name.lower()
+                                    else "openrouter"
+                                    if "openrouter" in name.lower()
+                                    else "custom"
+                                )
+                            )
+                            providers.append((llm_gen, name, extra, ptype))
+                elif isinstance(raw_factory_res, tuple):
+                    if raw_factory_res[0] is None:
+                        unconfigured_reason = str(raw_factory_res[1])
+                    else:
+                        llm_gen = raw_factory_res[0]
+                        name = raw_factory_res[1]
+                        extra = raw_factory_res[2] if len(raw_factory_res) > 2 else {}
+                        ptype = (
+                            raw_factory_res[3]
+                            if len(raw_factory_res) > 3
+                            else (
+                                "groq"
+                                if "groq" in name.lower()
+                                else "openrouter"
+                                if "openrouter" in name.lower()
+                                else "custom"
+                            )
+                        )
+                        providers.append((llm_gen, name, extra, ptype))
+
+                if not providers:
+                    reason = unconfigured_reason or "AI enrichment is not configured."
+                    warnings.append(f"{reason} Showing the diagram built from code analysis only.")
                 else:
                     ai_available = True
-                    try:
-                        enriched = await asyncio.wait_for(
-                            enrich_with_llm(llm, facts, draft, detail), timeout=LLM_TIMEOUT_SECONDS
+                    attempt_errors: list[dict[str, Any]] = []
+
+                    for llm, name, extra_body, provider_type in providers:
+                        success = False
+                        current_extra = dict(extra_body) if extra_body else {}
+
+                        async def _attempt(
+                            generator: TextGenerator, extra_payload: dict[str, Any] | None
+                        ) -> dict[str, Any]:
+                            enriched = await asyncio.wait_for(
+                                enrich_with_llm(generator, facts, draft, detail, extra_body=extra_payload),
+                                timeout=LLM_TIMEOUT_SECONDS,
+                            )
+                            return sanitize_diagram(enriched)
+
+                        try:
+                            candidate = await _attempt(llm, current_extra)
+                            if len(candidate["nodes"]) >= 3:
+                                diagram = candidate
+                                generated_by = name
+                                ai_used = True
+                                success = True
+                                break
+                            logger.warning("Provider %s reply too small (nodes < 3). Moving to next provider.", name)
+                            attempt_errors.append(
+                                {"name": name, "type": provider_type, "status": 200, "reason": "too_small"}
+                            )
+                        except ProviderHTTPError as exc:
+                            logger.warning(
+                                "Provider %s attempt failed: status=%d error=%s",
+                                name,
+                                exc.status_code,
+                                exc.error_code or exc.message,
+                            )
+                            attempt_errors.append(
+                                {"name": name, "type": provider_type, "status": exc.status_code, "reason": exc.message}
+                            )
+                            if exc.status_code == 429:
+                                wait_sec = min(exc.retry_after if exc.retry_after is not None else 5.0, 20.0)
+                                logger.warning(
+                                    "Provider %s 429 rate limit exceeded. Waiting %.1fs before retry.", name, wait_sec
+                                )
+                                await asyncio.sleep(wait_sec)
+                                try:
+                                    candidate = await _attempt(llm, current_extra)
+                                    if len(candidate["nodes"]) >= 3:
+                                        diagram = candidate
+                                        generated_by = name
+                                        ai_used = True
+                                        success = True
+                                        break
+                                    logger.warning("Provider %s retry reply too small (nodes < 3).", name)
+                                except Exception as retry_exc:
+                                    logger.warning("Provider %s retry failed after 429: %s", name, retry_exc)
+                            elif exc.status_code == 400 and provider_type == "groq":
+                                cleaned_extra = {
+                                    k: v
+                                    for k, v in current_extra.items()
+                                    if k not in ("response_format", "reasoning_effort")
+                                }
+                                logger.warning(
+                                    "Provider %s 400 error. Retrying once without response_format and reasoning_effort.",
+                                    name,
+                                )
+                                try:
+                                    candidate = await _attempt(llm, cleaned_extra)
+                                    if len(candidate["nodes"]) >= 3:
+                                        diagram = candidate
+                                        generated_by = name
+                                        ai_used = True
+                                        success = True
+                                        break
+                                    logger.warning("Provider %s retry reply too small (nodes < 3).", name)
+                                except Exception as retry_exc:
+                                    logger.warning("Provider %s retry failed after 400: %s", name, retry_exc)
+                            elif exc.status_code == 413:
+                                logger.warning(
+                                    "Provider %s 413 payload too large. Skipping retry on this provider.", name
+                                )
+                        except TimeoutError:
+                            logger.warning(
+                                "Provider %s timed out after %ds. Moving to next provider.", name, LLM_TIMEOUT_SECONDS
+                            )
+                            attempt_errors.append(
+                                {"name": name, "type": provider_type, "status": 408, "reason": "timeout"}
+                            )
+                        except Exception as exc:  # noqa: BLE001
+                            logger.warning("Provider %s failed: %s. Moving to next provider.", name, exc)
+                            attempt_errors.append(
+                                {"name": name, "type": provider_type, "status": 500, "reason": str(exc), "exc": exc}
+                            )
+
+                        if success:
+                            break
+
+                    if not ai_used:
+                        has_groq_exhausted = any(
+                            e["type"] == "groq"
+                            and (e["status"] in (413, 429) or "rate" in str(e.get("reason", "")).lower())
+                            for e in attempt_errors
                         )
-                        candidate = sanitize_diagram(enriched)
-                        if len(candidate["nodes"]) >= 3:
-                            diagram = enriched
-                            generated_by = name_or_reason
-                            ai_used = True
-                        else:
+                        has_openrouter_tried = any(e["type"] == "openrouter" for e in attempt_errors)
+                        if has_groq_exhausted and has_openrouter_tried:
+                            warnings.append(
+                                "Groq is over its free limit right now and OpenRouter did not answer. "
+                                "Showing the code-analysis diagram. Try again in a minute."
+                            )
+                        elif has_groq_exhausted:
+                            warnings.append(
+                                "Groq is over its free limit right now. "
+                                "Showing the code-analysis diagram. Try again in a minute."
+                            )
+                        elif any(e.get("reason") == "too_small" for e in attempt_errors):
                             warnings.append("The AI reply was too small to use. Showing the code-analysis diagram.")
-                    except TimeoutError:
-                        warnings.append("The AI took too long to answer. Showing the code-analysis diagram.")
-                    except Exception as exc:  # noqa: BLE001 - any provider/parse error falls back
-                        logger.warning("System design AI enrichment failed: %s", exc)
-                        warnings.append(
-                            f"AI enrichment failed ({type(exc).__name__}). Showing the code-analysis diagram."
-                        )
+                        elif any(e.get("reason") == "timeout" for e in attempt_errors):
+                            warnings.append("The AI took too long to answer. Showing the code-analysis diagram.")
+                        else:
+                            first_err = attempt_errors[0] if attempt_errors else {}
+                            exc_obj = first_err.get("exc")
+                            err_name = type(exc_obj).__name__ if isinstance(exc_obj, Exception) else "Failed"
+                            warnings.append(f"AI enrichment failed ({err_name}). Showing the code-analysis diagram.")
 
             clean = sanitize_diagram(diagram)
             if facts["stats"].get("truncated"):
@@ -169,17 +315,44 @@ class SystemDesignService:
             return result
 
 
-def default_llm_factory() -> tuple[TextGenerator | None, str]:
-    """Return a Groq generator when GROQ_API_KEY is configured."""
+def default_llm_factory() -> list[tuple[TextGenerator, str, dict[str, Any], str]] | tuple[None, str]:
+    """Return a chain of LLM providers (Groq primary, OpenRouter fallback)."""
     from backend.core.config import get_settings
 
     settings = get_settings()
-    if not getattr(settings, "groq_api_key", ""):
-        return None, "GROQ_API_KEY is not set, so AI enrichment is off."
-    from backend.llm.groq import GroqProvider
+    chain: list[tuple[TextGenerator, str, dict[str, Any], str]] = []
 
-    model = getattr(settings, "groq_model", "") or "llama-3.3-70b-versatile"
-    return GroqProvider(api_key=settings.groq_api_key, model=model), f"groq:{model}"
+    if getattr(settings, "groq_api_key", ""):
+        from backend.llm.groq import GroqProvider
+
+        model = getattr(settings, "system_design_model", "") or "openai/gpt-oss-120b"
+        groq_extra = {
+            "max_completion_tokens": 2500,
+            "reasoning_effort": "low",
+            "response_format": {"type": "json_object"},
+        }
+        chain.append((GroqProvider(api_key=settings.groq_api_key, model=model), f"groq:{model}", groq_extra, "groq"))
+
+    if getattr(settings, "openrouter_api_key", ""):
+        from backend.llm.openrouter import OpenRouterProvider
+
+        model = getattr(settings, "system_design_fallback_model", "") or "openai/gpt-oss-120b:free"
+        openrouter_extra = {
+            "max_tokens": 2500,
+            "reasoning": {"effort": "low"},
+        }
+        chain.append(
+            (
+                OpenRouterProvider(api_key=settings.openrouter_api_key, model=model),
+                f"openrouter:{model}",
+                openrouter_extra,
+                "openrouter",
+            )
+        )
+
+    if not chain:
+        return None, "GROQ_API_KEY is not set, so AI enrichment is off."
+    return chain
 
 
 _service: SystemDesignService | None = None

@@ -42,15 +42,23 @@ Return JSON with exactly these keys:
 "edges": [{{"source","target","label"}}], "flows": [{{"name","steps":[node_id,...]}}]}}"""
 
 TARGETS = {
-    "overview": "10 to 18 nodes and at most 26 edges; a clean high-level picture",
-    "detailed": "20 to 35 nodes and at most 60 edges; show inner modules of the backend and client",
+    "overview": "10 to 16 nodes and at most 22 edges",
+    "detailed": "18 to 28 nodes and at most 45 edges",
 }
 
-MAX_FACTS_CHARS = 14_000
+MAX_FACTS_CHARS = 5_000
 
 
 class TextGenerator(Protocol):
-    async def generate(self, prompt: str, system_prompt: str | None = None, temperature: float = 0.7) -> str: ...
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        *,
+        extra_body: dict | None = None,
+        model: str | None = None,
+    ) -> str: ...
 
 
 def compact_facts(facts: dict[str, Any]) -> dict[str, Any]:
@@ -64,15 +72,15 @@ def compact_facts(facts: dict[str, Any]) -> dict[str, Any]:
             "flags": c.get("flags", []),
             "examples": [p.split("/")[-1] for p in c.get("sample_files", [])[:4]],
         }
-        for cid, c in sorted(facts.get("components", {}).items(), key=lambda kv: -kv[1]["file_count"])[:30]
+        for cid, c in sorted(facts.get("components", {}).items(), key=lambda kv: -kv[1]["file_count"])[:20]
     ]
-    route_prefixes = sorted({r["prefix"] for r in facts.get("routes", []) if r.get("prefix")})[:40]
+    route_prefixes = sorted({r["prefix"] for r in facts.get("routes", []) if r.get("prefix")})[:25]
     return {
         "repository": facts.get("root_name"),
         "stats": facts.get("stats", {}),
         "components": comps,
         "component_dependencies": [
-            [e["source"], e["target"], e["weight"]] for e in facts.get("component_edges", [])[:45]
+            [e["source"], e["target"], e["weight"]] for e in facts.get("component_edges", [])[:30]
         ],
         "technologies": [
             {"name": t["name"], "category": t["category"], "used_by": t.get("used_by", [])[:3]}
@@ -82,8 +90,8 @@ def compact_facts(facts: dict[str, Any]) -> dict[str, Any]:
         "ui_routes": facts.get("ui_routes", [])[:20],
         "entry_points": facts.get("entry_points", []),
         "docker_compose_services": facts.get("compose_services", []),
-        "env_var_names": facts.get("env_keys", [])[:40],
-        "readme_excerpt": facts.get("readme_excerpt", "")[:900],
+        "env_var_names": facts.get("env_keys", [])[:25],
+        "readme_excerpt": facts.get("readme_excerpt", "")[:400],
     }
 
 
@@ -154,9 +162,24 @@ def merge_reply(draft: dict[str, Any], reply: dict[str, Any]) -> dict[str, Any]:
 
 
 async def enrich_with_llm(
-    llm: TextGenerator, facts: dict[str, Any], draft: dict[str, Any], detail: str
+    llm: TextGenerator,
+    facts: dict[str, Any],
+    draft: dict[str, Any],
+    detail: str,
+    *,
+    extra_body: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     system = SYSTEM_PROMPT.format(target=TARGETS.get(detail, TARGETS["overview"]))
-    reply_text = await llm.generate(build_prompt(facts, draft), system_prompt=system, temperature=0.2)
+    prompt = build_prompt(facts, draft)
+    try:
+        reply_text = await llm.generate(
+            prompt,
+            system_prompt=system,
+            temperature=0.2,
+            extra_body=extra_body,
+        )
+    except TypeError:
+        # Fallback for mock/fake generators that do not support extra_body keyword
+        reply_text = await llm.generate(prompt, system_prompt=system, temperature=0.2)
     reply = parse_json_reply(reply_text)
     return merge_reply(draft, reply)
