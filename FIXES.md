@@ -462,3 +462,57 @@ ALL 8 END-TO-END WORKFLOW VERIFICATION STEPS PASSED 100%!
 | **Frontend Tests (`npx vitest run`)** | 24 files, 96 passed | +1 file, +6 passed | **25 files, 102 passed** | **PASS** (100%) |
 | **Frontend Linter (`npm run lint`)** | 246 warnings | -21 warnings | **0 errors, 225 warnings** | **PASS** (100%) |
 | **Frontend Production Build (`npm run build`)** | Dynamic import warning | Clean chunks | **Built in 1.03s, 0 warnings** | **PASS** (100%) |
+
+---
+
+## 9. Groq Rate-Limit Fix & System Design AI Fallback Chain
+
+### Overview
+Addressed Groq free-tier rate limits (8,000 TPM limit on `openai/gpt-oss-120b`) during System Design diagram generation:
+1. **Model Isolation:** System Design uses its own dedicated model settings (`SYSTEM_DESIGN_MODEL=openai/gpt-oss-120b`, `SYSTEM_DESIGN_FALLBACK_MODEL=openai/gpt-oss-120b:free`) completely separated from chat (`GROQ_MODEL=llama-3.3-70b-versatile`). Chat and diagram generation no longer contend for the same token quota.
+2. **Compact Request Budget:** Lowered `MAX_FACTS_CHARS` from 14,000 to 5,000 chars and compressed fact extraction in `compact_facts()` (readme excerpt capped to 400 chars, top 20 components, top 30 dependencies, 25 route prefixes, 25 env vars). Combined prompt and system prompt are guaranteed under 12,000 chars (~3,000 tokens).
+3. **OpenAICompat Options & Header Extraction:** Added optional `extra_body` and per-request `model` override to `OpenAICompatProvider.generate()` without mutating instance state or modifying legacy default payloads. Extracted HTTP `Retry-After` header as seconds (`retry_after: float | None`) on `ProviderHTTPError`.
+4. **Non-Mutating Groq Fallback:** Replaced permanent `self.model = candidate` reassignment in `GroqProvider.generate()` and `generate_stream()` with local variables, preserving `provider.model`.
+5. **Resilient Provider Chain with Retry:** `SystemDesignService.generate()` tries Groq primary with `extra_body = {"max_completion_tokens": 2500, "reasoning_effort": "low", "response_format": {"type": "json_object"}}`.
+   - On HTTP 429: sleeps `min(exc.retry_after or 5, 20)` seconds via `asyncio.sleep` and retries once.
+   - On HTTP 413: immediately falls back to OpenRouter without retrying Groq.
+   - On HTTP 400 (if model rejects `response_format` or `reasoning_effort`): retries once without those options.
+   - On failure: tries OpenRouter `openai/gpt-oss-120b:free` with `{"max_tokens": 2500, "reasoning": {"effort": "low"}}`.
+   - If both fail: gracefully returns the code-analysis diagram with a plain-words user warning.
+
+### Files Changed
+- `backend/core/config.py`: Added `system_design_model` and `system_design_fallback_model`.
+- `.env.example`: Documented `SYSTEM_DESIGN_MODEL` and `SYSTEM_DESIGN_FALLBACK_MODEL`.
+- `backend/llm/exceptions.py`: Added `retry_after: float | None = None` to `ProviderHTTPError`.
+- `backend/llm/openai_compat.py`: Added `extra_body`, per-request `model`, payload sanitization, and `retry-after` header extraction.
+- `backend/llm/groq.py`: Preserved `self.model` across fallback attempts.
+- `backend/services/system_design/enricher.py`: Shrunk facts and prompt budget (<12k chars); updated targets; added `extra_body` parameter to `enrich_with_llm()`.
+- `backend/services/system_design/service.py`: Added provider chain (Groq -> OpenRouter), retry logic with sleep, and fallback warning formatting.
+- `tests/test_openai_compat.py`: Added 5 unit tests for options, payload safety, and header parsing.
+- `tests/test_groq_provider.py`: Added test verifying `provider.model` remains unchanged after 429 fallback.
+- `tests/test_system_design.py`: Added prompt length test and 9 provider chain / fallback / options tests.
+
+### Recommended Chat Model
+- **`GROQ_MODEL=llama-3.3-70b-versatile`**: Picked Groq's flagship 70B open-weights chat model (128k context, ~280 tokens/sec), ensuring Assistant chat has its own independent rate limit pool separate from System Design's `openai/gpt-oss-120b`.
+
+### Real Verification Command Output
+```
+$ ruff check backend
+All checks passed!
+
+$ ruff format --check backend
+116 files already formatted
+
+$ MOCK_EMBEDDINGS=true pytest tests -q
+================ 295 passed, 4 skipped, 23 warnings in 56.17s =================
+
+$ cd frontend && npx tsc -b
+(0 errors)
+
+$ cd frontend && npx vitest run
+ Test Files  25 passed (25)
+      Tests  102 passed (102)
+
+$ cd frontend && npm run build
+✓ built in 951ms
+```
