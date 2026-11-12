@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
 
+    # ── System Design settings ────────────────────────────────────────
+    system_design_model: str = "openai/gpt-oss-120b"  # Groq model used only by the System Design feature
+    system_design_fallback_model: str = "openai/gpt-oss-120b:free"  # OpenRouter model used if Groq fails
+
     # ── Database ──────────────────────────────────────────────────────
     database_url: str = "sqlite+aiosqlite:///data/antigravity.db"
     # When False the application works without a relational database (indexes
