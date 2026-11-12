@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.llm.groq import FALLBACK_GROQ_MODELS, GroqProvider
+from backend.llm.groq import GroqProvider
 from backend.llm.provider_manager import ProviderManager
 
 
@@ -52,7 +52,7 @@ class TestGroqProvider:
             result = await provider.generate("Test prompt")
             assert result == "Fallback succeeded"
             assert call_count >= 2
-            assert provider.model in FALLBACK_GROQ_MODELS
+            assert provider.model == "nonexistent-model"
 
     @pytest.mark.asyncio
     async def test_provider_manager_picks_up_groq(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -95,6 +95,32 @@ class TestGroqProvider:
             result = await provider.generate("Test prompt")
             assert result == "Fallback succeeded after 429"
             assert call_count >= 2
+            assert provider.model == "rate-limited-model"
+
+    @pytest.mark.asyncio
+    async def test_fallback_does_not_permanently_mutate_model_after_429(self) -> None:
+        """Verify provider.model remains unchanged after 429 and successful fallback."""
+        original_model = "openai/gpt-oss-120b"
+        provider = GroqProvider(api_key="test-key", model=original_model)
+
+        async def mock_post(url, json=None, headers=None):
+            mock_resp = MagicMock()
+            if json.get("model") == original_model:
+                mock_resp.status_code = 429
+                mock_resp.text = '{"error":{"message":"Rate limit reached","code":"rate_limit_exceeded"}}'
+            else:
+                mock_resp.status_code = 200
+                mock_resp.json.return_value = {"choices": [{"message": {"content": "Fallback succeeded"}}]}
+            return mock_resp
+
+        with patch.object(provider, "_get_client") as mock_client_factory:
+            mock_client = AsyncMock()
+            mock_client.post = mock_post
+            mock_client_factory.return_value = mock_client
+
+            result = await provider.generate("Test prompt")
+            assert result == "Fallback succeeded"
+            assert provider.model == original_model
 
     @pytest.mark.asyncio
     async def test_no_fallback_on_unrelated_error_with_404_in_message(self) -> None:
