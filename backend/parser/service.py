@@ -67,7 +67,7 @@ class ParserService:
         self._parsers[language] = parser
         _PARSEABLE_LANGUAGES.add(language)
 
-    # ── Manifest & Cache Path Helpers ────────────────────────────────────
+    # Manifest & Cache Path Helpers
 
     def _get_manifest_path(self, repo_path: str) -> Path:
         return Path(settings.cache_dir) / get_repo_id(repo_path) / "manifest.json"
@@ -79,7 +79,7 @@ class ParserService:
         """Retrieve the change diff from the most recent parse/scan."""
         return self._last_diffs.get(repo_path)
 
-    # ── Scanning ────────────────────────────────────────────────────────
+    # Scanning
 
     async def scan_repository(self, repo_path: str) -> RepositoryInfo:
         """Scan *repo_path* and return repository metadata (cached)."""
@@ -94,7 +94,7 @@ class ParserService:
         self._repo_cache[repo_path] = info
         return info
 
-    # ── Parsing ─────────────────────────────────────────────────────────
+    # Parsing
 
     async def parse_repository(
         self,
@@ -177,7 +177,7 @@ class ParserService:
             return await asyncio.to_thread(parser.parse_file, file_path)
         return await asyncio.to_thread(self._python_parser.parse_file, file_path)
 
-    # ── Cache management ────────────────────────────────────────────────
+    # Cache management
 
     def invalidate_cache(self, repo_path: str | None = None, clear_manifest: bool = False) -> None:
         """Clear cached results.  If *repo_path* is ``None``, flush everything."""

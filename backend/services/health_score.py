@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# ── 1. Centralized Scoring Configuration & Weights ────────────────────────
+# Centralized Scoring Configuration & Weights
 
 HEALTH_DIMENSION_MAX: float = 20.0
 
@@ -83,7 +83,7 @@ _SECRET_PATTERNS = [
 ]
 
 
-# ── 2. Formal Data Models ─────────────────────────────────────────────────
+# Formal Data Models
 
 
 def _grade(score: float) -> str:
@@ -108,7 +108,7 @@ def _status_for_score(score: float, max_score: float = 20.0) -> str:
     return "At Risk"
 
 
-# ── 3. Dimension Scorers ──────────────────────────────────────────────────
+# Dimension Scorers
 
 
 def _score_documentation(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
@@ -872,7 +872,7 @@ def _score_security(parsed_files: dict[str, ParsedFile]) -> DimensionScore:
     return dim
 
 
-# ── 4. Public API ─────────────────────────────────────────────────────────
+# Public API
 
 
 def compute_health_score(

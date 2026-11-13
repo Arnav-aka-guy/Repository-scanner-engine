@@ -70,7 +70,7 @@ class TechDebtReport:
     grouped_by_symbol: list[dict[str, Any]] = field(default_factory=list)
 
 
-# ── Thresholds ──────────────────────────────────────────────────────────
+# Thresholds
 
 LONG_FUNCTION_LINES = 50
 VERY_LONG_FUNCTION_LINES = 80
@@ -135,7 +135,7 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
     for path, pf in parsed_files.items():
         file_smells: list[CodeSmell] = []
 
-        # ── Large file detection ────────────────────────────────────
+        # Large file detection
         est_lines = _estimate_lines(pf)
         if est_lines > VERY_LARGE_FILE_LINES:
             file_smells.append(
@@ -166,7 +166,7 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                 )
             )
 
-        # ── High coupling ───────────────────────────────────────────
+        # High coupling
         if len(pf.imports) > HIGH_COUPLING_IMPORTS:
             file_smells.append(
                 CodeSmell(
@@ -182,7 +182,7 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                 )
             )
 
-        # ── Long functions ──────────────────────────────────────────
+        # Long functions
         for func in pf.functions:
             length = func.end_line - func.start_line
             if length > VERY_LONG_FUNCTION_LINES:
@@ -256,7 +256,7 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                     )
                 )
 
-        # ── God classes & methods ───────────────────────────────────
+        # God classes & methods
         for cls in pf.classes:
             if len(cls.methods) > GOD_CLASS_METHODS:
                 file_smells.append(
@@ -327,7 +327,7 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
                         )
                     )
 
-        # ── TODO/FIXME comments across full file ───────────────────
+        # TODO/FIXME comments across full file
         try:
             file_text = Path(path).read_text(encoding="utf-8", errors="ignore")
             for line_no, line_content in enumerate(file_text.splitlines(), start=1):
@@ -364,7 +364,7 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
             )
             all_smells.extend(file_smells)
 
-    # ── Group findings by symbol / entity ──
+    # Group findings by symbol / entity
     symbols_map: dict[str, dict[str, Any]] = {}
     for smell in all_smells:
         key = f"{smell.file_path}::{smell.entity_name or '<module>'}"
@@ -385,7 +385,7 @@ def analyse_tech_debt(parsed_files: dict[str, ParsedFile]) -> TechDebtReport:
 
     grouped_symbols = sorted(symbols_map.values(), key=lambda x: x["smell_count"], reverse=True)
 
-    # ── Build report ────────────────────────────────────────────────
+    # Build report
     smells_by_cat: dict[str, int] = {}
     smells_by_sev: dict[str, int] = {}
     for smell in all_smells:

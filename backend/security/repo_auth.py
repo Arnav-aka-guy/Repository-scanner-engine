@@ -66,7 +66,7 @@ async def authorize_repository_access(
     settings = get_settings()
     data_dir = Path(settings.data_dir).resolve()
 
-    # ── Authenticated Mode (Deny-by-default) ───────────────────────────
+    # Authenticated Mode (Deny-by-default)
     if current_user.get("auth") and current_user.get("user_id"):
         user_id = int(current_user["user_id"])
         repo: Repository | None = None
@@ -171,7 +171,7 @@ async def authorize_repository_access(
 
         return repo, target_path
 
-    # ── Local / Unauthenticated Mode ────────────────────────────────────
+    # Local / Unauthenticated Mode
     target_path = validate_repository_path(str(repo_identifier))
     if target_path == data_dir or (data_dir in target_path.parents and "cloned_repos" not in str(target_path)):
         raise HTTPException(

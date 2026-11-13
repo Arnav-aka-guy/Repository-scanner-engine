@@ -16,7 +16,7 @@ from backend.parser.models import ParsedFile
 class GraphBuilder:
     """Construct various code graphs from parse results."""
 
-    # ── Dependency graph (file-level imports) ───────────────────────────
+    # Dependency graph (file-level imports)
 
     def build_dependency_graph(
         self,
@@ -43,7 +43,7 @@ class GraphBuilder:
 
         return g
 
-    # ── Call graph (function / method level) ─────────────────────────────
+    # Call graph (function / method level)
 
     def build_call_graph(
         self,
@@ -96,7 +96,7 @@ class GraphBuilder:
 
         return g
 
-    # ── Full graph (all relationships) ──────────────────────────────────
+    # Full graph (all relationships)
 
     def build_full_graph(
         self,
@@ -178,7 +178,7 @@ class GraphBuilder:
 
         return g
 
-    # ── Serialisation ───────────────────────────────────────────────────
+    # Serialisation
 
     @staticmethod
     def to_graph_data(graph: nx.DiGraph) -> GraphData:
@@ -233,7 +233,7 @@ class GraphBuilder:
             )
         return {"elements": elements}
 
-    # ── Private helpers ─────────────────────────────────────────────────
+    # Private helpers
 
     _JS_TS_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts")
 
@@ -297,7 +297,7 @@ class GraphBuilder:
         curr_ext = curr_p.suffix.lower()
         is_js_ts = curr_ext in cls._JS_TS_EXTENSIONS or module.startswith(("./", "../", "@/"))
 
-        # ── TypeScript / JavaScript resolution ─────────────────────────
+        # TypeScript / JavaScript resolution
         if is_js_ts:
             if not module.startswith((".", "/", "@/")):
                 return None
@@ -349,7 +349,7 @@ class GraphBuilder:
 
             return None
 
-        # ── Python / other languages resolution ─────────────────────────
+        # Python / other languages resolution
         stdlib_modules = set(getattr(sys, "stdlib_module_names", ())) | set(getattr(sys, "builtin_module_names", ()))
         root_pkg = module.split(".")[0].split("/")[0]
         if root_pkg in stdlib_modules:

@@ -90,7 +90,7 @@ def invalidate_analysis_cache(repo_path: str) -> None:
                 logger.debug("Failed deleting analysis cache directory %s: %s", cache_dir, exc)
 
 
-# ── Scan Jobs Persistence ─────────────────────────────────────────────────────
+# Scan Jobs Persistence
 
 
 def _normalize_repo_key(repo_path: str | None) -> str:
@@ -193,7 +193,7 @@ def delete_scan_job(job_id: str) -> None:
             logger.warning("Failed to delete scan job %s: %s", job_id, exc)
 
 
-# ── Chat Conversations Persistence ───────────────────────────────────────────
+# Chat Conversations Persistence
 
 
 def load_chat_data(user_id: int | None = None) -> dict[str, Any]:

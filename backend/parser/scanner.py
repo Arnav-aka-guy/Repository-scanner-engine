@@ -17,7 +17,7 @@ from backend.core.models import FileInfo, RepositoryInfo
 
 logger = logging.getLogger(__name__)
 
-# ── Language detection ──────────────────────────────────────────────────
+# Language detection
 _EXTENSION_MAP: dict[str, str] = {
     ".py": "Python",
     ".js": "JavaScript",
@@ -109,7 +109,7 @@ class RepositoryScanner:
     so that reconfiguration (e.g. in tests) is respected immediately.
     """
 
-    # ── Helpers ─────────────────────────────────────────────────────────
+    # Helpers
 
     @staticmethod
     def detect_language(file_path: str) -> str:
@@ -163,7 +163,7 @@ class RepositoryScanner:
         except OSError:
             return False
 
-    # ── Public API ──────────────────────────────────────────────────────
+    # Public API
 
     def _collect_files(
         self,

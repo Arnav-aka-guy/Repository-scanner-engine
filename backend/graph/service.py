@@ -18,7 +18,7 @@ class GraphService:
         self._analyzer = GraphAnalyzer()
         self._graph_cache: dict[str, nx.DiGraph] = {}
 
-    # ── Building ────────────────────────────────────────────────────────
+    # Building
 
     async def build_graphs(
         self,
@@ -100,7 +100,7 @@ class GraphService:
         graphs = await self.build_graphs(parsed_files)
         return self._builder.to_cytoscape(graphs["full"])
 
-    # ── Helpers ─────────────────────────────────────────────────────────
+    # Helpers
 
     @staticmethod
     def _cache_key(parsed_files: dict[str, ParsedFile]) -> str:

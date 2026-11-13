@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# ── Limits ────────────────────────────────────────────────────────────────
+# Limits
 
 MAX_FILES = 4000
 MAX_FILE_BYTES = 200_000
@@ -88,7 +88,7 @@ JS_EXTS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".svelte"]
 
 ENV_TEMPLATE_NAMES = {".env.example", ".env.sample", ".env.template", ".env.dist", "env.example"}
 
-# ── Known technologies ────────────────────────────────────────────────────
+# Known technologies
 # key -> (display name, category)
 
 TECH: dict[str, tuple[str, str]] = {
@@ -241,7 +241,7 @@ class _Ctx:
     truncated: bool = False
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────
+# Helpers
 
 
 def _is_within(root: Path, candidate: Path) -> bool:
@@ -311,7 +311,7 @@ def _is_test_path(rel: str) -> bool:
     return name.startswith("test_") or ".test." in name or ".spec." in name or name.endswith("_test.py")
 
 
-# ── Component discovery ───────────────────────────────────────────────────
+# Component discovery
 
 
 def _discover_components(ctx: _Ctx) -> dict[str, dict[str, Any]]:
@@ -383,7 +383,7 @@ def _discover_components(ctx: _Ctx) -> dict[str, dict[str, Any]]:
     return components
 
 
-# ── Import graph ─────────────────────────────────────────────────────────
+# Import graph
 
 
 def _build_module_index(ctx: _Ctx) -> tuple[dict[str, str], dict[str, str]]:
@@ -487,7 +487,7 @@ def _external_package(spec: str, is_python: bool) -> str | None:
     return None if name in _NODE_BUILTINS else name
 
 
-# ── Manifests ────────────────────────────────────────────────────────────
+# Manifests
 
 
 def _parse_requirements(text: str) -> list[str]:
@@ -546,7 +546,7 @@ def _normalise_dep(name: str) -> str:
     return aliases.get(name, name.replace("-", "_") if name.replace("-", "_") in TECH else name)
 
 
-# ── Public API ───────────────────────────────────────────────────────────
+# Public API
 
 
 def collect_repo_facts(repo_path: str | Path) -> dict[str, Any]:

@@ -24,12 +24,12 @@ from backend.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# ── Security scheme ────────────────────────────────────────────────────
+# Security scheme
 # ``auto_error=False`` lets us make the token *optional* when auth is off.
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
-# ── Password hashing helpers ───────────────────────────────────────────
+# Password hashing helpers
 
 
 _MAX_PASSWORD_LENGTH: int = 128
@@ -109,7 +109,7 @@ def hash_password(password: str) -> str:
         return str(pwd_context.hash(password))
 
 
-# ── Token helpers ──────────────────────────────────────────────────────
+# Token helpers
 
 
 def create_access_token(
@@ -211,7 +211,7 @@ def verify_token(token: str, expected_type: str | None = None) -> dict[str, Any]
         ) from exc
 
 
-# ── FastAPI dependency ─────────────────────────────────────────────────
+# FastAPI dependency
 
 _LOCAL_USER: dict[str, Any] = {
     "sub": "local@localhost",

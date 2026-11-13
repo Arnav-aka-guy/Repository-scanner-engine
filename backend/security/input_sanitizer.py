@@ -38,7 +38,7 @@ def _reject_null_bytes(value: str, field_name: str) -> str:
     return value
 
 
-# ── Sanitized path ──────────────────────────────────────────────────────
+# Sanitized path
 
 
 class SanitizedRepoPath(BaseModel):
@@ -64,7 +64,7 @@ class SanitizedRepoPath(BaseModel):
         return v
 
 
-# ── Sanitized search query ──────────────────────────────────────────────
+# Sanitized search query
 
 
 class SanitizedQuery(BaseModel):
@@ -89,7 +89,7 @@ class SanitizedQuery(BaseModel):
         return v
 
 
-# ── Sanitized chat input ───────────────────────────────────────────────
+# Sanitized chat input
 
 
 class SanitizedChatInput(BaseModel):

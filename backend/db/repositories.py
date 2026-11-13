@@ -18,7 +18,7 @@ from backend.db.models import ChatMessage, GeneratedDoc, Repository, ScanRecord,
 logger = logging.getLogger(__name__)
 
 
-# ── User CRUD ───────────────────────────────────────────────────────────
+# User CRUD
 
 
 async def create_user(
@@ -64,7 +64,7 @@ async def increment_user_token_version(db: AsyncSession, user_id: int) -> int:
     return 1
 
 
-# ── Refresh Token CRUD ─────────────────────────────────────────────────
+# Refresh Token CRUD
 
 
 async def create_refresh_token_record(
@@ -123,7 +123,7 @@ async def revoke_user_refresh_tokens(db: AsyncSession, user_id: int) -> int:
     return int(getattr(res, "rowcount", 0) or 0)
 
 
-# ── User-scoped Repository CRUD ─────────────────────────────────────────
+# User-scoped Repository CRUD
 
 
 async def count_user_repositories(db: AsyncSession, user_id: int) -> int:
@@ -203,7 +203,7 @@ async def delete_user_repository(db: AsyncSession, repository_id: int, user_id: 
     return True
 
 
-# ── Legacy / General Repository CRUD ────────────────────────────────────
+# Legacy / General Repository CRUD
 
 
 async def get_or_create_repository(db: AsyncSession, *, path: str, name: str) -> Repository:
@@ -249,7 +249,7 @@ async def list_repositories(db: AsyncSession) -> list[Repository]:
     return list(result.scalars().all())
 
 
-# ── Scan Records ────────────────────────────────────────────────────────
+# Scan Records
 
 
 async def create_scan_record(db: AsyncSession, *, repository_id: int, status: str = "pending") -> ScanRecord:
@@ -287,7 +287,7 @@ async def update_scan_record(
     return record
 
 
-# ── Chat Messages ───────────────────────────────────────────────────────
+# Chat Messages
 
 
 async def save_chat_message(
@@ -374,7 +374,7 @@ async def list_user_chat_conversations(
     return [c for c in result.scalars().all() if c]
 
 
-# ── Generated Docs ──────────────────────────────────────────────────────
+# Generated Docs
 
 
 async def save_generated_doc(

@@ -16,7 +16,7 @@ from backend.parser.models import ParsedFile
 
 logger = logging.getLogger(__name__)
 
-# ── Layer detection heuristics ────────────────────────────────────────────
+# Layer detection heuristics
 
 LAYER_PATTERNS: dict[str, list[str]] = {
     "Tests": [
@@ -115,7 +115,7 @@ class ArchitectureAnalyzer:
 
         return report
 
-    # ── Layer detection ───────────────────────────────────────────────
+    # Layer detection
 
     def _detect_layers(self, file_paths: list[str]) -> dict[str, list[str]]:
         """Classify files into architecture layers using path heuristics."""
@@ -158,7 +158,7 @@ class ArchitectureAnalyzer:
                 ordered[name] = sorted(layers[name])
         return ordered
 
-    # ── Circular dependency detection ─────────────────────────────────
+    # Circular dependency detection
 
     def _find_circular_dependencies(
         self,
@@ -214,7 +214,7 @@ class ArchitectureAnalyzer:
 
         return unique_cycles[:20]  # Cap at 20 to avoid noise
 
-    # ── Dead code detection ───────────────────────────────────────────
+    # Dead code detection
 
     def _find_dead_code(
         self,
@@ -246,7 +246,7 @@ class ArchitectureAnalyzer:
 
         return dead[:50]  # Cap
 
-    # ── Violation detection ───────────────────────────────────────────
+    # Violation detection
 
     # Expected dependency direction: UI → API → Business → Data → Infra
     _LAYER_ORDER = {
@@ -305,7 +305,7 @@ class ArchitectureAnalyzer:
 
         return violations[:30]  # Cap
 
-    # ── Statistics ────────────────────────────────────────────────────
+    # Statistics
 
     def _compute_stats(
         self,
@@ -335,7 +335,7 @@ class ArchitectureAnalyzer:
             "total_violations": len(report.violations),
         }
 
-    # ── Assessment ────────────────────────────────────────────────────
+    # Assessment
 
     def _assess(self, report: ArchitectureReport) -> tuple[list[str], list[str]]:
         """Identify strengths and problems from the analysis."""
@@ -383,7 +383,7 @@ class ArchitectureAnalyzer:
 
         return strengths, problems
 
-    # ── Score calculation ─────────────────────────────────────────────
+    # Score calculation
 
     def _compute_score(self, report: ArchitectureReport) -> int:
         """Compute architecture health score (0–100)."""
@@ -408,7 +408,7 @@ class ArchitectureAnalyzer:
 
         return max(0, min(100, score))
 
-    # ── Summary builder ───────────────────────────────────────────────
+    # Summary builder
 
     def _build_summary(self, report: ArchitectureReport) -> str:
         """Build a human-readable summary of the architecture."""

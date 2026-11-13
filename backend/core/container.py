@@ -43,7 +43,7 @@ class Container:
         self._documentation_service: object | None = None
         self._initialised = True
 
-    # ── Parser ──────────────────────────────────────────────────────────
+    # Parser
 
     @property
     def parser_service(self) -> ParserService:
@@ -53,7 +53,7 @@ class Container:
             self._parser_service = ParserService()
         return self._parser_service
 
-    # ── Graph ───────────────────────────────────────────────────────────
+    # Graph
 
     @property
     def graph_service(self) -> GraphService:
@@ -63,7 +63,7 @@ class Container:
             self._graph_service = GraphService()
         return self._graph_service
 
-    # ── Embeddings ──────────────────────────────────────────────────────
+    # Embeddings
 
     @property
     def embeddings_service(self) -> EmbeddingsService:
@@ -73,7 +73,7 @@ class Container:
             self._embeddings_service = EmbeddingsService()
         return self._embeddings_service  # type: ignore[return-value]
 
-    # ── Retrieval ───────────────────────────────────────────────────────
+    # Retrieval
 
     @property
     def retrieval_service(self) -> RetrievalService:
@@ -83,7 +83,7 @@ class Container:
             self._retrieval_service = RetrievalService(self.embeddings_service, self.graph_service)
         return self._retrieval_service  # type: ignore[return-value]
 
-    # ── LLM ─────────────────────────────────────────────────────────────
+    # LLM
 
     @property
     def llm_service(self) -> LLMService:
@@ -93,7 +93,7 @@ class Container:
             self._llm_service = LLMService()
         return self._llm_service  # type: ignore[return-value]
 
-    # ── Documentation ───────────────────────────────────────────────────
+    # Documentation
 
     @property
     def documentation_service(self) -> DocumentationService:

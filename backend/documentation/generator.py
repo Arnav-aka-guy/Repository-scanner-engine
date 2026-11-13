@@ -141,7 +141,7 @@ class DocumentationGenerator:
 
         return doc
 
-    # ── Private formatters ──────────────────────────────────────────────
+    # Private formatters
 
     def _format_class_doc(self, cls: ClassInfo) -> str:
         """Format ClassInfo metadata as Markdown."""
@@ -194,7 +194,7 @@ class DocumentationGenerator:
 
         return doc
 
-    # ── New v2 doc types ─────────────────────────────────────────────────
+    # New v2 doc types
 
     async def generate_api_reference(
         self,

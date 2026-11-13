@@ -41,10 +41,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ── Application version ──────────────────────────────────────────────
+    # Application version
     app_version: str = "2.1.0"
 
-    # ── Data directories ────────────────────────────────────────────────
+    # Data directories
     data_dir: str = "data"
 
     @property
@@ -63,10 +63,10 @@ class Settings(BaseSettings):
     def cache_dir(self) -> str:
         return os.path.join(self.data_dir, "cache")
 
-    # ── Embedding settings ──────────────────────────────────────────────
+    # Embedding settings
     embedding_model: str = "all-MiniLM-L6-v2"
 
-    # ── LLM settings ───────────────────────────────────────────────────
+    # LLM settings
     llm_provider: str = "auto"  # "auto" | "ollama" | "openai" | "groq" | "openrouter"
     llm_model: str = "llama3"
     llm_base_url: str = "http://localhost:11434"
@@ -85,36 +85,36 @@ class Settings(BaseSettings):
             return 12_000
         return 32_000
 
-    # ── OpenAI settings ────────────────────────────────────────────────
+    # OpenAI settings
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
 
-    # ── Groq settings ─────────────────────────────────────────────────
+    # Groq settings
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
 
-    # ── OpenRouter settings ───────────────────────────────────────────
+    # OpenRouter settings
     openrouter_api_key: str = ""
     openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
 
-    # ── System Design settings ────────────────────────────────────────
+    # System Design settings
     system_design_model: str = "openai/gpt-oss-120b"  # Groq model used only by the System Design feature
     system_design_fallback_model: str = "openai/gpt-oss-120b:free"  # OpenRouter model used if Groq fails
 
-    # ── Database ──────────────────────────────────────────────────────
+    # Database
     database_url: str = "sqlite+aiosqlite:///data/antigravity.db"
     # When False the application works without a relational database (indexes
     # are stored on the local filesystem only).
     database_enabled: bool = False
 
-    # ── Observability & Logging ─────────────────────────────────────────
+    # Observability & Logging
     log_level: str = "INFO"
     log_format: str = "text"  # "text" | "json"
 
-    # ── Application Mode ───────────────────────────────────────────────
+    # Application Mode
     app_mode: str = "local"  # "local" | "cloud"
 
-    # ── Authentication ────────────────────────────────────────────────
+    # Authentication
     local_mode: bool = False
     auth_enabled: bool = False
     jwt_secret_key: str = "dev-insecure-secret-key-change-in-production-min-32-chars-long-0123456789"
@@ -126,14 +126,14 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password_hash: str = ""
 
-    # ── SMTP (Optional for password reset) ───────────────────────────
+    # SMTP (Optional for password reset)
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = "noreply@antigravity.local"
 
-    # ── CORS ──────────────────────────────────────────────────────────
+    # CORS
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
@@ -141,19 +141,19 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
     ]
 
-    # ── Scanning limits ───────────────────────────────────────────────
+    # Scanning limits
     max_files: int = 10_000
     max_file_size_bytes: int = 5 * 1024 * 1024  # 5 MB
     max_directory_depth: int = 30
 
-    # ── Path allowlist ────────────────────────────────────────────────
+    # Path allowlist
     allowed_roots: Annotated[list[str], NoDecode] = []
     trusted_proxies: Annotated[list[str], NoDecode] = ["127.0.0.1", "::1"]
 
-    # ── Directory list for bulk creation ────────────────────────────────
+    # Directory list for bulk creation
     _SUBDIRS: ClassVar[tuple[str, ...]] = ("graphs", "embeddings", "docs", "cache")
 
-    # ── Validators ───────────────────────────────────────────────────────
+    # Validators
     @field_validator("allowed_roots", mode="before")
     @classmethod
     def _parse_allowed_roots(cls, v: Any) -> list[str]:
@@ -270,7 +270,7 @@ class Settings(BaseSettings):
             Path(os.path.join(self.data_dir, subdir)).mkdir(parents=True, exist_ok=True)
 
 
-# ── Module-level singleton ──────────────────────────────────────────────
+# Module-level singleton
 _settings: Settings | None = None
 
 

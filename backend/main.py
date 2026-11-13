@@ -29,7 +29,7 @@ from backend.security.rate_limiter import limiter
 logger = logging.getLogger(__name__)
 
 
-# ── Lifespan ────────────────────────────────────────────────────────────
+# Lifespan
 
 
 @asynccontextmanager
@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Repository Scanner Engine shutdown complete")
 
 
-# ── App factory ─────────────────────────────────────────────────────────
+# App factory
 
 _settings = get_settings()
 
@@ -89,7 +89,7 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
-# ── Middleware stack (order matters — outermost first) ──────────────────
+# Middleware stack (order matters — outermost first)
 
 # 1. Request logging (outermost — logs every request)
 app.add_middleware(RequestLoggingMiddleware)
@@ -127,14 +127,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
-# ── Static files & Frontend mounting ────────────────────────────────────
+# Static files & Frontend mounting
 
 _dist_dir = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if (_dist_dir / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(_dist_dir / "assets")), name="assets")
 
 
-# ── Health-check endpoints ──────────────────────────────────────────────
+# Health-check endpoints
 
 
 @app.get("/", tags=["health"])
@@ -187,7 +187,7 @@ async def readyz_endpoint(response: Response) -> dict[str, Any]:
     return details
 
 
-# ── Mount API routers ───────────────────────────────────────────────────
+# Mount API routers
 
 from backend.api.ai_settings import router as settings_router  # noqa: E402
 from backend.api.architecture import router as architecture_router  # noqa: E402
@@ -240,7 +240,7 @@ from backend.api.system_design import router as system_design_router  # noqa: E4
 app.include_router(system_design_router, dependencies=_auth_deps)
 
 
-# ── Static SPA fallback ─────────────────────────────────────────────────
+# Static SPA fallback
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
 
 
-# ── Module-level singletons (created on first import) ───────────────────
+# Module-level singletons (created on first import)
 
 _engine = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None

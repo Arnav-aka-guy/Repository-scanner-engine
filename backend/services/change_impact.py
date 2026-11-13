@@ -241,7 +241,7 @@ class ChangeImpactService:
                 )
             )
 
-        # ── Calculate Explainable Risk Score (0 - 100) ───────────────────
+        # Calculate Explainable Risk Score (0 - 100)
         # Components:
         # 1. Direct fan-out: up to 35 points (3.5 pts per direct dependent)
         # 2. Indirect ripple: up to 20 points (1.5 pts per indirect dependent)

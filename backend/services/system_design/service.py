@@ -41,7 +41,7 @@ class SystemDesignService:
         self._llm_factory = llm_factory or default_llm_factory
         self._locks: dict[str, asyncio.Lock] = {}
 
-    # ── cache helpers ──────────────────────────────────────────────
+    # cache helpers
 
     def _cache_file(self, repo_path: Path, detail: str) -> Path:
         digest = hashlib.sha256(str(repo_path).encode("utf-8")).hexdigest()[:24]
@@ -83,7 +83,7 @@ class SystemDesignService:
             with contextlib.suppress(OSError):
                 self._cache_file(Path(repo_path).resolve(), detail).unlink()
 
-    # ── main entry point ───────────────────────────────────────────
+    # main entry point
 
     async def generate(
         self,
