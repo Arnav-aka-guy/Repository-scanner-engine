@@ -428,18 +428,16 @@ def _resolve_py(module: str, current_rel: str, py_index: dict[str, str]) -> str 
 def _resolve_js(spec: str, current_rel: str, js_index: dict[str, str], src_roots: list[str]) -> str | None:
     if spec.startswith("."):
         base = os.path.normpath(os.path.join(os.path.dirname(current_rel), spec)).replace(os.sep, "/")
-    elif spec.startswith("@/") or spec.startswith("~/"):
-        base = None
+        stem = base.rsplit(".", 1)[0] if os.path.splitext(base)[1] in JS_EXTS else base
+        return js_index.get(stem)
+    if spec.startswith("@/") or spec.startswith("~/"):
         for root in src_roots:
             cand = f"{root}/{spec[2:]}"
             stem = cand.rsplit(".", 1)[0] if os.path.splitext(cand)[1] in JS_EXTS else cand
             if stem in js_index:
                 return js_index[stem]
         return None
-    else:
-        return None
-    stem = base.rsplit(".", 1)[0] if os.path.splitext(base)[1] in JS_EXTS else base
-    return js_index.get(stem)
+    return None
 
 
 _PY_STDLIB = set(getattr(sys, "stdlib_module_names", ())) | {"__future__"}
@@ -516,9 +514,9 @@ def _parse_pyproject(text: str) -> list[str]:
                 deps.append(m.group(1).lower())
             if "]" in stripped:
                 in_deps = False
-        m = re.match(r"^([A-Za-z0-9_.\-]+)\s*=\s*[\"{]", stripped)
-        if m and m.group(1).lower() not in {"name", "version", "description", "python", "readme", "license"}:
-            deps.append(m.group(1).lower())
+        dep_match = re.match(r"^([A-Za-z0-9_.\-]+)\s*=\s*[\"{]", stripped)
+        if dep_match and dep_match.group(1).lower() not in {"name", "version", "description", "python", "readme", "license"}:
+            deps.append(dep_match.group(1).lower())
     return deps
 
 
@@ -633,13 +631,14 @@ def collect_repo_facts(repo_path: str | Path) -> dict[str, Any]:
             manifests.append(f.rel)
         elif name == "package.json":
             try:
-                pkg = json.loads(_read_text(ctx, f.rel) or "{}")
+                pkg_data = json.loads(_read_text(ctx, f.rel) or "{}")
             except json.JSONDecodeError:
-                pkg = {}
-            for section in ("dependencies", "devDependencies"):
-                deps = pkg.get(section) or {}
-                if isinstance(deps, dict):
-                    declared.update(str(k).lower() for k in deps)
+                pkg_data = {}
+            if isinstance(pkg_data, dict):
+                for section in ("dependencies", "devDependencies"):
+                    deps = pkg_data.get(section) or {}
+                    if isinstance(deps, dict):
+                        declared.update(str(k).lower() for k in deps)
             manifests.append(f.rel)
         elif name in {"docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"}:
             manifests.append(f.rel)
@@ -652,20 +651,20 @@ def collect_repo_facts(repo_path: str | Path) -> dict[str, Any]:
                     continue
                 if in_services and re.match(r"^\S", line):
                     in_services = False
-                m = re.match(r"^  ([A-Za-z0-9_.\-]+):\s*$", line)
-                if in_services and m:
-                    current = {"name": m.group(1), "image": ""}
+                svc_m = re.match(r"^  ([A-Za-z0-9_.\-]+):\s*$", line)
+                if in_services and svc_m:
+                    current = {"name": svc_m.group(1), "image": ""}
                     compose_services.append(current)
-                m = re.match(r"^\s+image:\s*['\"]?([^'\"\s]+)", line)
-                if in_services and m and current is not None:
-                    current["image"] = m.group(1)
+                img_m = re.match(r"^\s+image:\s*['\"]?([^'\"\s]+)", line)
+                if in_services and img_m and current is not None:
+                    current["image"] = img_m.group(1)
         elif name == "dockerfile":
             manifests.append(f.rel)
         elif name in ENV_TEMPLATE_NAMES:
             for line in _read_text(ctx, f.rel).splitlines():
-                m = re.match(r"^\s*([A-Z][A-Z0-9_]{2,})\s*=", line)
-                if m and len(env_keys) < 80:
-                    env_keys.append(m.group(1))
+                env_m = re.match(r"^\s*([A-Z][A-Z0-9_]{2,})\s*=", line)
+                if env_m and len(env_keys) < 80:
+                    env_keys.append(env_m.group(1))
         elif name in {"readme.md", "readme.rst", "readme.txt", "readme"} and depth == 0 and not readme:
             readme = _read_text(ctx, f.rel, limit=README_CHARS * 4)[:README_CHARS]
 
@@ -698,9 +697,9 @@ def collect_repo_facts(repo_path: str | Path) -> dict[str, Any]:
         if "github" in flags:
             add_tech("GitHub", "git", evidence=f"GitHub access in {comp}", used_by=comp)
 
-    for comp_id, comp in components.items():
-        comp["flags"] = sorted(comp_flags.get(comp_id, set()))
-        comp["packages"] = [p for p, _ in comp_packages.get(comp_id, Counter()).most_common(12)]
+    for comp_id, comp_info in components.items():
+        comp_info["flags"] = sorted(comp_flags.get(comp_id, set()))
+        comp_info["packages"] = [p for p, _ in comp_packages.get(comp_id, Counter()).most_common(12)]
 
     lang_totals = Counter(SOURCE_EXTS[f.ext] for f in _source_files(ctx))
     edges = [

@@ -11,7 +11,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from backend.llm.exceptions import ProviderHTTPError
 from backend.services.system_design.builder import build_diagram
@@ -53,9 +53,11 @@ class SystemDesignService:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return None
+        if not isinstance(data, dict):
+            return None
         if data.get("version") != CACHE_VERSION:
             return None
-        return data
+        return cast(dict[str, Any], data)
 
     def _write_cache(self, repo_path: Path, detail: str, payload: dict[str, Any]) -> None:
         self.cache_dir.mkdir(parents=True, exist_ok=True)

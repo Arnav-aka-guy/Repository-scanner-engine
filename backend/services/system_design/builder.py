@@ -127,7 +127,7 @@ def _is_client(comp: dict[str, Any]) -> bool:
         return True
     if any(p in comp.get("packages", []) for p in ("react", "vue", "svelte", "electron", "next", "@angular/core")):
         return True
-    return comp.get("ui_ratio", 0) >= 0.5
+    return bool(comp.get("ui_ratio", 0) >= 0.5)
 
 
 def _describe_component(comp_id: str, comp: dict[str, Any], client: bool) -> dict[str, Any]:
@@ -398,7 +398,8 @@ def build_diagram(facts: dict[str, Any], detail: str = "overview") -> dict[str, 
             f for nid in client_nodes for f in comps.get(nodes[nid].get("_comp", ""), {}).get("flags", [])
         }:
             label += " / WS"
-        add_edge(caller, target, label, "network")
+        if caller and target:
+            add_edge(caller, target, label, "network")
         shell = next((nid for nid in client_nodes if nodes[nid]["kind"] == "shell"), None)
         ui_entry = next(
             (nid for nid in client_nodes if nodes[nid]["kind"] == "entry"),
