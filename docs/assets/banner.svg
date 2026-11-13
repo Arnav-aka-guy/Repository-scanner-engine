@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-label="Repository Scanner Engine - turn any codebase into a map you can read">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1015"/>
+      <stop offset="1" stop-color="#141922"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F2A93B"/>
+      <stop offset="0.55" stop-color="#ffd48a"/>
+      <stop offset="1" stop-color="#8FB0F5"/>
+    </linearGradient>
+    <linearGradient id="scan" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F2A93B" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#F2A93B" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#F2A93B" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#6f7887" fill-opacity="0.18"/>
+    </pattern>
+    <clipPath id="panel"><rect x="640" y="36" width="524" height="288" rx="16"/></clipPath>
+    <style>
+      .t { font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+      .m { font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', monospace; }
+      .fade { opacity: 0; animation: fadeUp .9s ease-out forwards; }
+      .d1 { animation-delay: .1s } .d2 { animation-delay: .35s } .d3 { animation-delay: .6s } .d4 { animation-delay: .85s }
+      @keyframes fadeUp { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+
+      .phrase { opacity: 0; animation: cycle 12s infinite; }
+      .p1 { animation-delay: 0s } .p2 { animation-delay: 3s } .p3 { animation-delay: 6s } .p4 { animation-delay: 9s }
+      @keyframes cycle { 0% { opacity: 0 } 3% { opacity: 1 } 22% { opacity: 1 } 25% { opacity: 0 } 100% { opacity: 0 } }
+
+      .caret { animation: blink 1s steps(1) infinite; }
+      @keyframes blink { 50% { opacity: 0 } }
+
+      .edge { stroke-dasharray: 220; stroke-dashoffset: 220; animation: draw 2.2s ease-out forwards, glow 4s ease-in-out 2.2s infinite; }
+      .e1 { animation-delay: .6s, 2.8s } .e2 { animation-delay: .9s, 3.1s } .e3 { animation-delay: 1.2s, 3.4s }
+      .e4 { animation-delay: 1.5s, 3.7s } .e5 { animation-delay: 1.8s, 4s } .e6 { animation-delay: 2.1s, 4.3s }
+      .e7 { animation-delay: 2.4s, 4.6s } .e8 { animation-delay: 2.7s, 4.9s }
+      @keyframes draw { to { stroke-dashoffset: 0 } }
+      @keyframes glow { 0%,100% { stroke-opacity: .45 } 50% { stroke-opacity: 1 } }
+
+      .node { opacity: 0; animation: pop .5s ease-out forwards; }
+      .n1 { animation-delay: .3s } .n2 { animation-delay: .7s } .n3 { animation-delay: 1s } .n4 { animation-delay: 1.3s }
+      .n5 { animation-delay: 1.6s } .n6 { animation-delay: 1.9s } .n7 { animation-delay: 2.2s } .n8 { animation-delay: 2.5s }
+      @keyframes pop { from { opacity: 0 } to { opacity: 1 } }
+
+      .pulse { animation: pulse 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+      @keyframes pulse { 0% { transform: scale(1); opacity: .7 } 100% { transform: scale(2.6); opacity: 0 } }
+
+      .sweep { animation: sweep 4.5s linear infinite; }
+      @keyframes sweep { from { transform: translateX(-140px) } to { transform: translateX(560px) } }
+
+      .dot { opacity: 0; animation: travel 3.2s linear infinite; }
+      @keyframes travel { 0% { offset-distance: 0%; opacity: 0 } 8% { opacity: 1 } 92% { opacity: 1 } 100% { offset-distance: 100%; opacity: 0 } }
+    </style>
+  </defs>
+
+  <rect width="1200" height="360" rx="20" fill="url(#bg)"/>
+  <rect width="1200" height="360" rx="20" fill="url(#grid)"/>
+
+  <!-- left: text -->
+  <g class="fade d1">
+    <rect x="56" y="58" width="44" height="44" rx="10" fill="#F2A93B"/>
+    <text x="78" y="88" text-anchor="middle" class="t" font-size="24" font-weight="800" fill="#151816">R</text>
+    <text x="114" y="78" class="m" font-size="13" fill="#8a928b" letter-spacing="2">CODEBASE SURVEY ENGINE</text>
+    <text x="114" y="97" class="m" font-size="12" fill="#5b6470">v2.1 · open source · MIT</text>
+  </g>
+  <text x="56" y="160" class="t fade d2" font-size="46" font-weight="800" fill="url(#title)">Repository Scanner</text>
+  <text x="56" y="210" class="t fade d2" font-size="46" font-weight="800" fill="#E6EAF0">Engine</text>
+
+  <g class="fade d3">
+    <text x="58" y="254" class="m" font-size="17" fill="#8a928b">&gt;</text>
+    <g class="m" font-size="17" fill="#E6EAF0">
+      <text x="78" y="254" class="phrase p1">map every import, class and function</text>
+      <text x="78" y="254" class="phrase p2">ask questions, get answers with file:line</text>
+      <text x="78" y="254" class="phrase p3">draw the system design with Groq AI</text>
+      <text x="78" y="254" class="phrase p4">score health, debt and dependency risk</text>
+    </g>
+  </g>
+
+  <g class="fade d4 t" font-size="13" font-weight="600">
+    <rect x="56" y="282" width="92" height="28" rx="14" fill="#5B8DEF" fill-opacity=".14" stroke="#5B8DEF" stroke-opacity=".5"/>
+    <text x="102" y="301" text-anchor="middle" fill="#8FB0F5">FastAPI</text>
+    <rect x="156" y="282" width="88" height="28" rx="14" fill="#4CAF79" fill-opacity=".14" stroke="#4CAF79" stroke-opacity=".5"/>
+    <text x="200" y="301" text-anchor="middle" fill="#7FCB9F">React 19</text>
+    <rect x="252" y="282" width="78" height="28" rx="14" fill="#7CC4C9" fill-opacity=".14" stroke="#7CC4C9" stroke-opacity=".5"/>
+    <text x="291" y="301" text-anchor="middle" fill="#9AD3D7">FAISS</text>
+    <rect x="338" y="282" width="102" height="28" rx="14" fill="#9580CA" fill-opacity=".14" stroke="#9580CA" stroke-opacity=".5"/>
+    <text x="389" y="301" text-anchor="middle" fill="#B5A4E0">Graph-RAG</text>
+    <rect x="448" y="282" width="86" height="28" rx="14" fill="#F2A93B" fill-opacity=".14" stroke="#F2A93B" stroke-opacity=".5"/>
+    <text x="491" y="301" text-anchor="middle" fill="#F2A93B">Electron</text>
+  </g>
+
+  <!-- right: animated code map -->
+  <rect x="640" y="36" width="524" height="288" rx="16" fill="#11151c" stroke="#2c333d"/>
+  <g clip-path="url(#panel)">
+    <rect x="640" y="36" width="140" height="288" fill="url(#scan)" class="sweep"/>
+  </g>
+  <text x="662" y="62" class="m" font-size="11" fill="#5b6470" letter-spacing="1">SCAN: ACTIVE · 276 files · 65,021 lines</text>
+  <circle cx="1142" cy="58" r="4" fill="#4CAF79"/>
+  <circle cx="1142" cy="58" r="4" fill="#4CAF79" class="pulse"/>
+
+  <g fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path id="p1" class="edge e1" d="M712 190 C 760 190, 770 120, 830 120" stroke="#5B8DEF"/>
+    <path id="p2" class="edge e2" d="M712 190 C 760 190, 770 260, 830 260" stroke="#5B8DEF"/>
+    <path id="p3" class="edge e3" d="M890 120 C 930 120, 940 95, 985 95" stroke="#4CAF79"/>
+    <path id="p4" class="edge e4" d="M890 120 C 935 120, 940 175, 985 175" stroke="#4CAF79"/>
+    <path id="p5" class="edge e5" d="M890 260 C 935 260, 940 175, 985 175" stroke="#4CAF79"/>
+    <path id="p6" class="edge e6" d="M890 260 C 935 260, 940 268, 985 268" stroke="#7CC4C9"/>
+    <path id="p7" class="edge e7" d="M1045 95 C 1080 95, 1085 130, 1115 130" stroke="#9580CA"/>
+    <path id="p8" class="edge e8" d="M1045 175 C 1080 175, 1085 130, 1115 130" stroke="#9580CA"/>
+  </g>
+
+  <g class="m" font-size="10.5">
+    <g class="node n1"><rect x="664" y="174" width="48" height="32" rx="7" fill="#171b22" stroke="#5B8DEF"/><text x="688" y="194" text-anchor="middle" fill="#8FB0F5">UI</text></g>
+    <g class="node n2"><rect x="830" y="104" width="60" height="32" rx="7" fill="#171b22" stroke="#7B6CF6"/><text x="860" y="124" text-anchor="middle" fill="#B5A4E0">auth</text></g>
+    <g class="node n3"><rect x="830" y="244" width="60" height="32" rx="7" fill="#171b22" stroke="#4CAF79"/><text x="860" y="264" text-anchor="middle" fill="#7FCB9F">api</text></g>
+    <g class="node n4"><rect x="985" y="79" width="60" height="32" rx="7" fill="#171b22" stroke="#4CAF79"/><text x="1015" y="99" text-anchor="middle" fill="#7FCB9F">graph</text></g>
+    <g class="node n5"><rect x="985" y="159" width="60" height="32" rx="7" fill="#171b22" stroke="#4CAF79"/><text x="1015" y="179" text-anchor="middle" fill="#7FCB9F">rag</text></g>
+    <g class="node n6"><rect x="985" y="252" width="60" height="32" rx="7" fill="#171b22" stroke="#7CC4C9"/><text x="1015" y="272" text-anchor="middle" fill="#9AD3D7">faiss</text></g>
+    <g class="node n7"><rect x="1115" y="114" width="36" height="32" rx="16" fill="#171b22" stroke="#9580CA"/><text x="1133" y="134" text-anchor="middle" fill="#B5A4E0">AI</text></g>
+  </g>
+
+  <!-- data packets travelling along the edges -->
+  <g>
+    <circle r="3.2" fill="#F2A93B" class="dot" style="offset-path: path('M712 190 C 760 190, 770 260, 830 260'); animation-delay: 3s"/>
+    <circle r="3.2" fill="#F2A93B" class="dot" style="offset-path: path('M890 260 C 935 260, 940 175, 985 175'); animation-delay: 3.8s"/>
+    <circle r="3.2" fill="#F2A93B" class="dot" style="offset-path: path('M1045 175 C 1080 175, 1085 130, 1115 130'); animation-delay: 4.6s"/>
+    <circle r="3.2" fill="#8FB0F5" class="dot" style="offset-path: path('M712 190 C 760 190, 770 120, 830 120'); animation-delay: 3.4s"/>
+    <circle r="3.2" fill="#8FB0F5" class="dot" style="offset-path: path('M890 120 C 930 120, 940 95, 985 95'); animation-delay: 4.2s"/>
+  </g>
+
+  <text x="662" y="310" class="m" font-size="11" fill="#5b6470">dependency graph · call graph · hybrid search · system design</text>
+</svg>
