@@ -62,7 +62,7 @@ def test_fixed_benchmark_repository_snapshot_scores():
                     name="get_key",
                     start_line=1,
                     end_line=10,
-                    source_code="def get_key():\n    token = 'sk-abcdef1234567890abcdef1234567890'\n    return token\n",
+                    source_code="def get_key():\n    token = 'sk-abcdef1234567890abcdef12345'\n    return token\n",
                     docstring="",
                 )
             ],
