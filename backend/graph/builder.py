@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-import os
+import posixpath
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import networkx as nx
 
@@ -249,18 +249,19 @@ class GraphBuilder:
         """
         index: dict[str, str] = {}
         for fpath in parsed_files:
-            p = Path(fpath)
-
             posix_path = fpath.replace("\\", "/").lower()
             index[posix_path] = fpath
             try:
+                p = Path(fpath)
                 res_posix = p.resolve().as_posix().lower()
                 index[res_posix] = fpath
             except Exception:
                 pass
 
+            pure_p = PurePosixPath(posix_path)
+
             # 1. Python-style dotted module name
-            parts = list(p.with_suffix("").parts)
+            parts = list(pure_p.with_suffix("").parts)
             dotted = ".".join(parts)
             index[dotted] = fpath
             for i in range(1, len(parts)):
@@ -268,12 +269,12 @@ class GraphBuilder:
                 index.setdefault(short, fpath)
 
             # 2. Bare filename without extension (e.g. "api", "Sidebar")
-            stem = p.stem
+            stem = pure_p.stem
             index.setdefault(stem, fpath)
 
             # 3. Slash-based relative-looking paths without extension
             #    e.g. "services/api", "components/Sidebar"
-            rel_parts = p.with_suffix("").parts
+            rel_parts = pure_p.with_suffix("").parts
             for i in range(1, len(rel_parts)):
                 slash_path = "/".join(rel_parts[i:])
                 index.setdefault(slash_path, fpath)
@@ -291,7 +292,8 @@ class GraphBuilder:
         if not module:
             return None
 
-        curr_p = Path(current_file)
+        curr_posix = current_file.replace("\\", "/")
+        curr_p = PurePosixPath(curr_posix)
         curr_ext = curr_p.suffix.lower()
         is_js_ts = curr_ext in cls._JS_TS_EXTENSIONS or module.startswith(("./", "../", "@/"))
 
@@ -301,7 +303,7 @@ class GraphBuilder:
                 return None
 
             clean_module = module.rstrip("/")
-            candidates: list[Path] = []
+            candidates: list[PurePosixPath] = []
             if clean_module.startswith((".", "/")):
                 candidates.append(curr_p.parent / clean_module)
             elif clean_module.startswith("@/"):
@@ -312,17 +314,17 @@ class GraphBuilder:
 
             for base in candidates:
 
-                def _check(cand: Path) -> str | None:
-                    norm = os.path.normpath(cand.as_posix()).replace("\\", "/").lower()
+                def _check(cand: PurePosixPath) -> str | None:
+                    norm = posixpath.normpath(str(cand)).lower()
                     if norm in module_index:
                         t = module_index[norm]
-                        if t != current_file:
+                        if t != current_file and t.replace("\\", "/").lower() != curr_posix.lower():
                             return t
                     try:
-                        res = cand.resolve().as_posix().lower()
+                        res = Path(str(cand)).resolve().as_posix().lower()
                         if res in module_index:
                             t = module_index[res]
-                            if t != current_file:
+                            if t != current_file and t.replace("\\", "/").lower() != curr_posix.lower():
                                 return t
                     except Exception:
                         pass
@@ -369,7 +371,7 @@ class GraphBuilder:
             target = module_index[bare]
 
         # Prevent reporting a file as importing itself
-        if target and str(Path(target).resolve()) == str(Path(current_file).resolve()):
+        if target and (target == current_file or target.replace("\\", "/").lower() == curr_posix.lower()):
             return None
 
         return target
@@ -379,54 +381,58 @@ class GraphBuilder:
         cls,
         current_file: str,
         module_index: dict[str, str],
-    ) -> list[Path]:
+    ) -> list[PurePosixPath]:
         """Locate base directories for '@/' alias resolution."""
-        roots: list[Path] = []
+        roots: list[PurePosixPath] = []
         p = Path(current_file)
         try:
-            curr = p.resolve().parent
-            for _ in range(6):
-                if curr == curr.parent:
-                    break
-                for cfg_name in ("tsconfig.json", "tsconfig.app.json", "tsconfig.base.json", "jsconfig.json"):
-                    cfg_path = curr / cfg_name
-                    if cfg_path.exists():
-                        try:
-                            with open(cfg_path, encoding="utf-8") as f:
-                                data = json.load(f)
-                            paths_map = data.get("compilerOptions", {}).get("paths", {})
-                            if "@/*" in paths_map:
-                                for target in paths_map["@/*"]:
-                                    clean_target = target.rstrip("*").rstrip("/")
-                                    target_dir = (curr / clean_target).resolve()
-                                    if target_dir.exists() and target_dir not in roots:
-                                        roots.append(target_dir)
-                        except Exception:
-                            pass
-                src_dir = curr / "src"
-                if src_dir.is_dir() and src_dir.resolve() not in roots:
-                    roots.append(src_dir.resolve())
-                curr = curr.parent
+            if p.exists():
+                curr = p.resolve().parent
+                for _ in range(6):
+                    if curr == curr.parent:
+                        break
+                    for cfg_name in ("tsconfig.json", "tsconfig.app.json", "tsconfig.base.json", "jsconfig.json"):
+                        cfg_path = curr / cfg_name
+                        if cfg_path.exists():
+                            try:
+                                with open(cfg_path, encoding="utf-8") as f:
+                                    data = json.load(f)
+                                paths_map = data.get("compilerOptions", {}).get("paths", {})
+                                if "@/*" in paths_map:
+                                    for target in paths_map["@/*"]:
+                                        clean_target = target.rstrip("*").rstrip("/")
+                                        target_dir = PurePosixPath((curr / clean_target).resolve().as_posix())
+                                        if target_dir not in roots:
+                                            roots.append(target_dir)
+                            except Exception:
+                                pass
+                    src_dir = PurePosixPath((curr / "src").resolve().as_posix())
+                    if (curr / "src").is_dir() and src_dir not in roots:
+                        roots.append(src_dir)
+                    curr = curr.parent
         except Exception:
             pass
 
-        cf_norm = current_file.replace("\\", "/").lower()
+        posix_file = current_file.replace("\\", "/")
+        cf_norm = posix_file.lower()
         if cf_norm.startswith(("src/", "./src/")):
-            roots.append(Path("src"))
+            if PurePosixPath("src") not in roots:
+                roots.append(PurePosixPath("src"))
         elif "/src/" in cf_norm:
-            prefix = current_file[: cf_norm.find("/src/") + 4]
-            inferred = Path(prefix)
+            prefix = posix_file[: cf_norm.find("/src/") + 4]
+            inferred = PurePosixPath(prefix)
             if inferred not in roots:
                 roots.append(inferred)
 
         for val in module_index.values():
-            val_norm = val.replace("\\", "/").lower()
+            val_posix = val.replace("\\", "/")
+            val_norm = val_posix.lower()
             if val_norm.startswith(("src/", "./src/")):
-                if Path("src") not in roots:
-                    roots.append(Path("src"))
+                if PurePosixPath("src") not in roots:
+                    roots.append(PurePosixPath("src"))
             elif "/src/" in val_norm:
-                prefix = val[: val_norm.find("/src/") + 4]
-                inferred = Path(prefix)
+                prefix = val_posix[: val_norm.find("/src/") + 4]
+                inferred = PurePosixPath(prefix)
                 if inferred not in roots:
                     roots.append(inferred)
 
