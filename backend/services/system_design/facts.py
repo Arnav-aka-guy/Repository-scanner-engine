@@ -515,7 +515,14 @@ def _parse_pyproject(text: str) -> list[str]:
             if "]" in stripped:
                 in_deps = False
         dep_match = re.match(r"^([A-Za-z0-9_.\-]+)\s*=\s*[\"{]", stripped)
-        if dep_match and dep_match.group(1).lower() not in {"name", "version", "description", "python", "readme", "license"}:
+        if dep_match and dep_match.group(1).lower() not in {
+            "name",
+            "version",
+            "description",
+            "python",
+            "readme",
+            "license",
+        }:
             deps.append(dep_match.group(1).lower())
     return deps
 
