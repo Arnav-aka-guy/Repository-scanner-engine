@@ -23,18 +23,14 @@ const path = require('path');
 const { spawn } = require('child_process');
 const http = require('http');
 
-// ---------------------------------------------------------------------------
 // Single-instance lock
-// ---------------------------------------------------------------------------
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
   process.exit(0);
 }
 
-// ---------------------------------------------------------------------------
 // Dev / prod detection
-// ---------------------------------------------------------------------------
 let isDev;
 try {
   isDev = require('electron-is-dev');
@@ -45,9 +41,7 @@ try {
 const BACKEND_PORT = process.env.BACKEND_PORT || 8000;
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
 
-// ---------------------------------------------------------------------------
 // Backend child-process
-// ---------------------------------------------------------------------------
 let backendProcess = null;
 
 function waitForBackend(url, timeout = 30_000) {
@@ -119,9 +113,7 @@ function killBackend() {
   backendProcess = null;
 }
 
-// ---------------------------------------------------------------------------
 // Native application menu
-// ---------------------------------------------------------------------------
 function buildMenu() {
   const isMac = process.platform === 'darwin';
 
@@ -247,9 +239,7 @@ function buildMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-// ---------------------------------------------------------------------------
 // Window
-// ---------------------------------------------------------------------------
 let mainWindow = null;
 
 function createWindow() {
@@ -305,9 +295,7 @@ function loadFrontend() {
   }
 }
 
-// ---------------------------------------------------------------------------
 // IPC handlers
-// ---------------------------------------------------------------------------
 function setupIPC() {
   // Native directory picker
   ipcMain.handle('select-directory', async () => {
@@ -340,9 +328,7 @@ function setupIPC() {
   });
 }
 
-// ---------------------------------------------------------------------------
 // Second-instance handler (single-instance lock)
-// ---------------------------------------------------------------------------
 app.on('second-instance', () => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -350,9 +336,7 @@ app.on('second-instance', () => {
   }
 });
 
-// ---------------------------------------------------------------------------
 // App lifecycle
-// ---------------------------------------------------------------------------
 app.whenReady().then(async () => {
   buildMenu();
   setupIPC();
