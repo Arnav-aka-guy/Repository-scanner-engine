@@ -14,9 +14,7 @@ from pathlib import Path
 
 import pytest
 
-# ---------------------------------------------------------------------------
 # Optional-import guards — skip if heavy deps are missing
-# ---------------------------------------------------------------------------
 
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
@@ -41,9 +39,7 @@ MODEL_NAME = "all-MiniLM-L6-v2"
 EXPECTED_DIM = 384  # output dimension for all-MiniLM-L6-v2
 
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="module")
@@ -67,9 +63,7 @@ def sample_texts() -> list[str]:
     ]
 
 
-# ---------------------------------------------------------------------------
 # Tests — Encoding dimensionality
-# ---------------------------------------------------------------------------
 
 
 class TestEncoding:
@@ -110,9 +104,7 @@ class TestEncoding:
         assert sim_ab > sim_ac, "Similar texts should be closer in embedding space"
 
 
-# ---------------------------------------------------------------------------
 # Tests — FAISS vector store
-# ---------------------------------------------------------------------------
 
 
 class TestVectorStore:
@@ -191,9 +183,7 @@ class TestVectorStore:
         assert indices[0][0] == -1
 
 
-# ---------------------------------------------------------------------------
 # Tests — Metadata store (simple JSON sidecar pattern)
-# ---------------------------------------------------------------------------
 
 
 class TestMetadataStore:

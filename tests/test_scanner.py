@@ -13,9 +13,7 @@ import pytest
 
 from backend.core.models import FileInfo, RepositoryInfo
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -83,9 +81,7 @@ def repo_with_gitignore(tmp_path: Path) -> Path:
     return tmp_path
 
 
-# ---------------------------------------------------------------------------
 # Tests — File discovery
-# ---------------------------------------------------------------------------
 
 
 class TestFileDiscovery:
@@ -109,9 +105,7 @@ class TestFileDiscovery:
         assert deep_file.exists()
 
 
-# ---------------------------------------------------------------------------
 # Tests — Language detection
-# ---------------------------------------------------------------------------
 
 EXTENSION_LANGUAGE_MAP: dict[str, str] = {
     ".py": "Python",
@@ -151,9 +145,7 @@ class TestLanguageDetection:
         assert info.language == "Python"
 
 
-# ---------------------------------------------------------------------------
 # Tests — .gitignore filtering
-# ---------------------------------------------------------------------------
 
 
 class TestGitignoreRespect:
@@ -179,9 +171,7 @@ class TestGitignoreRespect:
         assert len(nm_files) == 1  # exists on disk but should be skipped
 
 
-# ---------------------------------------------------------------------------
 # Tests — RepositoryInfo model
-# ---------------------------------------------------------------------------
 
 
 class TestRepositoryInfoModel:
@@ -200,9 +190,7 @@ class TestRepositoryInfoModel:
         assert info.scanned_at is not None
 
 
-# ---------------------------------------------------------------------------
 # Tests — Resource limits and scan job error messages
-# ---------------------------------------------------------------------------
 
 
 class TestScanLimits:
@@ -233,6 +221,7 @@ class TestScanLimits:
         monkeypatch.setattr(settings, "max_files", 2)
 
         from backend.parser.service import ParserService
+
         parser = ParserService()
         mock_embeddings = MagicMock()
         mock_embeddings.embed_code = AsyncMock()
@@ -245,4 +234,3 @@ class TestScanLimits:
         job = _scan_jobs[job_id]
         assert job["status"] == "failed"
         assert "file count exceeded maximum limit (2 files)" in job["message"]
-

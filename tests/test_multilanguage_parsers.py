@@ -246,7 +246,9 @@ def test_csharp_parser(tmp_path: Path) -> None:
 async def test_parser_service_multi_language_end_to_end(tmp_path: Path) -> None:
     (tmp_path / "main.py").write_text("def run(): pass\n", encoding="utf-8")
     (tmp_path / "app.ts").write_text("export function start(): void {}\n", encoding="utf-8")
-    (tmp_path / "Main.java").write_text("public class Main { public static void main(String[] args) {} }\n", encoding="utf-8")
+    (tmp_path / "Main.java").write_text(
+        "public class Main { public static void main(String[] args) {} }\n", encoding="utf-8"
+    )
     (tmp_path / "main.go").write_text("package main\nfunc main() {}\n", encoding="utf-8")
     (tmp_path / "main.rs").write_text("fn main() {}\n", encoding="utf-8")
     (tmp_path / "util.cpp").write_text("void helper() {}\n", encoding="utf-8")

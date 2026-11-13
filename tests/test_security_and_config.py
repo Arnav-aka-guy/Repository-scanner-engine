@@ -20,7 +20,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-# ── Fixtures ────────────────────────────────────────────────────────────
+# Fixtures
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def repo_with_files(tmp_path: Path) -> Path:
     return tmp_path
 
 
-# ── 5.1 File-read vulnerability tests ──────────────────────────────────
+# 1 File-read vulnerability tests
 
 
 class TestFileReadSecurity:
@@ -112,7 +112,7 @@ class TestFileReadSecurity:
         assert response.status_code == 422  # Missing required query param
 
 
-# ── 5.3 Auth enforcement tests ──────────────────────────────────────────
+# 3 Auth enforcement tests
 
 
 class TestAuthEnforcement:
@@ -223,7 +223,7 @@ class TestAllowedRootsEnvParsing:
         assert str(dir_b.resolve()) in s.allowed_roots
 
 
-# ── 5.5 Rate limiting tests ──────────────────────────────────────────────
+# 5 Rate limiting tests
 
 
 class TestRateLimiting:
@@ -250,7 +250,7 @@ class TestRateLimiting:
         assert callable(chat)
 
 
-# ── 5.6 Input sanitization tests ────────────────────────────────────────
+# 6 Input sanitization tests
 
 
 class TestInputSanitization:
@@ -279,7 +279,7 @@ class TestInputSanitization:
         assert response.status_code == 422
 
 
-# ── 6. Resource limit tests ──────────────────────────────────────────────
+# Resource limit tests
 
 
 class TestScannerResourceLimits:
@@ -361,7 +361,7 @@ class TestScannerResourceLimits:
         assert "Too many files" in str(err)
 
 
-# ── 7. Safe error handling tests ─────────────────────────────────────────
+# Safe error handling tests
 
 
 class TestSafeErrorHandling:
@@ -396,7 +396,7 @@ class TestSafeErrorHandling:
                 assert "0x1234" not in detail
 
 
-# ── 9. Configuration tests ───────────────────────────────────────────────
+# Configuration tests
 
 
 class TestConfiguration:
@@ -435,7 +435,7 @@ class TestConfiguration:
         assert settings.app_version  # Not empty
 
 
-# ── Path validator edge cases ────────────────────────────────────────────
+# Path validator edge cases
 
 
 class TestPathValidatorEdgeCases:
@@ -496,7 +496,7 @@ class TestPathValidatorEdgeCases:
         assert exc_info.value.status_code == 403
 
 
-# ── Mock encoder for fast CI ─────────────────────────────────────────────
+# Mock encoder for fast CI
 
 
 class TestMockEmbeddingEncoder:

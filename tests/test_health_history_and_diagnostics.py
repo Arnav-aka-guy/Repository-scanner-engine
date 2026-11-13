@@ -24,7 +24,7 @@ from backend.services.code_review import CodeReviewService
 from backend.services.health_history import HealthHistoryService
 from backend.services.scan_worker import ScanJobManager
 
-# ── 1. Change Impact Analysis Tests ──────────────────────────────────────────
+# Change Impact Analysis Tests
 
 
 def test_change_impact_analysis_direct_indirect_and_tests() -> None:
@@ -93,7 +93,7 @@ def test_change_impact_analysis_direct_indirect_and_tests() -> None:
     assert "Overall Risk:" in md_rep
 
 
-# ── 2. Automated AI Code Review Tests ─────────────────────────────────────────
+# Automated AI Code Review Tests
 
 
 @pytest.mark.asyncio
@@ -132,7 +132,7 @@ async def test_code_review_deterministic_diff_analysis() -> None:
     assert any(f.category == "missing_test" for f in report.findings)
 
 
-# ── 3. Historical Health Analytics Tests ──────────────────────────────────────
+# Historical Health Analytics Tests
 
 
 def test_health_history_snapshot_and_comparison(tmp_path: Path) -> None:
@@ -185,7 +185,7 @@ def test_health_history_snapshot_and_comparison(tmp_path: Path) -> None:
     assert "b.py:bare_except:20" in comparison.resolved_findings[0]
 
 
-# ── 4. Scan Worker & Job Concurrency Tests ────────────────────────────────────
+# Scan Worker & Job Concurrency Tests
 
 
 @pytest.mark.asyncio
@@ -211,7 +211,7 @@ async def test_scan_job_manager_concurrency_and_cancellation(tmp_path: Path) -> 
     assert cancelled["status"] == "cancelled"
 
 
-# ── 5. Standard Health & Readiness Endpoints Tests ────────────────────────────
+# Standard Health & Readiness Endpoints Tests
 
 
 @pytest.mark.asyncio

@@ -21,7 +21,7 @@ from backend.services.system_design.mermaid import to_mermaid
 from backend.services.system_design.schema import MAX_NODES, sanitize_diagram
 from backend.services.system_design.service import SystemDesignService, default_llm_factory
 
-# ── fixtures ────────────────────────────────────────────────────────────
+# fixtures
 
 
 def _write(root: Path, rel: str, text: str) -> None:
@@ -127,7 +127,7 @@ GOOD_REPLY = json.dumps(
 )
 
 
-# ── facts ───────────────────────────────────────────────────────────────
+# facts
 
 
 def test_facts_find_components_edges_and_tech(sample_repo: Path) -> None:
@@ -167,7 +167,7 @@ def test_facts_missing_path_raises(tmp_path: Path) -> None:
         collect_repo_facts(tmp_path / "nope")
 
 
-# ── builder / sanitiser / mermaid ──────────────────────────────────────
+# builder / sanitiser / mermaid
 
 
 @pytest.mark.parametrize("detail", ["overview", "detailed"])
@@ -218,7 +218,7 @@ def test_mermaid_export_is_valid_looking(sample_repo: Path) -> None:
     assert "-->" in text
 
 
-# ── enricher ────────────────────────────────────────────────────────────
+# enricher
 
 
 def test_parse_json_reply_handles_fences_and_chatter() -> None:
@@ -236,7 +236,7 @@ def test_prompt_contains_facts_but_not_secrets(sample_repo: Path) -> None:
     assert len(prompt) < 30_000
 
 
-# ── service ─────────────────────────────────────────────────────────────
+# service
 
 
 async def test_service_uses_llm_and_caches(sample_repo: Path, tmp_path: Path) -> None:
@@ -281,7 +281,7 @@ async def test_service_without_groq_key(sample_repo: Path, tmp_path: Path) -> No
     assert (await svc.generate(sample_repo))["cache_hit"] is True
 
 
-# ── API ─────────────────────────────────────────────────────────────────
+# API
 
 
 @pytest.fixture
@@ -344,7 +344,7 @@ def test_api_other_user_cannot_generate(client: TestClient, sample_repo: Path) -
     assert resp.status_code in (403, 404)
 
 
-# ── Step 4: Provider chain, rate limits, and fallback tests ─────────────
+# Provider chain, rate limits, and fallback tests
 
 
 def test_prompt_and_system_prompt_length_under_12k_chars(sample_repo: Path) -> None:

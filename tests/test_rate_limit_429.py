@@ -25,9 +25,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 
 
 def _make_client() -> TestClient:
@@ -37,11 +35,9 @@ def _make_client() -> TestClient:
     return TestClient(app, raise_server_exceptions=False)
 
 
-# ---------------------------------------------------------------------------
 # Optional fixture (kept per spec; not used by the tests below because the
 # @limiter.limit() decorators capture the rate-string at decoration/import
 # time, so patching module attributes after import has no effect on them).
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -66,9 +62,7 @@ def low_limit_client():
         yield client
 
 
-# ---------------------------------------------------------------------------
 # Tests
-# ---------------------------------------------------------------------------
 
 
 class TestRateLimit429:

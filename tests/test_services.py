@@ -6,7 +6,7 @@ from backend.parser.models import ClassInfo, FunctionInfo, ImportInfo, ParsedFil
 from backend.services.health_score import HealthReport, compute_health_score
 from backend.services.tech_debt import TechDebtReport, analyse_tech_debt
 
-# ── Test Fixtures ───────────────────────────────────────────────────────
+# Test Fixtures
 
 
 def _make_function(
@@ -70,7 +70,7 @@ def _make_parsed_file(
     return path, pf
 
 
-# ── Health Score Tests ──────────────────────────────────────────────────
+# Health Score Tests
 
 
 class TestHealthScore:
@@ -138,7 +138,7 @@ class TestHealthScore:
         assert names == {"Documentation", "Complexity", "Architecture", "Maintainability", "Security"}
 
 
-# ── Tech Debt Tests ─────────────────────────────────────────────────────
+# Tech Debt Tests
 
 
 class TestTechDebt:

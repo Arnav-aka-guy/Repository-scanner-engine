@@ -7,7 +7,7 @@ from pathlib import Path
 
 from backend.parser.models import ClassInfo, FunctionInfo, ImportInfo, ParsedFile
 
-# ── Helpers ─────────────────────────────────────────────────────────────
+# Helpers
 
 
 def _func(name: str = "f", start: int = 1, end: int = 10, docstring: str = "", source: str = "") -> FunctionInfo:
@@ -42,7 +42,7 @@ def _pf(
     return path, pf
 
 
-# ── Repo Comparison Tests ──────────────────────────────────────────────
+# Repo Comparison Tests
 
 
 class TestRepoComparison:
@@ -102,7 +102,7 @@ class TestRepoComparison:
         assert len(result.insights) >= 1
 
 
-# ── Dependency Risk Tests ──────────────────────────────────────────────
+# Dependency Risk Tests
 
 
 class TestDependencyRisk:

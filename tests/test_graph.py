@@ -21,15 +21,11 @@ from backend.parser.models import (
     ParsedFile,
 )
 
-# ---------------------------------------------------------------------------
 # Skip the entire module if NetworkX is not installed
-# ---------------------------------------------------------------------------
 pytestmark = pytest.mark.skipif(nx is None, reason="networkx not installed")
 
 
-# ---------------------------------------------------------------------------
 # Fixtures — mock parsed files
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -110,9 +106,7 @@ def cyclic_parsed_files() -> list[ParsedFile]:
     ]
 
 
-# ---------------------------------------------------------------------------
 # Helper — build a simple NetworkX digraph from ParsedFile data
-# ---------------------------------------------------------------------------
 
 
 def build_import_graph(parsed_files: list[ParsedFile]) -> nx.DiGraph:
@@ -164,9 +158,7 @@ def build_call_graph(parsed_files: list[ParsedFile]) -> nx.DiGraph:
     return g
 
 
-# ---------------------------------------------------------------------------
 # Tests — Dependency graph construction
-# ---------------------------------------------------------------------------
 
 
 class TestGraphConstruction:
@@ -199,9 +191,7 @@ class TestGraphConstruction:
         assert len(call_edges) >= 1
 
 
-# ---------------------------------------------------------------------------
 # Tests — Cycle detection
-# ---------------------------------------------------------------------------
 
 
 class TestCycleDetection:
@@ -225,9 +215,7 @@ class TestCycleDetection:
         assert isinstance(cycles, list)  # just ensure it doesn't crash
 
 
-# ---------------------------------------------------------------------------
 # Tests — Dead code detection
-# ---------------------------------------------------------------------------
 
 
 class TestDeadCodeDetection:
@@ -250,9 +238,7 @@ class TestDeadCodeDetection:
             assert in_degree >= 1
 
 
-# ---------------------------------------------------------------------------
 # Tests — Graph models
-# ---------------------------------------------------------------------------
 
 
 class TestGraphModels:
