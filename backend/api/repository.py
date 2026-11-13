@@ -314,12 +314,18 @@ async def _run_scan_job(
     except ScanLimitError as exc:
         _scan_jobs[job_id]["status"] = "failed"
         _scan_jobs[job_id]["error"] = f"Repository limit exceeded: {exc.code}"
-        if exc.code == "max_files":
-            _scan_jobs[job_id]["message"] = f"Scan stopped: file count exceeded maximum limit ({exc.limit} files)."
+        if exc.code in ("max_files", "repository_too_large"):
+            if exc.limit is not None:
+                _scan_jobs[job_id]["message"] = f"Scan stopped: file count exceeded maximum limit ({exc.limit} files)."
+            else:
+                _scan_jobs[job_id]["message"] = "Scan stopped: file count exceeded maximum limit."
         elif exc.code == "max_depth":
-            _scan_jobs[job_id]["message"] = (
-                f"Scan stopped: directory depth exceeded maximum limit ({exc.limit} levels)."
-            )
+            if exc.limit is not None:
+                _scan_jobs[job_id]["message"] = (
+                    f"Scan stopped: directory depth exceeded maximum limit ({exc.limit} levels)."
+                )
+            else:
+                _scan_jobs[job_id]["message"] = "Scan stopped: directory depth exceeded maximum limit."
         elif exc.code == "max_size":
             _scan_jobs[job_id]["message"] = "Scan stopped: individual file size limit exceeded."
         else:
