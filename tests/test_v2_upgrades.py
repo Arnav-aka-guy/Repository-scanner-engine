@@ -207,6 +207,7 @@ class TestAllowedRootsEnvParsing:
     def test_allowed_roots_json_list_format(self, monkeypatch, tmp_path):
         """Form 3: JSON list like [\"/a\",\"/b\"]."""
         import json
+
         from backend.core.config import Settings
 
         dir_a = tmp_path / "a"

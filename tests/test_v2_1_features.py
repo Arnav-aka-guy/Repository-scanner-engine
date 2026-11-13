@@ -18,12 +18,11 @@ from fastapi.testclient import TestClient
 
 from backend.core.health import check_liveness, check_readiness
 from backend.main import app
-from backend.parser.models import ClassInfo, FunctionInfo, ImportInfo, ParsedFile
+from backend.parser.models import FunctionInfo, ImportInfo, ParsedFile
 from backend.services.change_impact import ChangeImpactService
 from backend.services.code_review import CodeReviewService
 from backend.services.health_history import HealthHistoryService
 from backend.services.scan_worker import ScanJobManager
-
 
 # ── 1. Change Impact Analysis Tests ──────────────────────────────────────────
 

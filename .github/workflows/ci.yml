@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: pip install ruff
-      - run: ruff check backend/
+      - run: ruff check backend/ tests/
       - run: ruff format --check backend/
 
   test:

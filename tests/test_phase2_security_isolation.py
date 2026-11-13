@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import tempfile
 from pathlib import Path
 
@@ -15,10 +16,8 @@ from backend.security.rate_limiter import limiter
 @pytest.fixture
 def client():
     """Create a test client with reset limiter."""
-    try:
+    with contextlib.suppress(Exception):
         limiter.reset()
-    except Exception:
-        pass
     with TestClient(app) as c:
         yield c
 
