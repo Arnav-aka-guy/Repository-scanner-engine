@@ -1,4 +1,4 @@
-"""Regression test suite for Round 2 bug fixes."""
+"""Regression test suite for repository ID route resolution and dependency graph."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def register_user(client: TestClient, name: str) -> dict:
 
 
 def test_documentation_generate_with_repository_id_only(client: TestClient, tmp_path: Path):
-    """A1: POST /api/documentation/generate with only repository_id must succeed (not 500)."""
+    """POST /api/documentation/generate with only repository_id must succeed (not 500)."""
     user = register_user(client, "Doc User")
     repo_dir = tmp_path / "repo_doc_test"
     repo_dir.mkdir(parents=True, exist_ok=True)
@@ -70,16 +70,16 @@ def test_documentation_generate_with_repository_id_only(client: TestClient, tmp_
     assert "docs" in data
 
 
-def test_a2_endpoints_accept_repository_id_only(client: TestClient, tmp_path: Path):
-    """A2: Verify onboarding, architecture report, impact analyze/export, and review analyze accept repository_id only."""
-    user = register_user(client, "A2 User")
-    repo_dir = tmp_path / "repo_a2_test"
+def test_endpoints_accept_repository_id_only(client: TestClient, tmp_path: Path):
+    """Verify onboarding, architecture report, impact analyze/export, and review analyze accept repository_id only."""
+    user = register_user(client, "Scoped User")
+    repo_dir = tmp_path / "repo_scoped_test"
     repo_dir.mkdir(parents=True, exist_ok=True)
-    (repo_dir / "main.py").write_text("def run():\n    return 'a2 test'\n", encoding="utf-8")
+    (repo_dir / "main.py").write_text("def run():\n    return 'test'\n", encoding="utf-8")
 
     add_resp = client.post(
         "/api/repositories",
-        json={"name": "a2_test_repo", "source_path": str(repo_dir)},
+        json={"name": "scoped_test_repo", "source_path": str(repo_dir)},
         headers=user["headers"],
     )
     assert add_resp.status_code == 201, add_resp.text
@@ -129,8 +129,8 @@ def test_a2_endpoints_accept_repository_id_only(client: TestClient, tmp_path: Pa
     assert "total_findings" in resp_review.json()
 
 
-def test_a2_endpoints_user_isolation(client: TestClient, tmp_path: Path, monkeypatch):
-    """A2 User Isolation: User B receives 404/403 when accessing User A's repository_id across A2 endpoints."""
+def test_endpoints_user_isolation(client: TestClient, tmp_path: Path, monkeypatch):
+    """User Isolation: User B receives 404/403 when accessing User A's repository_id across routes."""
     from backend.core.config import get_settings
 
     settings = get_settings()

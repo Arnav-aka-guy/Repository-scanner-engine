@@ -168,7 +168,7 @@ describe('Phase 1 Navigation & Shell Structure', () => {
     );
     expect(navigateResult).toBe('/app');
   });
-  it('B2: mounts MainLayout at /app/repositories/42/overview and calls getUserRepository exactly once', async () => {
+  it('mounts MainLayout at /app/repositories/42/overview and calls getUserRepository exactly once', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     const container = document.createElement('div');
     document.body.appendChild(container);

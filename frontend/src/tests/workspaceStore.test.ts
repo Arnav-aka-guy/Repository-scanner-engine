@@ -225,7 +225,7 @@ describe('useWorkspaceStore', () => {
 
     fetchMock.mockRestore();
   });
-  it('A3: scanRepo calls /api/repositories/{id}/scan when activeRepositoryId is known', async () => {
+  it('scanRepo calls /api/repositories/{id}/scan when activeRepositoryId is known', async () => {
     const capturedUrls: string[] = [];
     const completedResult = {
       path: '/scoped/project',

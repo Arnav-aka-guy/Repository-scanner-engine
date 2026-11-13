@@ -45,7 +45,7 @@ describe('Phase 11: Settings, Providers & Error UX', () => {
     });
   });
 
-  it('renders all 5 Phase 11 settings sections in the navigation sidebar', async () => {
+  it('renders all settings sections in the navigation sidebar', async () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);

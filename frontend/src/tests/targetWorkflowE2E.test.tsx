@@ -29,8 +29,8 @@ describe('Section C End-to-End Target Workflow Verification', () => {
     container.remove();
   });
 
-  // Step 4: Add repository -> creates row -> starts background scan -> turns READY/indexed
-  it('Step 4: scanRepo initiates background job, tracks progress, and marks repository as indexed', async () => {
+  // Add repository -> creates row -> starts background scan -> turns READY/indexed
+  it('scanRepo initiates background job, tracks progress, and marks repository as indexed', async () => {
     vi.spyOn(repoService, 'getUserRepositories').mockResolvedValue({
       repositories: [],
       count: 0,
@@ -97,8 +97,8 @@ describe('Section C End-to-End Target Workflow Verification', () => {
     expect(state.repositoryInfo?.total_files).toBe(12);
   });
 
-  // Step 5: Clicking a repo -> loads files, tree, and scoped sidebar links stay inside /app/repositories/:id/...
-  it('Step 5: openRepository loads repository data and Sidebar links reflect scoped URL', async () => {
+  // Clicking a repo -> loads files, tree, and scoped sidebar links stay inside /app/repositories/:id/...
+  it('openRepository loads repository data and Sidebar links reflect scoped URL', async () => {
     const mockFile: FileInfo = {
       name: 'app.py',
       path: '/repos/beta-repo/app.py',
@@ -145,8 +145,8 @@ describe('Section C End-to-End Target Workflow Verification', () => {
     expect(graphLink).not.toBeNull();
   });
 
-  // Step 7: Switching repos clears old data and loads new repo without stale data
-  it('Step 7: switching repositories resets previous files, graphs, and search results', async () => {
+  // Switching repos clears old data and loads new repo without stale data
+  it('switching repositories resets previous files, graphs, and search results', async () => {
     const mockFile1: FileInfo = {
       name: 'r1.py',
       path: '/repos/repo-1/r1.py',
@@ -196,8 +196,8 @@ describe('Section C End-to-End Target Workflow Verification', () => {
     expect(state.files[0].name).toBe('r2.ts');
   });
 
-  // Step 8: F5 reloads the same page and restores the active repo via targetRepoId
-  it('Step 8: MainLayout restores active repository from scoped URL on refresh', async () => {
+  // F5 reloads the same page and restores the active repo via targetRepoId
+  it('MainLayout restores active repository from scoped URL on refresh', async () => {
     vi.spyOn(repoService, 'getUserRepository').mockResolvedValue({
       id: 99,
       name: 'gamma-repo',

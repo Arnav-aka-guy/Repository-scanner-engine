@@ -10,7 +10,7 @@ import { useWorkspaceStore } from '../stores/workspaceStore';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
-describe('V2.1 Frontend Features', () => {
+describe('Change Impact and Review Features', () => {
   let container: HTMLDivElement;
   let root: Root;
 
