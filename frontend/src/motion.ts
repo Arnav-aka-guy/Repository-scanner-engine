@@ -1,6 +1,5 @@
 /**
  * Shared motion system configuration and animation variants.
- * Follows .agents/skills/motion-system/SKILL.md
  */
 
 import { type Transition, type Variants } from 'framer-motion';

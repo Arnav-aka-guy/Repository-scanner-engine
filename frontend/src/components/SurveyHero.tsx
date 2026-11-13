@@ -2,10 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 
 /**
  * Technical SVG Survey Map Hero Animation.
- * Follows .agents/skills/design-direction and motion-system skills:
- * - Technical coordinate ticks, hairline 1px grid, AST node vertices, dependency arcs.
- * - Signal accent (#F2A93B) and graph edge teal (#7CC4C9).
- * - Pauses via IntersectionObserver when offscreen and on tab hidden.
+ * Technical coordinate ticks, hairline 1px grid, AST node vertices, dependency arcs.
+ * Signal accent (#F2A93B) and graph edge teal (#7CC4C9).
+ * Pauses via IntersectionObserver when offscreen and on tab hidden.
  */
 export const SurveyHero: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);

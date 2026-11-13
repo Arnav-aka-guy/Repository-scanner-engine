@@ -46,5 +46,16 @@ Thumbs.db
 *.faiss
 *.pkl
 
+# Testing and Quality
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage.xml
+.coverage
+
 # Logs
 *.log
+
+# Local agent skills and addons
+.agents/
+system-design-addon/
