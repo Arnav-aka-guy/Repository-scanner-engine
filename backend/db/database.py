@@ -1,11 +1,11 @@
-"""Async SQLAlchemy engine and session factory for PostgreSQL.
+"""Async SQLAlchemy engine and session factory for PostgreSQL and SQLite.
 
 Provides a global async engine, a session factory, and a FastAPI
 dependency that yields per-request database sessions.
 
 When ``DATABASE_ENABLED=false`` (the default) the application runs
 without a relational database — vector indexes and metadata are stored
-on the local filesystem only.  Set ``DATABASE_ENABLED=true`` together
+on the local filesystem only. Set ``DATABASE_ENABLED=true`` together
 with a reachable ``DATABASE_URL`` to enable full persistence.
 """
 
@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
     """Declarative base for all ORM models."""
 
 
-# ── Module-level singletons (created on first import) ───────────────────
+# Module-level singletons (created on first import)
 
 _engine = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
@@ -46,6 +46,7 @@ def _get_engine():
                 settings.database_url,
                 echo=False,
                 connect_args={"check_same_thread": False},
+                pool_pre_ping=True,
             )
         else:
             _engine = create_async_engine(
@@ -84,17 +85,51 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     Commits on success, rolls back on failure, and always closes.
     """
     factory = _get_session_factory()
-    async with factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+    session = factory()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+
+async def ensure_local_user() -> None:
+    """Ensure the default local workspace user (id=1, email=local@localhost) exists in DB."""
+    try:
+        from sqlalchemy import select
+
+        from backend.db.models import User
+        from backend.security.auth import hash_password
+
+        factory = _get_session_factory()
+        async with factory() as db:
+            local_user = await db.get(User, 1)
+            if not local_user:
+                stmt = select(User).where(User.email == "local@localhost")
+                res = await db.execute(stmt)
+                local_user = res.scalars().first()
+
+            if not local_user:
+                local_user = User(
+                    id=1,
+                    name="Local User",
+                    email="local@localhost",
+                    password_hash=hash_password("local_default_pass_123!"),
+                    is_active=True,
+                    token_version=1,
+                )
+                db.add(local_user)
+                await db.commit()
+                logger.info("Created default local user: id=1, email=local@localhost")
+    except Exception as exc:
+        logger.debug("Failed or skipped creating default local user: %s", exc)
 
 
 async def init_db() -> None:
-    """Create all tables.  Call once during application startup.
+    """Create all tables. Call once during application startup.
 
     No-ops when ``DATABASE_ENABLED=false`` so the application starts
     correctly without a Postgres connection.
@@ -109,13 +144,14 @@ async def init_db() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables created/verified")
+        await ensure_local_user()
     except Exception as exc:
         logger.error("Database initialization failed: %s", exc)
         raise
 
 
 async def close_db() -> None:
-    """Dispose of the engine connection pool.  Call during shutdown."""
+    """Dispose of the engine connection pool. Call during shutdown."""
     global _engine, _session_factory  # noqa: PLW0603
     if _engine is not None:
         await _engine.dispose()

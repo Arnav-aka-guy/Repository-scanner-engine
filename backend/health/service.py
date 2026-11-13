@@ -129,7 +129,7 @@ def compute_health_report(
     all_findings: list[Finding] = []
     finding_id_seq = 1
 
-    # ── Dimension 1: Complexity (20 pts) ──────────────────────────────────
+    # Dimension 1: Complexity (20 pts)
     comp_penalties: list[ScorePenalty] = []
     comp_metrics: list[MeasuredMetric] = []
     comp_deductions: list[str] = []
@@ -305,7 +305,7 @@ def compute_health_report(
         )
     )
 
-    # ── Dimension 2: Documentation (20 pts) ────────────────────────────────
+    # Dimension 2: Documentation (20 pts)
     doc_penalties: list[ScorePenalty] = []
     doc_metrics: list[MeasuredMetric] = []
     doc_deductions: list[str] = []
@@ -383,7 +383,7 @@ def compute_health_report(
         )
     )
 
-    # ── Dimension 3: Architecture (20 pts) ─────────────────────────────────
+    # Dimension 3: Architecture (20 pts)
     arch_penalties: list[ScorePenalty] = []
     arch_metrics: list[MeasuredMetric] = []
     arch_deductions: list[str] = []
@@ -455,7 +455,7 @@ def compute_health_report(
         )
     )
 
-    # ── Dimension 4: Maintainability (20 pts) ──────────────────────────────
+    # Dimension 4: Maintainability (20 pts)
     maint_penalties: list[ScorePenalty] = []
     maint_metrics: list[MeasuredMetric] = []
     maint_deductions: list[str] = []
@@ -533,7 +533,7 @@ def compute_health_report(
         )
     )
 
-    # ── Dimension 5: Security (20 pts) ─────────────────────────────────────
+    # Dimension 5: Security (20 pts)
     sec_penalties: list[ScorePenalty] = []
     sec_metrics: list[MeasuredMetric] = []
     sec_deductions: list[str] = []
@@ -608,7 +608,7 @@ def compute_health_report(
         )
     )
 
-    # ── Final Score & Grade ───────────────────────────────────────────────
+    # Final Score & Grade
     total_score = round(sum(d.score for d in dimensions), 1)
     dimension_statuses = [d.status for d in dimensions]
     grade = calculate_grade(total_score, dimension_statuses=dimension_statuses)

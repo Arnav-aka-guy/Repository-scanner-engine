@@ -25,6 +25,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
   const scanStatus = useWorkspaceStore((s) => s.scanStatus);
   const scanError = useWorkspaceStore((s) => s.scanError);
+  const currentScanJobId = useWorkspaceStore((s) => s.currentScanJobId);
+  const cancelScan = useWorkspaceStore((s) => s.cancelScan);
 
   useEffect(() => {
     let isMounted = true;
@@ -120,6 +122,18 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             >
               {repoStatus.text}
             </span>
+            {scanStatus === 'scanning' && currentScanJobId && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelScan();
+                }}
+                className="ml-2 px-1.5 py-0.2 text-[9px] bg-red-950/60 border border-red-700/60 text-red-300 rounded hover:bg-red-900/80 transition-colors"
+                title="Cancel ongoing scan job"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         </div>
 

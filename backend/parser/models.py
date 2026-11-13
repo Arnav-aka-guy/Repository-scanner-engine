@@ -12,6 +12,8 @@ class ImportInfo(BaseModel):
     names: list[str] = Field(default_factory=list)
     is_from_import: bool = False
     alias: str | None = None
+    line_number: int = 1
+    is_type_checking: bool = False
 
 
 class FunctionInfo(BaseModel):

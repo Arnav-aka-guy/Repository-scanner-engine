@@ -61,12 +61,12 @@ def get_user_or_ip(request: Request | Any) -> str:
     return client_host
 
 
-# ── Limiter singleton ──────────────────────────────────────────────────
+# Limiter singleton
 
 limiter = Limiter(key_func=get_user_or_ip)
 """Global rate limiter keyed on user_id when authenticated, IP address otherwise."""
 
-# ── Per-route rate strings ─────────────────────────────────────────────
+# Per-route rate strings
 
 SCAN_RATE: str = "5/minute"
 """Repository scanning endpoints (heavy I/O)."""

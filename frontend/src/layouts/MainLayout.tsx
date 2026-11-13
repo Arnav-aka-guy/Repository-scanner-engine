@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { Menu, Search, RefreshCw, Folder, FolderOpen, ChevronDown } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
@@ -15,6 +16,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.endsWith('/explorer')) return 'Explorer';
   if (pathname.endsWith('/graph')) return 'Dependencies';
   if (pathname.endsWith('/architecture')) return 'Architecture';
+  if (pathname.endsWith('/system-design')) return 'System Design';
   if (pathname.endsWith('/search')) return 'Search';
   if (pathname.endsWith('/chat')) return 'Assistant';
   if (pathname.endsWith('/documentation')) return 'Documentation';
@@ -30,6 +32,21 @@ function getRepoBasename(path: string): string {
   return segments[segments.length - 1] || path;
 }
 
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
+};
+
+const PageFallback: React.FC = () => (
+  <div className="flex-1 flex items-center justify-center min-h-[200px]">
+    <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+      <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+      <span>Loading module...</span>
+    </div>
+  </div>
+);
+
 export const MainLayout: React.FC = () => {
   const location = useLocation();
   const pageTitle = getPageTitle(location.pathname);
@@ -43,29 +60,66 @@ export const MainLayout: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
+  const navigate = useNavigate();
+  const clearWorkspace = useWorkspaceStore((s) => s.clearWorkspace);
   const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
-  const setActiveRepository = useWorkspaceStore((s) => s.setActiveRepository);
+  const openRepository = useWorkspaceStore((s) => s.openRepository);
+  const lastFetchedRepoId = useRef<number | null>(null);
+  const isInitialMount = useRef(true);
 
-  // Sync URL repositoryId if present
+  // Centralized route-based repository sync with dedup
   useEffect(() => {
     const match = location.pathname.match(/\/app\/repositories\/(\d+)/);
-    if (match) {
-      const repoId = parseInt(match[1], 10);
-      if (repoId !== activeRepositoryId) {
-        getUserRepository(repoId)
-          .then((repo) => {
-            if (repo && repo.source_path) {
-              const normRepoPath = repo.source_path.replace(/\\/g, '/').replace(/\/+$/, '');
-              const normActive = activeRepository ? activeRepository.replace(/\\/g, '/').replace(/\/+$/, '') : null;
-              if (normRepoPath !== normActive) {
-                setActiveRepository(normRepoPath, repo.id);
-              }
-            }
-          })
-          .catch(() => {});
+    const urlRepoId = match ? parseInt(match[1], 10) : null;
+
+    if (!urlRepoId) {
+      if (!activeRepositoryId) {
+        navigate('/app', { replace: true });
       }
+      return;
     }
-  }, [location.pathname, activeRepositoryId, activeRepository, setActiveRepository]);
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      lastFetchedRepoId.current = urlRepoId;
+
+      getUserRepository(urlRepoId)
+        .then((repo) => {
+          if (repo) {
+            openRepository(repo);
+          } else {
+            clearWorkspace();
+            navigate('/app', { replace: true });
+          }
+        })
+        .catch(() => {
+          clearWorkspace();
+          navigate('/app', { replace: true });
+        });
+      return;
+    }
+
+    // Subsequent route navigation: if same repo as already active or already fetching, skip
+    if (activeRepositoryId === urlRepoId || lastFetchedRepoId.current === urlRepoId) {
+      return;
+    }
+
+    lastFetchedRepoId.current = urlRepoId;
+
+    getUserRepository(urlRepoId)
+      .then((repo) => {
+        if (repo) {
+          openRepository(repo);
+        } else {
+          clearWorkspace();
+          navigate('/app', { replace: true });
+        }
+      })
+      .catch(() => {
+        clearWorkspace();
+        navigate('/app', { replace: true });
+      });
+  }, [location.pathname, activeRepositoryId, openRepository, clearWorkspace, navigate]);
 
   // On mount, only request scan info if active repository exists and we are not scanning
   useEffect(() => {
@@ -318,8 +372,18 @@ export const MainLayout: React.FC = () => {
 
           {/* Dynamic Page Outlet */}
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-            <ErrorBoundary>
+            <ErrorBoundary resetKey={location.pathname}>
+              <Suspense fallback={<PageFallback />}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={location.pathname}
+                    className="flex-1 flex flex-col overflow-hidden"
+                    {...pageVariants}
+                  >
               <Outlet />
+                  </motion.div>
+                </AnimatePresence>
+              </Suspense>
             </ErrorBoundary>
           </div>
         </div>

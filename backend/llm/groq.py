@@ -60,22 +60,38 @@ class GroqProvider(OpenAICompatProvider):
         prompt: str,
         system_prompt: str | None = None,
         temperature: float = 0.7,
+        *,
+        extra_body: dict | None = None,
+        model: str | None = None,
     ) -> str:
+        current_model = model if model is not None else self.model
         try:
-            return await super().generate(prompt, system_prompt=system_prompt, temperature=temperature)
+            return await super().generate(
+                prompt,
+                system_prompt=system_prompt,
+                temperature=temperature,
+                extra_body=extra_body,
+                model=current_model,
+            )
         except Exception as exc:
             if self._is_model_error(exc):
                 for candidate in FALLBACK_GROQ_MODELS:
-                    if candidate != self.model:
+                    if candidate != current_model:
                         logger.warning(
                             "Groq model '%s' unavailable (%s). Retrying with '%s'...",
-                            self.model,
+                            current_model,
                             exc,
                             candidate,
                         )
-                        self.model = candidate
+                        fallback_model = candidate
                         try:
-                            return await super().generate(prompt, system_prompt=system_prompt, temperature=temperature)
+                            return await super().generate(
+                                prompt,
+                                system_prompt=system_prompt,
+                                temperature=temperature,
+                                extra_body=extra_body,
+                                model=fallback_model,
+                            )
                         except Exception as retry_exc:
                             if self._is_model_error(retry_exc):
                                 continue
@@ -87,25 +103,39 @@ class GroqProvider(OpenAICompatProvider):
         prompt: str,
         system_prompt: str | None = None,
         temperature: float = 0.7,
+        *,
+        extra_body: dict | None = None,
+        model: str | None = None,
     ) -> AsyncGenerator[str, None]:
+        current_model = model if model is not None else self.model
         try:
-            async for token in super().generate_stream(prompt, system_prompt=system_prompt, temperature=temperature):
+            async for token in super().generate_stream(
+                prompt,
+                system_prompt=system_prompt,
+                temperature=temperature,
+                extra_body=extra_body,
+                model=current_model,
+            ):
                 yield token
             return
         except Exception as exc:
             if self._is_model_error(exc):
                 for candidate in FALLBACK_GROQ_MODELS:
-                    if candidate != self.model:
+                    if candidate != current_model:
                         logger.warning(
                             "Groq model '%s' unavailable (%s). Retrying stream with '%s'...",
-                            self.model,
+                            current_model,
                             exc,
                             candidate,
                         )
-                        self.model = candidate
+                        fallback_model = candidate
                         try:
                             async for token in super().generate_stream(
-                                prompt, system_prompt=system_prompt, temperature=temperature
+                                prompt,
+                                system_prompt=system_prompt,
+                                temperature=temperature,
+                                extra_body=extra_body,
+                                model=fallback_model,
                             ):
                                 yield token
                             return

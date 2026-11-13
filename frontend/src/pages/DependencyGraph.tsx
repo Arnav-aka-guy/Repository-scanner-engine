@@ -70,7 +70,7 @@ export const DependencyGraph: React.FC = () => {
 
   // View state
   const [activeType, setActiveType] = useState<'dependency' | 'call' | 'symbol'>('dependency');
-  const [layoutName, setLayoutName] = useState<'cose' | 'dagre' | 'circle'>('cose');
+  const [layoutName, setLayoutName] = useState<'cose' | 'dagre' | 'circle'>('dagre');
   const [graphFilter, setGraphFilter] = useState<GraphFilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
@@ -78,6 +78,13 @@ export const DependencyGraph: React.FC = () => {
   // Change Impact Analysis State (Feature 2)
   const [impactResult, setImpactResult] = useState<any | null>(null);
   const [impactLoading, setImpactLoading] = useState(false);
+
+  const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
+
+  useEffect(() => {
+    setSelectedNode(null);
+    setImpactResult(null);
+  }, [repoPath, repoId]);
 
   useEffect(() => {
     if (repoPath) {
@@ -179,7 +186,7 @@ export const DependencyGraph: React.FC = () => {
     setSearchQuery('');
     setGraphFilter('all');
     setSelectedNode(null);
-    setLayoutName('cose');
+    setLayoutName('dagre');
   };
 
   const isDrawerOpen = selectedNode || analysisResult;
@@ -387,12 +394,13 @@ export const DependencyGraph: React.FC = () => {
                     <option value="all">Filter: All Nodes</option>
                     <option value="high_connectivity">High Connectivity (3+ links)</option>
                     <option value="direct_deps">Direct Dependencies Only</option>
+                    <option value="circular">Circular Dependencies Only</option>
                   </select>
                 </div>
               </Tooltip>
 
               {/* Layout Selector */}
-              <Tooltip content="Graph layout: Force-directed simulates organic springs, Hierarchical arranges layers, Radial arranges in a circle.">
+              <Tooltip content="Graph layout: layers keep arrows flowing in one direction so nothing overlaps; circle places items around a ring.">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <LayoutGrid size={12} style={{ color: colors.text.muted }} />
                   <select
@@ -410,9 +418,9 @@ export const DependencyGraph: React.FC = () => {
                       cursor: 'pointer',
                     }}
                   >
-                    <option value="cose">Force-Directed</option>
-                    <option value="dagre">Hierarchical</option>
-                    <option value="circle">Radial</option>
+                    <option value="dagre">Layers (left to right)</option>
+                    <option value="cose">Layers (top to bottom)</option>
+                    <option value="circle">Circle</option>
                   </select>
                 </div>
               </Tooltip>

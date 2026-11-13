@@ -21,7 +21,7 @@ from backend.parser.models import (
 class TypeScriptParser:
     """Parse a single TypeScript or JavaScript file and extract structural information."""
 
-    # ── Public API ──────────────────────────────────────────────────────
+    # Public API
 
     def parse_file(self, file_path: str) -> ParsedFile:
         """Read *file_path*, extract structures via regex, and return a ``ParsedFile``."""
@@ -41,7 +41,7 @@ class TypeScriptParser:
             module_docstring=self._extract_module_doc(source),
         )
 
-    # ── Import extraction ───────────────────────────────────────────────
+    # Import extraction
 
     @staticmethod
     def _extract_imports(source: str) -> list[ImportInfo]:
@@ -111,7 +111,7 @@ class TypeScriptParser:
 
         return imports
 
-    # ── Function extraction ─────────────────────────────────────────────
+    # Function extraction
 
     def _extract_functions(self, source: str) -> list[FunctionInfo]:
         functions: list[FunctionInfo] = []
@@ -214,7 +214,7 @@ class TypeScriptParser:
 
         return functions
 
-    # ── Class extraction ────────────────────────────────────────────────
+    # Class extraction
 
     def _extract_classes(self, source: str) -> list[ClassInfo]:
         classes: list[ClassInfo] = []
@@ -275,7 +275,7 @@ class TypeScriptParser:
 
         return classes
 
-    # ── Method extraction (within class bodies) ─────────────────────────
+    # Method extraction (within class bodies)
 
     def _extract_methods(self, class_body: str, class_start: int) -> list[FunctionInfo]:
         methods: list[FunctionInfo] = []
@@ -327,7 +327,7 @@ class TypeScriptParser:
 
         return methods
 
-    # ── Helpers ─────────────────────────────────────────────────────────
+    # Helpers
 
     @staticmethod
     def _detect_lang(file_path: str) -> str:

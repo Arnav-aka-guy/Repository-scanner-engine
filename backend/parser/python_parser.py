@@ -17,7 +17,7 @@ from backend.parser.models import (
 class PythonParser:
     """Parse a single Python file and extract structural information."""
 
-    # ── Public API ──────────────────────────────────────────────────────
+    # Public API
 
     def parse_file(self, file_path: str) -> ParsedFile:
         """Read *file_path*, parse it with ``ast``, and return a `ParsedFile`."""
@@ -36,7 +36,7 @@ class PythonParser:
             module_docstring=self._get_docstring(tree),
         )
 
-    # ── Import extraction ───────────────────────────────────────────────
+    # Import extraction
 
     @staticmethod
     def _extract_imports(tree: ast.Module) -> list[ImportInfo]:
@@ -67,7 +67,7 @@ class PythonParser:
                 )
         return imports
 
-    # ── Function extraction ─────────────────────────────────────────────
+    # Function extraction
 
     def _extract_functions(
         self,
@@ -109,7 +109,7 @@ class PythonParser:
             calls=calls,
         )
 
-    # ── Class extraction ────────────────────────────────────────────────
+    # Class extraction
 
     def _extract_classes(
         self,
@@ -183,7 +183,7 @@ class PythonParser:
                             attrs.add(t.attr)
         return sorted(attrs)
 
-    # ── Helpers ─────────────────────────────────────────────────────────
+    # Helpers
 
     @staticmethod
     def _extract_decorator_names(

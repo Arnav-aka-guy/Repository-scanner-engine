@@ -44,7 +44,7 @@ describe('Design Tokens', () => {
 });
 
 describe('Design Primitives Exports', () => {
-  it('exports all Phase 0 required components', () => {
+  it('exports all design system required components', () => {
     expect(Button).toBeDefined();
     expect(IconButton).toBeDefined();
     expect(Input).toBeDefined();

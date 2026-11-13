@@ -14,7 +14,7 @@ export interface ErrorCardProps {
 }
 
 /**
- * Phase 11 Standard Error UX Component
+ * Error UX Component
  * Answers:
  * 1. What happened?
  * 2. Why did it happen?

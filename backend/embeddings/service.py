@@ -144,7 +144,7 @@ class EmbeddingsService:
 
         for fpath in files_to_encode:
             parsed = parsed_files[fpath]
-            texts, metadata = self._create_chunks_for_file(fpath, parsed)
+            texts, metadata = self._create_chunks_for_file(fpath, parsed, repo_id=repo_id)
             start_idx = len(all_new_texts)
             all_new_texts.extend(texts)
             end_idx = len(all_new_texts)
@@ -315,7 +315,9 @@ class EmbeddingsService:
             repo_id = self._get_repo_id(norm_path)
             self._file_embeddings_cache.pop(repo_id, None)
 
-    def _create_chunks_for_file(self, file_path: str, parsed: ParsedFile) -> tuple[list[str], list[dict[str, Any]]]:
+    def _create_chunks_for_file(
+        self, file_path: str, parsed: ParsedFile, repo_id: str = "default"
+    ) -> tuple[list[str], list[dict[str, Any]]]:
         """Convert a single parsed file into search-friendly text chunks and metadata."""
         texts: list[str] = []
         metadata: list[dict[str, Any]] = []
@@ -326,15 +328,43 @@ class EmbeddingsService:
         texts.append(module_text)
         metadata.append(
             {
+                "repo_id": repo_id,
                 "file_path": file_path,
                 "entity_name": file_path,
+                "symbol_name": Path(file_path).name,
                 "entity_type": "module",
+                "line_range": "L1-L1",
                 "start_line": 1,
                 "end_line": 1,
                 "source_code": "",
                 "docstring": mod_doc,
+                "relationships": [imp.module for imp in parsed.imports],
             }
         )
+
+        if parsed.imports:
+            imported_mods = [
+                f"{imp.module} ({', '.join(imp.names)})" if imp.names else imp.module for imp in parsed.imports
+            ]
+            imports_text = (
+                f"Module Dependencies: {file_path}\nLanguage: {parsed.language}\nImports: {', '.join(imported_mods)}"
+            )
+            texts.append(imports_text)
+            metadata.append(
+                {
+                    "repo_id": repo_id,
+                    "file_path": file_path,
+                    "entity_name": f"{file_path}:imports",
+                    "symbol_name": "imports",
+                    "entity_type": "imports",
+                    "line_range": "L1-L1",
+                    "start_line": 1,
+                    "end_line": 1,
+                    "source_code": "",
+                    "docstring": "",
+                    "relationships": [imp.module for imp in parsed.imports],
+                }
+            )
 
         # 2. Classes chunks
         for cls in parsed.classes:
@@ -350,13 +380,17 @@ class EmbeddingsService:
             texts.append(class_text)
             metadata.append(
                 {
+                    "repo_id": repo_id,
                     "file_path": file_path,
                     "entity_name": cls.name,
+                    "symbol_name": cls.name,
                     "entity_type": "class",
+                    "line_range": f"L{cls.start_line}-L{cls.end_line}",
                     "start_line": cls.start_line,
                     "end_line": cls.end_line,
                     "source_code": cls.source_code,
                     "docstring": cls.docstring or "",
+                    "relationships": cls.bases + [m.name for m in cls.methods],
                 }
             )
 
@@ -372,13 +406,17 @@ class EmbeddingsService:
                 texts.append(method_text)
                 metadata.append(
                     {
+                        "repo_id": repo_id,
                         "file_path": file_path,
                         "entity_name": f"{cls.name}.{method.name}",
+                        "symbol_name": method.name,
                         "entity_type": "method",
+                        "line_range": f"L{method.start_line}-L{method.end_line}",
                         "start_line": method.start_line,
                         "end_line": method.end_line,
                         "source_code": method.source_code,
                         "docstring": method.docstring or "",
+                        "relationships": [cls.name] + method.calls,
                     }
                 )
 
@@ -394,13 +432,17 @@ class EmbeddingsService:
             texts.append(func_text)
             metadata.append(
                 {
+                    "repo_id": repo_id,
                     "file_path": file_path,
                     "entity_name": func.name,
+                    "symbol_name": func.name,
                     "entity_type": "function",
+                    "line_range": f"L{func.start_line}-L{func.end_line}",
                     "start_line": func.start_line,
                     "end_line": func.end_line,
                     "source_code": func.source_code,
                     "docstring": func.docstring or "",
+                    "relationships": func.calls,
                 }
             )
 

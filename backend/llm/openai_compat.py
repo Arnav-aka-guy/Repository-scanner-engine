@@ -14,6 +14,16 @@ from backend.llm.provider import LLMProvider
 logger = logging.getLogger(__name__)
 
 
+def _parse_retry_after(value: str | None) -> float | None:
+    """Parse HTTP Retry-After header into seconds as a float if present."""
+    if not value:
+        return None
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return None
+
+
 class OpenAICompatProvider(LLMProvider):
     """Integrates with OpenAI-compatible API endpoints (OpenAI, Anthropic adapters, OpenRouter, LM Studio, etc.)."""
 
@@ -43,6 +53,9 @@ class OpenAICompatProvider(LLMProvider):
         prompt: str,
         system_prompt: str | None = None,
         temperature: float = 0.7,
+        *,
+        extra_body: dict | None = None,
+        model: str | None = None,
     ) -> str:
         url = f"{self.base_url}/chat/completions"
 
@@ -51,7 +64,17 @@ class OpenAICompatProvider(LLMProvider):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        payload = {"model": self.model, "messages": messages, "temperature": temperature, "stream": False}
+        effective_model = model if model is not None else self.model
+        payload: dict[str, object] = {
+            "model": effective_model,
+            "messages": messages,
+            "temperature": temperature,
+            "stream": False,
+        }
+        if extra_body:
+            for k, v in extra_body.items():
+                if k not in ("model", "messages", "stream"):
+                    payload[k] = v
 
         try:
             client = self._get_client()
@@ -68,10 +91,12 @@ class OpenAICompatProvider(LLMProvider):
                         parsed_msg = str(err_obj)
                 except Exception:
                     parsed_msg = response.text
+                retry_after = _parse_retry_after(response.headers.get("retry-after"))
                 raise ProviderHTTPError(
                     status_code=response.status_code,
                     message=parsed_msg,
                     error_code=error_code,
+                    retry_after=retry_after,
                 )
 
             data = response.json()
@@ -89,6 +114,9 @@ class OpenAICompatProvider(LLMProvider):
         prompt: str,
         system_prompt: str | None = None,
         temperature: float = 0.7,
+        *,
+        extra_body: dict | None = None,
+        model: str | None = None,
     ) -> AsyncGenerator[str, None]:
         url = f"{self.base_url}/chat/completions"
 
@@ -97,7 +125,17 @@ class OpenAICompatProvider(LLMProvider):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        payload = {"model": self.model, "messages": messages, "temperature": temperature, "stream": True}
+        effective_model = model if model is not None else self.model
+        payload: dict[str, object] = {
+            "model": effective_model,
+            "messages": messages,
+            "temperature": temperature,
+            "stream": True,
+        }
+        if extra_body:
+            for k, v in extra_body.items():
+                if k not in ("model", "messages", "stream"):
+                    payload[k] = v
 
         try:
             client = self._get_client()
@@ -117,10 +155,12 @@ class OpenAICompatProvider(LLMProvider):
                             parsed_msg = str(err_obj)
                     except Exception:
                         parsed_msg = err_msg
+                    retry_after = _parse_retry_after(response.headers.get("retry-after"))
                     raise ProviderHTTPError(
                         status_code=response.status_code,
                         message=parsed_msg,
                         error_code=error_code,
+                        retry_after=retry_after,
                     )
 
                 async for line in response.aiter_lines():

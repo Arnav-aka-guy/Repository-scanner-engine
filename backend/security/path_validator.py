@@ -62,7 +62,7 @@ def _has_sensitive_file_component(path_parts: tuple[str, ...]) -> bool:
     return False
 
 
-# ── Internal helpers ────────────────────────────────────────────────────
+# Internal helpers
 
 
 def _blocked_paths() -> frozenset[str]:
@@ -92,7 +92,7 @@ def _reject(reason: str, status_code: int = 403) -> HTTPException:
     return HTTPException(status_code=status_code, detail=reason)
 
 
-# ── Public API ──────────────────────────────────────────────────────────
+# Public API
 
 
 def validate_repository_path(path: str) -> Path:

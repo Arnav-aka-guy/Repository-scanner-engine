@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi import HTTPException
 
-# ── Path Validator Tests ────────────────────────────────────────────────
+# Path Validator Tests
 
 
 class TestValidateRepositoryPath:
@@ -367,7 +367,7 @@ class TestScannedRepoRegistryAndFileLeak:
             assert r_gc.status_code == 403
 
 
-# ── Input Sanitizer Tests ──────────────────────────────────────────────
+# Input Sanitizer Tests
 
 
 class TestSanitizedRepoPath:
@@ -420,7 +420,7 @@ class TestSanitizedQuery:
             SanitizedQuery(query="")
 
 
-# ── Auth Tests ──────────────────────────────────────────────────────────
+# Auth Tests
 
 
 class TestAuth:

@@ -14,8 +14,10 @@ import {
   Compass,
   Trash2,
   Sparkles,
+  Boxes,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import { Dialog, DialogContent } from './ui/Dialog';
 
 interface CommandItem {
@@ -35,6 +37,7 @@ interface CommandPaletteProps {
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { navigateRepo } = useRepoNavigate();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,7 +50,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
 
   const commands: CommandItem[] = [
-    // ── Navigation ──
+    // Navigation
     {
       id: 'nav-overview',
       title: 'Open Overview',
@@ -57,7 +60,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       shortcut: 'G O',
       run: () => {
         setSelectedFile(null);
-        navigate('/');
+        navigateRepo('overview');
       },
     },
     {
@@ -67,7 +70,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       category: 'Navigation',
       icon: <FolderTree size={15} />,
       shortcut: 'G E',
-      run: () => navigate('/explorer'),
+      run: () => navigateRepo('explorer'),
     },
     {
       id: 'nav-search',
@@ -76,7 +79,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       category: 'Navigation',
       icon: <Search size={15} />,
       shortcut: 'G S',
-      run: () => navigate('/search'),
+      run: () => navigateRepo('search'),
     },
     {
       id: 'nav-chat',
@@ -85,7 +88,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       category: 'Navigation',
       icon: <MessageSquare size={15} />,
       shortcut: 'G A',
-      run: () => navigate('/chat'),
+      run: () => navigateRepo('chat'),
     },
     {
       id: 'nav-dependencies',
@@ -94,7 +97,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       category: 'Navigation',
       icon: <Share2 size={15} />,
       shortcut: 'G D',
-      run: () => navigate('/graph'),
+      run: () => navigateRepo('graph'),
     },
     {
       id: 'nav-architecture',
@@ -103,7 +106,15 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       category: 'Navigation',
       icon: <Tv size={15} />,
       shortcut: 'G C',
-      run: () => navigate('/architecture'),
+      run: () => navigateRepo('architecture'),
+    },
+    {
+      id: 'nav-system-design',
+      title: 'Draw System Design',
+      subtitle: 'Layered system design diagram (Groq AI)',
+      category: 'Navigation',
+      icon: <Boxes size={15} />,
+      run: () => navigateRepo('system-design'),
     },
     {
       id: 'nav-health',
@@ -112,7 +123,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       category: 'Navigation',
       icon: <Activity size={15} />,
       shortcut: 'G H',
-      run: () => navigate('/health-dashboard'),
+      run: () => navigateRepo('health-dashboard'),
     },
     {
       id: 'nav-docs',
@@ -121,7 +132,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       category: 'Navigation',
       icon: <FileText size={15} />,
       shortcut: 'G M',
-      run: () => navigate('/documentation'),
+      run: () => navigateRepo('documentation'),
     },
     {
       id: 'nav-settings',
@@ -130,10 +141,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       category: 'Navigation',
       icon: <Settings size={15} />,
       shortcut: 'G ,',
-      run: () => navigate('/settings'),
+      run: () => navigateRepo('settings'),
     },
 
-    // ── Actions ──
+    // Actions
     {
       id: 'act-rescan',
       title: 'Rescan Current Repository',

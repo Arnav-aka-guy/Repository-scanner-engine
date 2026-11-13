@@ -142,7 +142,7 @@ describe('Phase 6 Dependency & Call Graph Redesign', () => {
     // Verify Controls
     expect(container.innerHTML).toContain('Search nodes in graph...');
     expect(container.innerHTML).toContain('Filter: All Nodes');
-    expect(container.innerHTML).toContain('Force-Directed');
+    expect(container.innerHTML).toContain('Layers (top to bottom)');
     expect(container.innerHTML).toContain('Reset');
   });
 });

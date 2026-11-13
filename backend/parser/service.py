@@ -11,6 +11,10 @@ from typing import TYPE_CHECKING
 
 from backend.core.config import settings
 from backend.core.models import RepositoryInfo
+from backend.parser.cpp_parser import CppParser
+from backend.parser.csharp_parser import CSharpParser
+from backend.parser.go_parser import GoParser
+from backend.parser.java_parser import JavaParser
 from backend.parser.manifest import (
     ManifestDiff,
     RepoManifest,
@@ -19,6 +23,7 @@ from backend.parser.manifest import (
 )
 from backend.parser.models import ParsedFile
 from backend.parser.python_parser import PythonParser
+from backend.parser.rust_parser import RustParser
 from backend.parser.scanner import RepositoryScanner
 from backend.parser.typescript_parser import TypeScriptParser
 
@@ -28,7 +33,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Languages that have a dedicated parser.
-_PARSEABLE_LANGUAGES: set[str] = {"Python", "TypeScript", "JavaScript"}
+_PARSEABLE_LANGUAGES: set[str] = {"Python", "TypeScript", "JavaScript", "Java", "Go", "Rust", "C", "C++", "C#"}
 _DEFAULT_CACHE_CAPACITY: int = 20
 
 
@@ -41,6 +46,12 @@ class ParserService:
             "Python": PythonParser(),
             "TypeScript": TypeScriptParser(),
             "JavaScript": TypeScriptParser(),
+            "Java": JavaParser(),
+            "Go": GoParser(),
+            "Rust": RustParser(),
+            "C": CppParser(language="C"),
+            "C++": CppParser(language="C++"),
+            "C#": CSharpParser(),
         }
         self._python_parser = self._parsers["Python"]
         self._ts_parser = self._parsers["TypeScript"]
@@ -56,7 +67,7 @@ class ParserService:
         self._parsers[language] = parser
         _PARSEABLE_LANGUAGES.add(language)
 
-    # ── Manifest & Cache Path Helpers ────────────────────────────────────
+    # Manifest & Cache Path Helpers
 
     def _get_manifest_path(self, repo_path: str) -> Path:
         return Path(settings.cache_dir) / get_repo_id(repo_path) / "manifest.json"
@@ -68,7 +79,7 @@ class ParserService:
         """Retrieve the change diff from the most recent parse/scan."""
         return self._last_diffs.get(repo_path)
 
-    # ── Scanning ────────────────────────────────────────────────────────
+    # Scanning
 
     async def scan_repository(self, repo_path: str) -> RepositoryInfo:
         """Scan *repo_path* and return repository metadata (cached)."""
@@ -83,7 +94,7 @@ class ParserService:
         self._repo_cache[repo_path] = info
         return info
 
-    # ── Parsing ─────────────────────────────────────────────────────────
+    # Parsing
 
     async def parse_repository(
         self,
@@ -166,7 +177,7 @@ class ParserService:
             return await asyncio.to_thread(parser.parse_file, file_path)
         return await asyncio.to_thread(self._python_parser.parse_file, file_path)
 
-    # ── Cache management ────────────────────────────────────────────────
+    # Cache management
 
     def invalidate_cache(self, repo_path: str | None = None, clear_manifest: bool = False) -> None:
         """Clear cached results.  If *repo_path* is ``None``, flush everything."""

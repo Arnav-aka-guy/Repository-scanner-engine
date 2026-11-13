@@ -43,9 +43,7 @@ class EmbeddingEncoder:
         """Check if mock embedding mode is requested."""
         return os.environ.get("MOCK_EMBEDDINGS", "").lower() in ("true", "1") or self._model_name == "mock"
 
-    # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
 
     def _ensure_model(self) -> None:
         """Load the SentenceTransformer model on first use."""
@@ -63,9 +61,7 @@ class EmbeddingEncoder:
         self._dimension = self._model.get_sentence_embedding_dimension()  # type: ignore[assignment]
         logger.info("Model loaded – embedding dimension: %d", self._dimension)
 
-    # ------------------------------------------------------------------
     # Public API
-    # ------------------------------------------------------------------
 
     def encode(self, texts: list[str]) -> np.ndarray:
         """Encode a batch of texts into embeddings.

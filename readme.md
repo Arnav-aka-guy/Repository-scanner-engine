@@ -1,45 +1,30 @@
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f172a,50:4f46e5,100:06b6d4&height=230&section=header&text=Repository%20Scanner%20Engine&fontSize=46&fontColor=ffffff&animation=fadeIn&fontAlignY=36&desc=AI-powered%20codebase%20intelligence&descAlignY=56&descSize=18" width="100%" alt="Repository Scanner Engine" />
-
-<a href="https://github.com/Arnav-aka-guy/Repository-scanner-engine">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=20&duration=3000&pause=900&color=6366F1&center=true&vCenter=true&width=720&lines=Point+it+at+a+repo.+Understand+it+in+minutes.;AST+parsing+%E2%80%A2+Dependency+graphs+%E2%80%A2+Semantic+search;Chat+with+your+codebase+%E2%80%94+with+exact+line+citations;Health+scores%2C+tech+debt+and+dependency+risk" alt="Typing animation" />
-</a>
-
-<br/>
+<h1>Repository Scanner Engine</h1>
+<p>Codebase intelligence, AST parsing, dependency graphs, and architecture mapping.</p>
 
 <a href="https://github.com/Arnav-aka-guy/Repository-scanner-engine/actions/workflows/ci.yml"><img src="https://github.com/Arnav-aka-guy/Repository-scanner-engine/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-<img src="https://img.shields.io/badge/version-2.0.0-6366f1?style=flat" alt="Version" />
-<img src="https://img.shields.io/badge/tests-211_passing-22c55e?style=flat&logo=pytest&logoColor=white" alt="Tests" />
+<img src="https://img.shields.io/badge/version-2.1.0-6366f1?style=flat" alt="Version" />
 <img src="https://img.shields.io/badge/license-MIT-0ea5e9?style=flat" alt="License" />
-<img src="https://img.shields.io/github/last-commit/Arnav-aka-guy/Repository-scanner-engine?style=flat&color=a855f7" alt="Last commit" />
-<img src="https://img.shields.io/github/stars/Arnav-aka-guy/Repository-scanner-engine?style=flat&color=f59e0b" alt="Stars" />
+<img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat" alt="Python" />
+<img src="https://img.shields.io/badge/React_19-20232A?style=flat" alt="React" />
+<img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat" alt="TypeScript" />
 
 <br/><br/>
 
-<img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
-<img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
-<img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
-<img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-<img src="https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron" />
-<img src="https://img.shields.io/badge/FAISS-0467DF?style=for-the-badge&logo=meta&logoColor=white" alt="FAISS" />
-<img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
-
-<br/><br/>
-
-**[Features](#-features)** &nbsp;•&nbsp;
-**[Language support](#-language-support-matrix)** &nbsp;•&nbsp;
-**[Quick start](#-quick-start)** &nbsp;•&nbsp;
-**[Architecture](#%EF%B8%8F-architecture)** &nbsp;•&nbsp;
-**[Configuration](#%EF%B8%8F-configuration)** &nbsp;•&nbsp;
-**[API](#-api-at-a-glance)** &nbsp;•&nbsp;
-**[Security](#-security)**
+**[Features](#features)** &nbsp;•&nbsp;
+**[Language support](#language-support-matrix)** &nbsp;•&nbsp;
+**[Quick start](#quick-start)** &nbsp;•&nbsp;
+**[Architecture](#architecture)** &nbsp;•&nbsp;
+**[Configuration](#configuration)** &nbsp;•&nbsp;
+**[API](#api-at-a-glance)** &nbsp;•&nbsp;
+**[Security](#security)**
 
 </div>
 
-<img src="https://capsule-render.vercel.app/api?type=rect&color=0:4f46e5,100:06b6d4&height=2&section=header" width="100%" alt="" />
+---
 
-## 💡 What is this?
+## What is this?
 
 Opening a new codebase usually means hours of clicking through folders and guessing how things connect. **Repository Scanner Engine** does that groundwork for you.
 
@@ -47,19 +32,19 @@ You point it at a local folder or a public GitHub URL. It parses the code, build
 
 It runs as a web app, as a desktop app (Electron), or in Docker, and works with cloud LLMs (Groq, OpenAI, OpenRouter) or fully offline with Ollama.
 
-## ✨ Features
+## Features
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 📁 Repository explorer
+### Repository explorer
 Deep structural parsing for **Python, TypeScript and JavaScript** extracting files, imports, classes, functions, and docstrings. Pluggable `LanguageParser` protocol allows clean additions.
 
 </td>
 <td width="50%" valign="top">
 
-### 🕸️ Dependency graph
+### Dependency graph
 An interactive view of how modules connect: imports, inheritance, containment, and call relationships, with filters to cut through the noise. Built on NetworkX.
 
 </td>
@@ -67,13 +52,13 @@ An interactive view of how modules connect: imports, inheritance, containment, a
 <tr>
 <td width="50%" valign="top">
 
-### 🔍 Hybrid code search
+### Hybrid code search
 Combines dense semantic vector retrieval (**FAISS**) with sparse lexical matching (**BM25 inverted index**), fused via **Reciprocal Rank Fusion (RRF)** for optimal recall.
 
 </td>
 <td width="50%" valign="top">
 
-### 💬 Grounded AI assistant
+### Grounded AI assistant
 Ask questions about the code. Answers combine vector retrieval and call-graph traversal with verified file references and line citations.
 
 </td>
@@ -81,13 +66,13 @@ Ask questions about the code. Answers combine vector retrieval and call-graph tr
 <tr>
 <td width="50%" valign="top">
 
-### 🩺 Health & tech debt
+### Health & tech debt
 Transparent, traceable health scoring (0–100) across documentation, complexity, architecture, maintainability, and security, with exact penalty formulas and file attribution.
 
 </td>
 <td width="50%" valign="top">
 
-### ⚡ Incremental rescans
+### Incremental rescans
 File manifests with SHA-256 hashes mean only changed files are re-parsed and re-embedded, caching unmodified representations for instant re-scans.
 
 </td>
@@ -95,20 +80,20 @@ File manifests with SHA-256 hashes mean only changed files are re-parsed and re-
 <tr>
 <td width="50%" valign="top">
 
-### 🌐 GitHub scanning
+### GitHub scanning
 Paste a public GitHub URL and it performs a validated, sandboxed `--depth 1` clone into a temporary workspace for instant analysis.
 
 </td>
 <td width="50%" valign="top">
 
-### 📝 Docs & comparisons
-Generate structured markdown documentation, export Mermaid architecture diagrams, and compare two repositories side-by-side.
+### System design diagrams
+Automated component and data flow diagrams mapping clients, services, databases, and third-party APIs with interactive layout, flow inspection, and multi-format export.
 
 </td>
 </tr>
 </table>
 
-### 🌐 Language Support Matrix
+### Language Support Matrix
 
 | Support Tier | Languages / Extensions | Capabilities |
 |---|---|---|
@@ -118,7 +103,7 @@ Generate structured markdown documentation, export Mermaid architecture diagrams
 </tr>
 </table>
 
-## 🚀 Quick start
+## Quick start
 
 > **Prerequisites:** Python 3.12+ and Node.js 18+
 
@@ -145,12 +130,12 @@ Then open:
 
 | What | Where |
 |---|---|
-| 🖥️ Web app | http://localhost:5173 |
-| ⚙️ Backend API | http://127.0.0.1:8000 |
-| 📖 Interactive API docs | http://127.0.0.1:8000/api/docs |
+| Web app | http://localhost:5173 |
+| Backend API | http://127.0.0.1:8000 |
+| Interactive API docs | http://127.0.0.1:8000/api/docs |
 
 <details>
-<summary><b>🖥️ Run as a desktop app (Electron)</b></summary>
+<summary><b>Run as a desktop app (Electron)</b></summary>
 
 <br/>
 
@@ -164,7 +149,7 @@ The desktop shell starts the backend on `127.0.0.1` for you.
 </details>
 
 <details>
-<summary><b>📦 Production mode (FastAPI serves the built frontend)</b></summary>
+<summary><b>Production mode (FastAPI serves the built frontend)</b></summary>
 
 <br/>
 
@@ -178,7 +163,7 @@ Everything is then available at http://127.0.0.1:8000, including client-side rou
 </details>
 
 <details>
-<summary><b>🐳 Docker</b></summary>
+<summary><b>Docker</b></summary>
 
 <br/>
 
@@ -190,23 +175,24 @@ Put the repositories you want to scan in `./repos`. Inside the container they ap
 
 </details>
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Client["🖥️ Client"]
+    subgraph Client["Client"]
         E["Electron shell"] --> UI["React 19 + Vite UI"]
     end
 
     UI -- "REST / streaming" --> SEC
 
-    subgraph Backend["⚙️ FastAPI backend"]
+    subgraph Backend["FastAPI backend"]
         SEC["Security layer<br/>JWT · rate limits · path validation"] --> API["API routers"]
         API --> P["Parser<br/>AST + manifests"]
         API --> G["Graph<br/>NetworkX"]
         API --> S["Search<br/>FAISS + keyword + rerank"]
         API --> R["Graph-RAG retriever"]
         API --> H["Health · Tech debt · Dependency risk"]
+        API --> SD["System Design Engine"]
         R --> L["LLM provider manager"]
     end
 
@@ -221,7 +207,7 @@ flowchart TB
 ```
 
 <details>
-<summary><b>🔁 How a chat question is answered</b></summary>
+<summary><b>How a chat question is answered</b></summary>
 
 <br/>
 
@@ -247,7 +233,7 @@ sequenceDiagram
 
 </details>
 
-## 🧰 Tech stack
+## Tech stack
 
 | Layer | Tools |
 |---|---|
@@ -256,16 +242,16 @@ sequenceDiagram
 | **Analysis** | Python `ast`, TypeScript/JavaScript parser, NetworkX |
 | **Search** | Sentence Transformers (`all-MiniLM-L6-v2`), FAISS |
 | **AI providers** | Groq, OpenAI, OpenRouter, Ollama (offline) |
-| **Security** | JWT (python-jose), bcrypt, slowapi |
+| **Security** | JWT, bcrypt, slowapi |
 | **Storage** | Local filesystem by default; optional PostgreSQL (SQLAlchemy 2.0 async + Alembic) |
 | **Desktop / infra** | Electron, Docker multi-stage build, GitHub Actions |
 
-## ⚙️ Configuration
+## Configuration
 
 All settings live in `.env`. The full list with comments is in [`.env.example`](.env.example).
 
 <details>
-<summary><b>🤖 LLM providers</b></summary>
+<summary><b>LLM providers and System Design</b></summary>
 
 <br/>
 
@@ -281,16 +267,17 @@ OPENROUTER_API_KEY=
 LLM_BASE_URL=http://localhost:11434
 LLM_MODEL=llama3
 
-# Optional: cap retrieved context (default 12,000 chars for Groq, 32,000 for others)
-# LLM_CONTEXT_CHAR_BUDGET=12000
+# System Design model configuration (uses Groq with OpenRouter fallback)
+SYSTEM_DESIGN_MODEL=openai/gpt-oss-120b
+SYSTEM_DESIGN_FALLBACK_MODEL=openai/gpt-oss-120b:free
 ```
 
-If a model hits a rate limit or is unavailable, the provider manager falls back to another model automatically.
+If Groq rate limits are exceeded, the engine automatically attempts fallback through OpenRouter or uses deterministic offline AST facts so diagram generation never stalls.
 
 </details>
 
 <details>
-<summary><b>📂 Allowed folders (recommended)</b></summary>
+<summary><b>Allowed folders (recommended)</b></summary>
 
 <br/>
 
@@ -305,7 +292,7 @@ Anything outside these folders is refused with `403`. Setting this is strongly r
 </details>
 
 <details>
-<summary><b>🔐 Authentication (optional, off by default)</b></summary>
+<summary><b>Authentication (optional, off by default)</b></summary>
 
 <br/>
 
@@ -329,7 +316,7 @@ With auth on, the web app shows a login screen and sends a Bearer token with eve
 </details>
 
 <details>
-<summary><b>📏 Scan limits</b></summary>
+<summary><b>Scan limits</b></summary>
 
 <br/>
 
@@ -341,7 +328,17 @@ MAX_DIRECTORY_DEPTH=30
 
 </details>
 
-## 🔌 API at a glance
+## System Design diagrams
+
+The System Design page automatically discovers and diagrams your architecture from source code:
+- **Component Discovery**: Identifies frontends, backends, entry points, routers, databases, and third-party services.
+- **Import and Interaction Graph**: Traces file imports, API route prefixes, client fetch calls, and docker-compose configurations.
+- **Two Views**: Switch between a clean **Overview** (core services and databases) and a **Detailed** view (all subsystem nodes).
+- **Interactive Canvas & Export**: Pan, zoom, inspect node roles, and export to SVG, PNG, JSON, or Mermaid format.
+
+Configure `GROQ_API_KEY` (and optionally `OPENROUTER_API_KEY`) in `.env` to enable AI enrichment. If keys are omitted or rate limits are reached, the system falls back to deterministic AST facts.
+
+## API at a glance
 
 Full interactive docs are at **`/api/docs`** once the server is running.
 
@@ -350,13 +347,14 @@ Full interactive docs are at **`/api/docs`** once the server is running.
 | **Auth** | `POST /api/auth/token` · `GET /api/auth/status` |
 | **Repository** | `POST /api/repository/scan` · `POST /api/repository/scan/async` · `GET /api/repository/scan/jobs/{id}` · `POST /api/repository/scan-github` · `GET /api/repository/files` · `GET /api/repository/file/{path}` |
 | **Graph** | `GET /api/graph/dependency` · `GET /api/graph/call` · `GET /api/graph/analysis` |
+| **System Design** | `POST /api/system-design/generate` · `GET /api/system-design` |
 | **Search & chat** | `POST /api/search` · `POST /api/chat` (streaming) · `GET /api/chat/history` |
 | **Insights** | `GET /api/health-score` · `GET /api/tech-debt` · `GET /api/dependency-risk` · `POST /api/compare` |
 | **Architecture & docs** | `POST /api/architecture/report` · `GET /api/architecture/layers` · `POST /api/docs/generate` · `GET /api/docs/export` |
 | **Visualization** | `GET /api/viz/mermaid` · `GET /api/viz/architecture` |
 | **Settings** | `GET /api/settings/providers` · `GET /api/settings/ai-health` |
 
-## 🔒 Security
+## Security
 
 This tool reads source code from your disk, so it is built to be careful about it:
 
@@ -369,24 +367,24 @@ This tool reads source code from your disk, so it is built to be careful about i
 
 Found a security issue? Please open a private security advisory on GitHub instead of a public issue.
 
-## 🧪 Testing
+## Testing
 
 ```bash
-# Backend tests — mock mode skips the embedding model download
+# Backend tests — run pytest to see current passing test count
 MOCK_EMBEDDINGS=true pytest
 
 # Frontend tests (Vitest)
 npm run test:frontend
 
 # Lint, format and type checks
-ruff check backend
+ruff check backend tests
 ruff format --check backend
 mypy backend --ignore-missing-imports
 ```
 
 CI runs lint, backend tests with coverage, type checks and a frontend test + build on every push and pull request.
 
-## 📁 Project structure
+## Project structure
 
 ```text
 Repository-scanner-engine/
@@ -397,7 +395,7 @@ Repository-scanner-engine/
 │   ├── embeddings/     # Encoder, FAISS store, keyword search, reranker
 │   ├── retrieval/      # Vector, graph and hybrid retrievers
 │   ├── llm/            # Groq, OpenAI-compatible, OpenRouter, Ollama providers
-│   ├── services/       # Health score, tech debt, dependency risk, GitHub scanner
+│   ├── services/       # Health score, tech debt, dependency risk, system design
 │   ├── security/       # Auth, path validation, sanitizing, rate limits
 │   └── main.py         # App entry point
 ├── frontend/           # React 19 + Vite app
@@ -409,23 +407,23 @@ Repository-scanner-engine/
 └── docker-compose.yml
 ```
 
-## 🗺️ Roadmap
+## Roadmap
 
 - [ ] More languages (Go, Java, Rust) through the `LanguageParser` protocol
 - [ ] Persist scan jobs so they survive restarts
 - [ ] Private GitHub repositories with a personal access token
 - [ ] Export health reports as PDF
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome.
 
 1. Fork the repo and create a branch: `git checkout -b feat/your-idea`
 2. Make your change and add tests
-3. Make sure `pytest`, `ruff check backend` and `npm run test:frontend` pass
+3. Make sure `pytest`, `ruff check backend tests` and `npm run test:frontend` pass
 4. Open a pull request with a clear description
 
-## 📜 License
+## License
 
 Released under the [MIT License](LICENSE).
 

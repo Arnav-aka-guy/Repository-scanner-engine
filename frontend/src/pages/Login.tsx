@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowLeft, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { token, login, isLoggingIn, loginError } = useAuthStore();
+  const { token, login, isLoggingIn, loginError, authEnabled } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -111,6 +111,46 @@ export const Login: React.FC = () => {
             Access and manage your saved codebases
           </p>
         </div>
+
+        {!authEnabled && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px',
+              borderRadius: '6px',
+              backgroundColor: 'rgba(242, 169, 59, 0.1)',
+              border: '1px solid rgba(242, 169, 59, 0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#F2A93B', fontSize: '12px', fontWeight: 600 }}>
+              <Sparkles size={14} />
+              <span>Local Workspace Mode Active</span>
+            </div>
+            <span style={{ fontSize: '11px', color: '#8A928B' }}>
+              Authentication is not required to scan codebases in local mode.
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate('/app')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '4px',
+                backgroundColor: '#F2A93B',
+                color: '#0D0F0E',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: 'none',
+                marginTop: '4px',
+              }}
+            >
+              Enter Workspace Directly (No Login Required) →
+            </button>
+          </div>
+        )}
 
         {/* Error Alert */}
         {(localError || loginError) && (

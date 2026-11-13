@@ -48,7 +48,7 @@ _ENTRY_POINT_FILE_NAMES: set[str] = {
 class GraphAnalyzer:
     """Run various analyses on a NetworkX code graph."""
 
-    # ── Dead code detection ─────────────────────────────────────────────
+    # Dead code detection
 
     def find_dead_code(self, graph: nx.DiGraph) -> list[GraphNode]:
         """Return nodes with zero in-degree that are *not* entry points.
@@ -213,7 +213,7 @@ class GraphAnalyzer:
         except nx.NetworkXError:
             return []
 
-    # ── Complexity metrics ──────────────────────────────────────────────
+    # Complexity metrics
 
     @staticmethod
     def get_complexity_metrics(graph: nx.DiGraph) -> dict[str, float | int]:
@@ -245,7 +245,7 @@ class GraphAnalyzer:
             "connected_components": components,
         }
 
-    # ── Most connected nodes ────────────────────────────────────────────
+    # Most connected nodes
 
     @staticmethod
     def get_most_connected(
@@ -257,7 +257,7 @@ class GraphAnalyzer:
         degree_pairs.sort(key=lambda x: x[1], reverse=True)
         return degree_pairs[:top_n]
 
-    # ── Full analysis ───────────────────────────────────────────────────
+    # Full analysis
 
     def full_analysis(self, graph: nx.DiGraph) -> AnalysisResult:
         """Run every analysis pass and return a combined result."""

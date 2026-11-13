@@ -17,8 +17,10 @@ class ProviderHTTPError(RuntimeError):
         status_code: int,
         message: str,
         error_code: str | None = None,
+        retry_after: float | None = None,
     ) -> None:
         self.status_code = status_code
         self.message = message
         self.error_code = error_code
+        self.retry_after = retry_after
         super().__init__(f"API Error ({status_code}): {message}")

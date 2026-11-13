@@ -14,6 +14,9 @@ import {
   FolderOpen,
   RefreshCw,
   X,
+  GitBranch,
+  ShieldCheck,
+  Boxes,
   type LucideIcon,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -51,7 +54,10 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { name: 'Dependencies', path: '/graph', icon: Share2 },
       { name: 'Architecture', path: '/architecture', icon: Tv },
+      { name: 'System Design', path: '/system-design', icon: Boxes },
       { name: 'Code Health', path: '/health-dashboard', icon: Activity },
+      { name: 'Change Impact', path: '/impact', icon: GitBranch },
+      { name: 'Code Review', path: '/review', icon: ShieldCheck },
     ],
   },
   {
@@ -87,8 +93,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
   const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
 
+  const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
   const repoMatch = location.pathname.match(/^\/app\/repositories\/([^/]+)/);
-  const repoPrefix = repoMatch ? `/app/repositories/${repoMatch[1]}` : '';
+  const currentRepoId = repoMatch ? repoMatch[1] : activeRepositoryId;
+  const repoPrefix = currentRepoId ? `/app/repositories/${currentRepoId}` : '';
 
   const repoName = activeRepository ? getRepoBasename(activeRepository) : null;
   const isScanning = scanStatus === 'scanning';

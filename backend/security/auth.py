@@ -24,12 +24,12 @@ from backend.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-# ── Security scheme ────────────────────────────────────────────────────
+# Security scheme
 # ``auto_error=False`` lets us make the token *optional* when auth is off.
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
-# ── Password hashing helpers ───────────────────────────────────────────
+# Password hashing helpers
 
 
 _MAX_PASSWORD_LENGTH: int = 128
@@ -109,7 +109,7 @@ def hash_password(password: str) -> str:
         return str(pwd_context.hash(password))
 
 
-# ── Token helpers ──────────────────────────────────────────────────────
+# Token helpers
 
 
 def create_access_token(
@@ -211,7 +211,16 @@ def verify_token(token: str, expected_type: str | None = None) -> dict[str, Any]
         ) from exc
 
 
-# ── FastAPI dependency ─────────────────────────────────────────────────
+# FastAPI dependency
+
+_LOCAL_USER: dict[str, Any] = {
+    "sub": "local@localhost",
+    "auth": True,
+    "user_id": 1,
+    "email": "local@localhost",
+    "name": "Local User",
+    "ver": 1,
+}
 
 _ANON_USER: dict[str, Any] = {
     "sub": "anonymous",
@@ -283,40 +292,40 @@ async def get_current_user(
 ) -> dict[str, Any]:
     """FastAPI dependency that resolves the current user.
 
-    If settings.local_mode is true, returns local workspace user dictionary.
-    If credentials are provided, validates and decodes the token.
-    If no credentials and AUTH_ENABLED=false, returns anonymous user dict.
-    If no credentials and AUTH_ENABLED=true, raises HTTPException(401).
+    In local mode (AUTH_ENABLED=false), returns the default local user with auth: True.
+    When AUTH_ENABLED=true, verifies the bearer token and returns payload or raises 401.
     """
     settings = get_settings()
 
-    if getattr(settings, "local_mode", False):
-        return dict(_ANON_USER)
-
     if credentials is not None:
-        payload = verify_token(credentials.credentials, expected_type="access")
-        payload["auth"] = True
-        if "user_id" not in payload and "sub" in payload:
-            try:
-                payload["user_id"] = int(payload["sub"])
-            except (ValueError, TypeError):
-                # When sub is a username (e.g. legacy 'admin')
-                if payload["sub"] == "admin":
-                    payload["user_id"] = 1
-                else:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid user subject in token.",
-                        headers={"WWW-Authenticate": "Bearer"},
-                    ) from None
+        try:
+            payload = verify_token(credentials.credentials, expected_type="access")
+            payload["auth"] = True
+            if "user_id" not in payload and "sub" in payload:
+                try:
+                    payload["user_id"] = int(payload["sub"])
+                except (ValueError, TypeError):
+                    # When sub is a username (e.g. legacy 'admin')
+                    if payload["sub"] == "admin":
+                        payload["user_id"] = 1
+                    else:
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid user subject in token.",
+                            headers={"WWW-Authenticate": "Bearer"},
+                        ) from None
 
-        if "user_id" in payload:
-            await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
+            if "user_id" in payload:
+                await validate_user_active_and_version(payload["user_id"], token_ver=payload.get("ver"))
 
-        return payload
+            return payload
+        except HTTPException:
+            if settings.auth_enabled:
+                raise
+            return dict(_LOCAL_USER)
 
     if not settings.auth_enabled:
-        return dict(_ANON_USER)
+        return dict(_LOCAL_USER)
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

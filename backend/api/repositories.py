@@ -3,8 +3,6 @@
 Enforces strict user data isolation and the maximum 5 repositories per user limit.
 """
 
-from __future__ import annotations
-
 import asyncio
 import json
 import logging
@@ -12,7 +10,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,15 +24,14 @@ from backend.db.repositories import (
     delete_user_repository,
     get_user_repository,
     list_user_repositories,
-    update_repository_stats,
 )
 from backend.embeddings.service import EmbeddingsService
-from backend.parser.scanner import ScanLimitError
 from backend.parser.service import ParserService
-from backend.security.auth import get_required_user
+from backend.security.auth import get_current_user
 from backend.security.input_sanitizer import SanitizedRepoPath
 from backend.security.path_validator import validate_repository_path
 from backend.security.rate_limiter import SCAN_RATE, limiter
+from backend.security.repo_auth import repo_disk_path
 from backend.security.repo_registry import register_scanned_repo
 
 logger = logging.getLogger(__name__)
@@ -52,6 +49,7 @@ class RepositoryItem(BaseModel):
     description: str | None = None
     source_type: str = "local"
     source_path: str
+    path: str | None = None
     status: str = "CREATED"
     language: str | None = None
     file_count: int = 0
@@ -103,6 +101,7 @@ def _to_item(repo) -> RepositoryItem:
         description=repo.description,
         source_type=repo.source_type or "local",
         source_path=repo.source_path or repo.path,
+        path=repo_disk_path(repo),
         status=repo.status or "CREATED",
         language=repo.language,
         file_count=repo.file_count or repo.total_files or 0,
@@ -115,11 +114,10 @@ def _to_item(repo) -> RepositoryItem:
     )
 
 
-
 @router.get("", response_model=RepositoryListResponse)
 @router.get("/", response_model=RepositoryListResponse)
 async def list_repositories(
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepositoryListResponse:
     """Return all repositories owned by the authenticated user with quota count."""
@@ -139,7 +137,7 @@ async def list_repositories(
 @router.post("/", response_model=RepositoryItem, status_code=status.HTTP_201_CREATED)
 async def create_repository(
     body: CreateRepositoryRequest,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepositoryItem:
     """Add a new repository for the authenticated user, enforcing the 5-repository ceiling."""
@@ -246,7 +244,7 @@ async def create_repository(
 @router.get("/{repository_id}", response_model=RepositoryItem)
 async def get_repository(
     repository_id: int,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepositoryItem:
     """Get repository metadata, enforcing strict user ownership isolation."""
@@ -264,7 +262,7 @@ async def get_repository(
 async def update_repository(
     repository_id: int,
     body: UpdateRepositoryRequest,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RepositoryItem:
     """Update name or description of an owned repository."""
@@ -288,7 +286,7 @@ async def update_repository(
 @router.delete("/{repository_id}", status_code=status.HTTP_200_OK)
 async def delete_repository(
     repository_id: int,
-    current_user: dict = Depends(get_required_user),
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     embeddings: EmbeddingsService = Depends(get_embeddings),
     parser: ParserService = Depends(get_parser),
@@ -302,7 +300,7 @@ async def delete_repository(
             detail="Repository not found or access denied.",
         )
 
-    repo_path = repo.source_path or repo.path
+    repo_path = repo_disk_path(repo)
 
     # Invalidate parser, embeddings, and analysis cache
     from backend.storage.persistence import invalidate_analysis_cache
@@ -341,17 +339,25 @@ async def delete_repository(
     return {"status": "success", "message": f"Repository '{repo.name}' deleted successfully."}
 
 
-@router.post("/{repository_id}/scan", response_model=RepositoryItem)
+class ScanJobTriggerResponse(BaseModel):
+    job_id: str
+    status: str = "pending"
+    message: str = "Scan job queued."
+    repository_id: int
+
+
+@router.post("/{repository_id}/scan", response_model=ScanJobTriggerResponse, status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit(SCAN_RATE)
 async def scan_user_repository(
     request: Request,
     repository_id: int,
-    current_user: dict = Depends(get_required_user),
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     parser: ParserService = Depends(get_parser),
     embeddings: EmbeddingsService = Depends(get_embeddings),
-) -> RepositoryItem:
-    """Trigger a scan on an owned repository and update its statistics in the database."""
+) -> ScanJobTriggerResponse:
+    """Trigger an asynchronous background scan on an owned repository and return 202 with job_id."""
     user_id = int(current_user["user_id"])
     repo = await get_user_repository(db, repository_id, user_id)
     if repo is None:
@@ -360,53 +366,27 @@ async def scan_user_repository(
             detail="Repository not found or access denied.",
         )
 
-    repo_path = repo.source_path or repo.path
+    repo_path = repo_disk_path(repo)
     path = validate_repository_path(repo_path)
     register_scanned_repo(path)
 
     repo.status = "SCANNING"
-    await db.flush()
+    await db.commit()
 
-    try:
-        # Clear caches for fresh scan
-        from backend.storage.persistence import invalidate_analysis_cache
+    from backend.api.repository import queue_scan_job
 
-        parser.invalidate_cache(str(path), clear_manifest=True)
-        embeddings.invalidate_repo(str(path), clear_cache=True)
-        invalidate_analysis_cache(str(path))
+    job_id = queue_scan_job(
+        path=str(path),
+        background_tasks=background_tasks,
+        parser=parser,
+        embeddings=embeddings,
+        user_id=user_id,
+        repo_id=repository_id,
+    )
 
-        repo_info = await parser.scan_repository(str(path))
-        parsed_files = await parser.parse_repository(str(path))
-        total_files = repo_info.total_files
-        total_lines = repo_info.total_lines
-        languages = repo_info.languages
-
-        # Build isolated vector index
-        await embeddings.index_repository(parsed_files, repo_path=str(path), force_reindex=True)
-
-        await update_repository_stats(
-            db,
-            repo,
-            total_files=total_files,
-            total_lines=total_lines,
-            languages=languages,
-        )
-        repo.status = "READY"
-        await db.flush()
-        return _to_item(repo)
-
-    except ScanLimitError as exc:
-        repo.status = "FAILED"
-        await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Repository scan stopped: {exc.code}",
-        ) from exc
-    except Exception as exc:
-        logger.error("Scan failed for repository %d: %s", repository_id, exc, exc_info=True)
-        repo.status = "FAILED"
-        await db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Repository scanning failed. Please check the repository directory.",
-        ) from exc
+    return ScanJobTriggerResponse(
+        job_id=job_id,
+        status="pending",
+        message="Scan job queued.",
+        repository_id=repository_id,
+    )

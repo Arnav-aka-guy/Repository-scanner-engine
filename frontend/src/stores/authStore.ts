@@ -15,6 +15,7 @@ interface AuthState {
   token: string | null;
   user: UserProfile | null;
   authEnabled: boolean;
+  isCheckingAuth: boolean;
   loginError: string | null;
   isLoggingIn: boolean;
   setToken: (token: string | null) => void;
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       authEnabled: true,
+      isCheckingAuth: true,
       loginError: null,
       isLoggingIn: false,
 
@@ -44,12 +46,13 @@ export const useAuthStore = create<AuthState>()(
           if (res.ok) {
             const data = await res.json();
             const enabled = Boolean(data.auth_enabled);
-            set({ authEnabled: enabled });
+            set({ authEnabled: enabled, isCheckingAuth: false });
             return enabled;
           }
         } catch {
           // ignore network failure on status check
         }
+        set({ isCheckingAuth: false });
         return true;
       },
 
@@ -86,12 +89,22 @@ export const useAuthStore = create<AuthState>()(
 
           if (res.ok) {
             const data = await res.json();
+            const prevUser = get().user;
+            const nextUser = data.user || null;
+            if (prevUser?.id !== nextUser?.id) {
+              try {
+                useWorkspaceStore.getState().clearWorkspace({ silent: true });
+              } catch {}
+            }
             set({
               token: data.access_token,
-              user: data.user || null,
+              user: nextUser,
               isLoggingIn: false,
               loginError: null,
             });
+            try {
+              (useWorkspaceStore as any).persist?.rehydrate();
+            } catch {}
             return { success: true };
           }
 
@@ -150,12 +163,22 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const data = await res.json();
+          const prevUser = get().user;
+          const nextUser = data.user || null;
+          if (prevUser?.id !== nextUser?.id) {
+            try {
+              useWorkspaceStore.getState().clearWorkspace({ silent: true });
+            } catch {}
+          }
           set({
             token: data.access_token,
-            user: data.user || null,
+            user: nextUser,
             isLoggingIn: false,
             loginError: null,
           });
+          try {
+            (useWorkspaceStore as any).persist?.rehydrate();
+          } catch {}
           return { success: true };
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Network error during registration.';
@@ -180,7 +203,7 @@ export const useAuthStore = create<AuthState>()(
         }
         set({ token: null, user: null, loginError: null });
         try {
-          useWorkspaceStore.getState().clearWorkspace();
+          useWorkspaceStore.getState().clearWorkspace({ silent: true });
         } catch {
           // Ignore if workspace store is not ready
         }

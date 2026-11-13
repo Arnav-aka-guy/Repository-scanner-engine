@@ -17,7 +17,7 @@ from backend.core.models import FileInfo, RepositoryInfo
 
 logger = logging.getLogger(__name__)
 
-# ── Language detection ──────────────────────────────────────────────────
+# Language detection
 _EXTENSION_MAP: dict[str, str] = {
     ".py": "Python",
     ".js": "JavaScript",
@@ -74,16 +74,32 @@ _SKIP_DIRS: set[str] = {
 }
 
 
+class ScanLimitCode(str):
+    """String error code that maintains backwards compatibility between code names."""
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, str):
+            s = str(self)
+            if s in ("max_files", "repository_too_large") and other in ("max_files", "repository_too_large"):
+                return True
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+
 class ScanLimitError(Exception):
     """Raised when a repository exceeds configured scanning limits.
 
     Attributes:
         code: Machine-readable error code for API consumers.
+        limit: Optional limit value that was exceeded.
     """
 
-    def __init__(self, message: str, code: str) -> None:
+    def __init__(self, message: str, code: str, limit: int | None = None) -> None:
         super().__init__(message)
-        self.code = code
+        self.code = ScanLimitCode(code)
+        self.limit = limit
 
 
 class RepositoryScanner:
@@ -93,7 +109,7 @@ class RepositoryScanner:
     so that reconfiguration (e.g. in tests) is respected immediately.
     """
 
-    # ── Helpers ─────────────────────────────────────────────────────────
+    # Helpers
 
     @staticmethod
     def detect_language(file_path: str) -> str:
@@ -147,7 +163,7 @@ class RepositoryScanner:
         except OSError:
             return False
 
-    # ── Public API ──────────────────────────────────────────────────────
+    # Public API
 
     def _collect_files(
         self,
@@ -241,7 +257,8 @@ class RepositoryScanner:
                     raise ScanLimitError(
                         f"Repository exceeds the maximum file limit of {max_files} files. "
                         "Consider increasing MAX_FILES in the configuration or scanning a subdirectory.",
-                        code="repository_too_large",
+                        code="max_files",
+                        limit=max_files,
                     )
 
         return files

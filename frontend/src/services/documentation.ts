@@ -12,6 +12,16 @@ export interface GenerateDocsResponse {
   };
 }
 
-export async function generateDocumentation(repoPath: string, format: 'markdown' | 'html' = 'markdown'): Promise<GenerateDocsResponse> {
-  return apiPost<GenerateDocsResponse>('/documentation/generate', { repo_path: repoPath, format });
+export async function generateDocumentation(
+  repoPath?: string | null,
+  format: 'markdown' | 'html' = 'markdown',
+  repositoryId?: number | null
+): Promise<GenerateDocsResponse> {
+  const payload: Record<string, unknown> = { format };
+  if (repositoryId != null) {
+    payload.repository_id = repositoryId;
+  } else if (repoPath) {
+    payload.repo_path = repoPath;
+  }
+  return apiPost<GenerateDocsResponse>('/documentation/generate', payload);
 }

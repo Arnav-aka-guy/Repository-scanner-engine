@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.dependencies import get_docs, get_owned_repository, verify_repo_ownership
+from backend.api.dependencies import get_docs, get_owned_repository
 from backend.core.config import get_settings
 from backend.db.database import get_db
 from backend.security.auth import get_current_user
@@ -29,7 +29,8 @@ _VALID_FORMATS = {"markdown", "html"}
 class GenerateRequest(BaseModel):
     """Body for the documentation generate endpoint."""
 
-    repo_path: str = Field(..., description="Absolute path to the repository root")
+    repo_path: str | None = Field(default=None, description="Absolute path to the repository root")
+    repository_id: int | None = Field(default=None, description="Optional repository database ID")
     format: str = Field(
         default="markdown",
         description="Output format: 'markdown' or 'html'",
@@ -64,7 +65,12 @@ async def generate_docs(
             detail=f"Invalid format '{body.format}'. Accepted: {sorted(_VALID_FORMATS)}",
         )
 
-    path = await verify_repo_ownership(body.repo_path, current_user, db)
+    ident = body.repository_id if body.repository_id is not None else body.repo_path
+    if not ident:
+        raise HTTPException(status_code=400, detail="Either repo_path or repository_id must be provided.")
+    from backend.security.repo_auth import authorize_repository_access
+
+    _, path = await authorize_repository_access(db, current_user, ident)
     settings = get_settings()
 
     try:
@@ -92,7 +98,7 @@ async def generate_docs(
         ) from exc
 
     return GenerateResponse(
-        repo_path=body.repo_path,
+        repo_path=str(path),
         format=body.format,
         modules=len(docs.get("modules", docs)),
         output_dir=str(output_dir),

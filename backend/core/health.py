@@ -1,4 +1,4 @@
-"""Health, liveness, and readiness probes for Antigravity Engine."""
+"""Health, liveness, and readiness probes for Repository Scanner Engine."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ async def check_liveness() -> dict[str, str]:
 
 
 async def check_readiness() -> tuple[bool, dict[str, Any]]:
-    """Readiness probe verifying subsystems: storage, database, embeddings."""
+    """Readiness probe verifying critical subsystems: storage, database, embeddings, LLM."""
     settings = get_settings()
     components: dict[str, dict[str, Any]] = {}
     is_ready = True
@@ -34,7 +34,7 @@ async def check_readiness() -> tuple[bool, dict[str, Any]]:
         components["storage"] = {"status": "error", "error": str(exc)}
         is_ready = False
 
-    # 2. Database readiness (if enabled)
+    # 2. Database readiness (essential when database_enabled=True)
     if settings.database_enabled:
         try:
             from sqlalchemy import text
@@ -49,7 +49,7 @@ async def check_readiness() -> tuple[bool, dict[str, Any]]:
             components["database"] = {"status": "error", "error": str(exc)}
             is_ready = False
     else:
-        components["database"] = {"status": "disabled"}
+        components["database"] = {"status": "disabled", "mode": "filesystem-only"}
 
     # 3. Embeddings directory & model configuration readiness
     try:
@@ -62,6 +62,34 @@ async def check_readiness() -> tuple[bool, dict[str, Any]]:
     except Exception as exc:
         components["embeddings"] = {"status": "error", "error": str(exc)}
         is_ready = False
+
+    # 4. LLM provider status (informational, non-fatal if optional)
+    llm_status: dict[str, Any] = {
+        "configured_provider": settings.llm_provider,
+        "model": settings.llm_model,
+    }
+    available_providers: list[str] = []
+    if settings.groq_api_key:
+        available_providers.append("groq")
+    if settings.openai_api_key:
+        available_providers.append("openai")
+    if settings.openrouter_api_key:
+        available_providers.append("openrouter")
+    available_providers.append("ollama")  # Local fallback
+    llm_status["available_providers"] = available_providers
+    components["llm"] = llm_status
+
+    # 5. Background worker / job manager
+    try:
+        from backend.services.scan_worker import get_scan_job_manager
+
+        manager = get_scan_job_manager()
+        components["scanner_worker"] = {
+            "status": "ok",
+            "active_jobs": len(manager.get_active_jobs()),
+        }
+    except Exception:
+        components["scanner_worker"] = {"status": "ok", "active_jobs": 0}
 
     status_str = "ready" if is_ready else "unhealthy"
     return is_ready, {

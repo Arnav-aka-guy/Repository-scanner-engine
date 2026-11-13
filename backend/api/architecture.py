@@ -6,11 +6,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.dependencies import get_owned_repository, verify_repo_ownership
+from backend.api.dependencies import get_owned_repository
 from backend.core.container import get_container
 from backend.db.database import get_db
 from backend.graph.architecture_analyzer import ArchitectureAnalyzer
@@ -24,7 +24,8 @@ router = APIRouter(prefix="/api/architecture", tags=["architecture"])
 class ArchitectureRequest(BaseModel):
     """Request body for architecture analysis."""
 
-    repo_path: str
+    repo_path: str | None = Field(default=None, description="Absolute path to repository")
+    repository_id: int | None = Field(default=None, description="Optional repository database ID")
 
 
 class ArchitectureReportResponse(BaseModel):
@@ -48,7 +49,16 @@ async def get_architecture_report(
     db: AsyncSession = Depends(get_db),
 ) -> ArchitectureReportResponse:
     """Run full architecture analysis on a repository."""
-    path = await verify_repo_ownership(request.repo_path, current_user, db)
+    from backend.security.repo_auth import authorize_repository_access
+
+    ident = (
+        request.repository_id
+        if request.repository_id is not None
+        else (request.repo_path.strip() if request.repo_path else None)
+    )
+    if not ident:
+        raise HTTPException(status_code=400, detail="Either repo_path or repository_id must be provided.")
+    _, path = await authorize_repository_access(db, current_user, ident)
 
     container = get_container()
     parser = container.parser_service

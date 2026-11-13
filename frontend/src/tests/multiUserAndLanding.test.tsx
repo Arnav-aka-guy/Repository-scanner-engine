@@ -1,11 +1,14 @@
-import { describe, it, expect } from 'vitest';
-import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { LandingPage } from '../pages/LandingPage';
 import { Login } from '../pages/Login';
 import { Signup } from '../pages/Signup';
 import { AddRepositoryModal } from '../components/AddRepositoryModal';
+import { MyRepositories } from '../pages/MyRepositories';
+import { useAuthStore } from '../stores/authStore';
 
 describe('Phase 1 Public Landing Page & Auth Flow', () => {
   it('renders technical hero, core capabilities, and CTA on LandingPage', () => {
@@ -86,5 +89,51 @@ describe('Phase 2 Add Repository Modal & Quota Check', () => {
     );
 
     expect(html).toContain('You have reached the maximum limit of 5 saved repositories');
+  });
+
+  it('loads repositories in local mode when authEnabled is false and token is null', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    useAuthStore.setState({ authEnabled: false, token: null });
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        repositories: [{
+          id: 1,
+          name: 'local-repo',
+          source_type: 'local',
+          source_path: '/path/to/local',
+          status: 'READY',
+          file_count: 5,
+          total_files: 5,
+          total_lines: 100,
+          languages: {},
+        }],
+        count: 1,
+        max_limit: 10,
+        available_slots: 9,
+      }),
+    } as any);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/app']}>
+          <MyRepositories />
+        </MemoryRouter>
+      );
+    });
+
+    expect(container.innerHTML).toContain('local-repo');
+    expect(container.innerHTML).toContain('1 / 10');
+
+    fetchMock.mockRestore();
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
   });
 });

@@ -13,9 +13,7 @@ import pytest
 
 from backend.core.models import FileInfo, RepositoryInfo
 
-# ---------------------------------------------------------------------------
 # Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -83,9 +81,7 @@ def repo_with_gitignore(tmp_path: Path) -> Path:
     return tmp_path
 
 
-# ---------------------------------------------------------------------------
 # Tests — File discovery
-# ---------------------------------------------------------------------------
 
 
 class TestFileDiscovery:
@@ -109,9 +105,7 @@ class TestFileDiscovery:
         assert deep_file.exists()
 
 
-# ---------------------------------------------------------------------------
 # Tests — Language detection
-# ---------------------------------------------------------------------------
 
 EXTENSION_LANGUAGE_MAP: dict[str, str] = {
     ".py": "Python",
@@ -151,9 +145,7 @@ class TestLanguageDetection:
         assert info.language == "Python"
 
 
-# ---------------------------------------------------------------------------
 # Tests — .gitignore filtering
-# ---------------------------------------------------------------------------
 
 
 class TestGitignoreRespect:
@@ -179,9 +171,7 @@ class TestGitignoreRespect:
         assert len(nm_files) == 1  # exists on disk but should be skipped
 
 
-# ---------------------------------------------------------------------------
 # Tests — RepositoryInfo model
-# ---------------------------------------------------------------------------
 
 
 class TestRepositoryInfoModel:
@@ -198,3 +188,49 @@ class TestRepositoryInfoModel:
         assert info.total_files == 7
         assert info.languages["Python"] == 5
         assert info.scanned_at is not None
+
+
+# Tests — Resource limits and scan job error messages
+
+
+class TestScanLimits:
+    """ScanLimitError attributes and async scan job handling for oversized repos."""
+
+    def test_scan_limit_error_attributes(self) -> None:
+        from backend.parser.scanner import ScanLimitError
+
+        err = ScanLimitError("Too many files", code="max_files", limit=5)
+        assert err.code == "max_files"
+        assert err.limit == 5
+
+        err_no_limit = ScanLimitError("Limit exceeded", code="max_files")
+        assert err_no_limit.limit is None
+
+    @pytest.mark.asyncio
+    async def test_async_scan_job_reports_file_limit(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from unittest.mock import AsyncMock, MagicMock
+
+        from backend.api.repository import _run_scan_job, _scan_jobs
+        from backend.core.config import get_settings
+
+        # Create 3 python files
+        for i in range(3):
+            (tmp_path / f"file_{i}.py").write_text(f"print({i})\n")
+
+        settings = get_settings()
+        monkeypatch.setattr(settings, "max_files", 2)
+
+        from backend.parser.service import ParserService
+
+        parser = ParserService()
+        mock_embeddings = MagicMock()
+        mock_embeddings.embed_code = AsyncMock()
+
+        job_id = "test_limit_job"
+        _scan_jobs[job_id] = {"status": "pending", "message": "Queued"}
+
+        await _run_scan_job(job_id, str(tmp_path), parser, mock_embeddings)
+
+        job = _scan_jobs[job_id]
+        assert job["status"] == "failed"
+        assert "file count exceeded maximum limit (2 files)" in job["message"]

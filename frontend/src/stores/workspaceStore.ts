@@ -1,19 +1,23 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { RepositoryInfo, FileInfo, FileTreeNode } from '../types/repository';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { RepositoryInfo, FileInfo, FileTreeNode, SavedRepository } from '../types/repository';
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
 import {
   scanGitHubRepository,
   scanRepositoryAsync,
+  scanUserRepository,
   getScanJobStatus,
+  cancelScanJob,
   subscribeScanEvents,
   browseFolder,
   listFiles,
   getFile,
+  getUserRepositories,
+  createUserRepository,
   type ScanJob,
 } from '../services/repository';
-import { getDependencyGraph, getCallGraph, getAnalysis } from '../services/graph';
+import { getDependencyGraph, getCallGraph, getAnalysis, getSymbolGraph } from '../services/graph';
 import { semanticSearch, SearchResponse } from '../services/search';
 import { sendChatMessageStream, getChatHistory, clearChatHistoryApi } from '../services/chat';
 import { generateDocumentation, GenerateDocsResponse } from '../services/documentation';
@@ -31,7 +35,7 @@ interface FileDetail {
 }
 
 interface WorkspaceState {
-  // ── Repository ─────────────────────────────────────────────────────
+  // Repository
   activeRepository: string | null;
   activeRepositoryId: number | null;
   repositoryInfo: RepositoryInfo | null;
@@ -43,41 +47,48 @@ interface WorkspaceState {
   scanProgress: number;
   scanMessage: string;
   scanError: string | null;
+  fileError: string | null;
   fileLoading: boolean;
+  currentScanJobId: string | null;
+  cancelScan: () => Promise<void>;
   recentRepositories: string[];
+  pendingChatMessage: string | null;
+  queueChatMessage: (question: string) => void;
+  consumePendingChatMessage: () => string | null;
 
-  // ── Graph ──────────────────────────────────────────────────────────
+  // Graph
   graphData: GraphData | null;
   graphType: 'dependency' | 'call' | 'symbol';
   graphLoading: boolean;
   graphError: string | null;
   analysisResult: AnalysisResult | null;
 
-  // ── Search ─────────────────────────────────────────────────────────
+  // Search
   searchResults: SearchResult[];
   searchTotal: number;
   lastSearchQuery: string;
   searchLoading: boolean;
   searchError: string | null;
 
-  // ── Chat ───────────────────────────────────────────────────────────
+  // Chat
   chatMessages: ChatMessage[];
   chatMessagesByRepo: Record<string, ChatMessage[]>;
   chatLoading: boolean;
   chatError: string | null;
   activeConversationId: string | null;
 
-  // ── Documentation ──────────────────────────────────────────────────
+  // Documentation
   generatedDocs: GenerateDocsResponse | null;
   docsLoading: boolean;
   docsError: string | null;
 
-  // ── Health Cache ──────────────────────────────────────────────────
+  // Health Cache
   cachedHealthScore: Record<string, HealthScore>;
   setCachedHealthScore: (repoPath: string, score: HealthScore) => void;
 
-  // ── Actions ────────────────────────────────────────────────────────
+  // Actions
   setActiveRepository: (path: string, repoId?: number | null) => void;
+  openRepository: (repo: SavedRepository) => Promise<void>;
   scanRepo: (path: string, repoId?: number | null) => Promise<void>;
   setSelectedFile: (path: string | null) => void;
   loadFileDetail: (path: string) => Promise<void>;
@@ -88,13 +99,13 @@ interface WorkspaceState {
   loadPersistentChatHistory: () => Promise<void>;
   clearChatHistory: () => void;
   generateDocs: (format?: 'markdown' | 'html') => Promise<void>;
-  clearWorkspace: () => void;
+  clearWorkspace: (options?: { silent?: boolean }) => void;
   selectLocalDirectory: () => Promise<void>;
   isRepoModalOpen: boolean;
   setRepoModalOpen: (open: boolean) => void;
 }
 
-// ── Tree builder helper ──────────────────────────────────────────────
+// Tree builder helper
 
 function buildTree(fileList: FileInfo[], rootPath: string): FileTreeNode[] {
   const root: FileTreeNode[] = [];
@@ -149,12 +160,55 @@ function buildTree(fileList: FileInfo[], rootPath: string): FileTreeNode[] {
   return root;
 }
 
-// ── Store ────────────────────────────────────────────────────────────
+// Store
+
+
+// Multi-user isolated workspace storage
+
+export function getWorkspaceStorageKey(): string {
+  try {
+    const authData = localStorage.getItem('antigravity-auth');
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      const userId = parsed?.state?.user?.id;
+      if (userId !== undefined && userId !== null) {
+        return `antigravity-workspace:user-${userId}`;
+      }
+    }
+  } catch {
+    // fallback
+  }
+  return 'antigravity-workspace:local';
+}
+
+const userNamespacedStorage = {
+  getItem: (_name: string): string | null => {
+    try {
+      return localStorage.getItem(getWorkspaceStorageKey());
+    } catch {
+      return null;
+    }
+  },
+  setItem: (_name: string, value: string): void => {
+    try {
+      localStorage.setItem(getWorkspaceStorageKey(), value);
+    } catch {
+      // ignore quota errors
+    }
+  },
+  removeItem: (_name: string): void => {
+    try {
+      localStorage.removeItem(getWorkspaceStorageKey());
+    } catch {
+      // ignore
+    }
+  },
+};
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set, get) => ({
-      // ── Initial state ──────────────────────────────────────────────
+      // Initial state
       activeRepository: null,
       activeRepositoryId: null,
       repositoryInfo: null,
@@ -166,8 +220,40 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       scanProgress: 0,
       scanMessage: '',
       scanError: null,
+      fileError: null,
       fileLoading: false,
+      currentScanJobId: null,
       recentRepositories: [],
+      cancelScan: async () => {
+        const jobId = get().currentScanJobId;
+        if (jobId) {
+          try {
+            await cancelScanJob(jobId);
+          } catch (err) {
+            console.warn('Failed to cancel scan job:', err);
+          }
+        }
+        set({
+          scanStatus: 'idle',
+          scanProgress: 0,
+          scanMessage: 'Scan cancelled.',
+          currentScanJobId: null,
+        });
+        useToastStore.getState().addToast({
+          type: 'info',
+          title: 'Scan Cancelled',
+          message: 'The repository scan job was stopped.',
+        });
+      },
+      pendingChatMessage: null,
+      queueChatMessage: (question: string) => set({ pendingChatMessage: question }),
+      consumePendingChatMessage: () => {
+        const pending = get().pendingChatMessage;
+        if (pending) {
+          set({ pendingChatMessage: null });
+        }
+        return pending;
+      },
       isRepoModalOpen: false,
 
       graphData: null,
@@ -192,14 +278,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       docsLoading: false,
       docsError: null,
 
-      // ── Health Cache ────────────────────────────────────────────────
+      // Health Cache
       cachedHealthScore: {},
       setCachedHealthScore: (repoPath: string, score: HealthScore) =>
         set((s) => ({
           cachedHealthScore: { ...s.cachedHealthScore, [repoPath]: score },
         })),
 
-      // ── Actions ────────────────────────────────────────────────────
+      // Actions
 
       setActiveRepository: (path: string, repoId: number | null = null) => {
         const normPath = path ? path.replace(/\\/g, '/').replace(/\/+$/, '') : null;
@@ -209,12 +295,117 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         });
       },
 
+      openRepository: async (repo: SavedRepository) => {
+        const rawDiskPath = repo.path || repo.source_path || '';
+        const diskPath = rawDiskPath ? rawDiskPath.replace(/\\/g, '/').replace(/\/+$/, '') : '';
+
+        let mappedStatus: 'idle' | 'scanning' | 'indexed' | 'error' = 'idle';
+        if (repo.status === 'READY') mappedStatus = 'indexed';
+        else if (repo.status === 'SCANNING') mappedStatus = 'scanning';
+        else if (repo.status === 'FAILED') mappedStatus = 'error';
+        else mappedStatus = 'idle';
+
+        const repoInfo: RepositoryInfo = {
+          path: diskPath,
+          name: repo.name,
+          total_files: repo.total_files ?? repo.file_count ?? 0,
+          total_lines: repo.total_lines ?? 0,
+          languages: repo.languages || {},
+          scanned_at: repo.last_scanned_at || new Date().toISOString(),
+        };
+
+        const recent = diskPath
+          ? [diskPath, ...get().recentRepositories.filter((p) => p !== diskPath)].slice(0, 5)
+          : get().recentRepositories;
+
+        set({
+          activeRepository: diskPath,
+          activeRepositoryId: repo.id,
+          repositoryInfo: repoInfo,
+          files: [],
+          fileTree: [],
+          selectedFilePath: null,
+          selectedFileDetail: null,
+          scanStatus: mappedStatus,
+          scanProgress: mappedStatus === 'indexed' ? 1.0 : (mappedStatus === 'scanning' ? 0.5 : 0),
+          scanMessage: mappedStatus === 'indexed' ? 'Ready' : '',
+          scanError: null,
+          recentRepositories: recent,
+          graphData: null,
+          graphLoading: false,
+          graphError: null,
+          analysisResult: null,
+          searchResults: [],
+          lastSearchQuery: '',
+          searchLoading: false,
+          searchError: null,
+          chatMessages: [],
+          chatLoading: false,
+          chatError: null,
+          generatedDocs: null,
+          docsLoading: false,
+          docsError: null,
+        });
+
+        if (repo.status === 'READY' && diskPath) {
+          try {
+            const fileList = await listFiles(diskPath, repo.id);
+            if (get().activeRepositoryId === repo.id) {
+              set({
+                files: fileList,
+                fileTree: buildTree(fileList, diskPath),
+              });
+            }
+          } catch (err) {
+            console.error('Failed to preload file list on openRepository:', err);
+          }
+        }
+      },
+
       scanRepo: async (path: string, repoId: number | null = null) => {
         if (!path) return;
         // In-flight guard: prevent duplicate concurrent scans
         if (get().scanStatus === 'scanning') return;
 
         const normInputPath = path.trim().replace(/\\/g, '/').replace(/\/+$/, '');
+        let resolvedRepoId: number | null = repoId;
+
+        // If repoId is not provided, look up or create a saved repository for this path
+        if (resolvedRepoId == null) {
+          try {
+            const listRes = await getUserRepositories();
+            const existing = (listRes.repositories || []).find((r) => {
+              const rSource = r.source_path ? r.source_path.replace(/\\/g, '/').replace(/\/+$/, '') : '';
+              const rPath = r.path ? r.path.replace(/\\/g, '/').replace(/\/+$/, '') : '';
+              return rSource === normInputPath || rPath === normInputPath;
+            });
+            if (existing) {
+              resolvedRepoId = existing.id;
+            } else {
+              const basename = normInputPath.split('/').pop() || 'repository';
+              const isGitHub =
+                normInputPath.startsWith('http://') ||
+                normInputPath.startsWith('https://') ||
+                normInputPath.includes('github.com');
+              const newRepo = await createUserRepository({
+                name: basename,
+                source_path: normInputPath,
+                source_type: isGitHub ? 'github' : 'local',
+              });
+              resolvedRepoId = newRepo.id;
+            }
+          } catch (err: any) {
+            const msg = err?.message || 'Failed to initialize repository record.';
+            set({
+              scanStatus: 'error',
+              scanError: msg,
+              scanMessage: msg,
+            });
+            useToastStore.getState().addToast({ type: 'error', title: 'Repository Error', message: msg });
+            return;
+          }
+        }
+
         set({
           scanStatus: 'scanning',
           scanProgress: 0.1,
@@ -230,24 +421,42 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
           let info: RepositoryInfo;
 
-          if (isGitHub) {
+          if (isGitHub && resolvedRepoId == null) {
             info = await scanGitHubRepository(normInputPath);
           } else {
-            // Queue async background job with SSE progress streaming and polling fallback
-            const job = await scanRepositoryAsync(normInputPath);
+            // Queue async background job with SSE progress streaming and polling fallback.
+            // When repository_id is known, use the canonical /api/repositories/{id}/scan endpoint;
+            // fall back to path-based scanRepositoryAsync only when no database ID exists.
+            let job: { job_id: string };
+            try {
+              job =
+                resolvedRepoId != null
+                  ? await scanUserRepository(resolvedRepoId)
+                  : await scanRepositoryAsync(normInputPath);
+            } catch {
+              job = await scanRepositoryAsync(normInputPath);
+            }
+            set({ currentScanJobId: job.job_id });
             info = await new Promise<RepositoryInfo>((resolve, reject) => {
               let settled = false;
-              let pollInterval: ReturnType<typeof setInterval> | null = null;
-              let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+              let sseActive = true;
+              let lastProgressTime = Date.now();
+              let lastProgressValue = -1;
+              let lastProgressMsg = '';
+              let watchdogTimer: ReturnType<typeof setInterval> | null = null;
 
               const cleanup = () => {
                 settled = true;
-                if (pollInterval) clearInterval(pollInterval);
-                if (timeoutTimer) clearTimeout(timeoutTimer);
+                if (watchdogTimer) clearInterval(watchdogTimer);
                 unsubscribe();
               };
 
               const handleJobUpdate = (progressJob: ScanJob) => {
+                if (progressJob.progress !== lastProgressValue || progressJob.message !== lastProgressMsg) {
+                  lastProgressTime = Date.now();
+                  lastProgressValue = progressJob.progress;
+                  lastProgressMsg = progressJob.message;
+                }
                 set({
                   scanProgress: progressJob.progress,
                   scanMessage: progressJob.message,
@@ -258,6 +467,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 } else if (progressJob.status === 'failed') {
                   cleanup();
                   reject(new Error(progressJob.error || progressJob.message || 'Scan failed'));
+                } else if (progressJob.status === 'cancelled') {
+                  cleanup();
+                  reject(new Error('Scan cancelled by user'));
                 }
               };
 
@@ -271,28 +483,31 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                   }
                 },
                 (err) => {
+                  sseActive = false;
                   console.warn('Scan SSE streaming disconnected, falling back to polling', err);
                 }
               );
 
-              // Periodic polling fallback in case SSE events are buffered or interrupted
-              pollInterval = setInterval(async () => {
+              // Watchdog: poll ONLY when SSE is inactive or quiet for > 3 seconds,
+              // and timeout only if no progress occurs for 5 minutes (300,000 ms).
+              watchdogTimer = setInterval(async () => {
                 if (settled) return;
-                try {
-                  const statusJob = await getScanJobStatus(job.job_id);
-                  handleJobUpdate(statusJob);
-                } catch {
-                  // transient polling error
+
+                if (Date.now() - lastProgressTime > 300000) {
+                  cleanup();
+                  reject(new Error('Scan job stalled with no progress for 5 minutes'));
+                  return;
+                }
+
+                if (!sseActive || Date.now() - lastProgressTime > 3000) {
+                  try {
+                    const statusJob = await getScanJobStatus(job.job_id);
+                    handleJobUpdate(statusJob);
+                  } catch {
+                    // transient polling error
+                  }
                 }
               }, 1000);
-
-              // 120s timeout safeguard
-              timeoutTimer = setTimeout(() => {
-                if (!settled) {
-                  cleanup();
-                  reject(new Error('Scan job timed out after 120 seconds'));
-                }
-              }, 120000);
             });
           }
 
@@ -308,7 +523,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const repoChat = get().chatMessagesByRepo[targetPath] || [];
           set({
             activeRepository: targetPath,
-            activeRepositoryId: repoId ?? get().activeRepositoryId,
+            activeRepositoryId: resolvedRepoId,
             repositoryInfo: info,
             files: fileList,
             fileTree: tree,
@@ -325,6 +540,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             generatedDocs: null,
             recentRepositories: recent,
           });
+          set({ currentScanJobId: null });
           useToastStore.getState().addToast({
             type: 'success',
             title: isGitHub ? 'GitHub Repository Cloned & Indexed' : 'Repository Indexed',
@@ -338,6 +554,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             scanMessage: '',
             scanError: msg,
           });
+          set({ currentScanJobId: null });
           useToastStore.getState().addToast({
             type: 'error',
             title: 'Scan Failed',
@@ -347,17 +564,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       },
 
       setSelectedFile: (path: string | null) => {
-        set({ selectedFilePath: path, selectedFileDetail: null });
+        set({ selectedFilePath: path, selectedFileDetail: null, fileError: null });
         if (path) {
           get().loadFileDetail(path);
         }
       },
 
       loadFileDetail: async (path: string) => {
+        const targetRepoId = get().activeRepositoryId;
+        const targetRepoPath = get().activeRepository;
         set({ fileLoading: true });
         try {
-          const repoPath = get().activeRepository || '';
-          const detail = await getFile(path, repoPath);
+          const detail = await getFile(path, targetRepoPath || '', targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== targetRepoPath) return;
           set({
             selectedFileDetail: {
               content: detail.content,
@@ -367,27 +586,30 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             fileLoading: false,
           });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== targetRepoPath) return;
           const msg = err instanceof Error ? err.message : 'Unknown error';
-          set({ fileLoading: false, scanError: `Failed to read file: ${msg}` });
+          set({ fileLoading: false, fileError: `Failed to read file: ${msg}` });
         }
       },
 
       fetchGraph: async (type: 'dependency' | 'call' | 'symbol') => {
         const repoPath = get().activeRepository;
+        const targetRepoId = get().activeRepositoryId;
         if (!repoPath) return;
         set({ graphLoading: true, graphError: null, graphType: type });
         try {
-          const { getSymbolGraph } = await import('../services/graph');
           let data;
           if (type === 'dependency') {
-            data = await getDependencyGraph(repoPath);
+            data = await getDependencyGraph(repoPath, targetRepoId);
           } else if (type === 'call') {
-            data = await getCallGraph(repoPath);
+            data = await getCallGraph(repoPath, targetRepoId);
           } else {
-            data = await getSymbolGraph(repoPath);
+            data = await getSymbolGraph(repoPath, targetRepoId);
           }
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           set({ graphData: data, graphLoading: false });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           const msg = err instanceof Error ? err.message : `Failed to fetch ${type} graph.`;
           set({ graphError: msg, graphLoading: false });
         }
@@ -395,12 +617,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       runAnalysis: async () => {
         const repoPath = get().activeRepository;
+        const targetRepoId = get().activeRepositoryId;
         if (!repoPath) return;
         set({ graphLoading: true, graphError: null });
         try {
-          const result = await getAnalysis(repoPath);
+          const result = await getAnalysis(repoPath, targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           set({ analysisResult: result, graphLoading: false });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           const msg = err instanceof Error ? err.message : 'Failed to analyze repository.';
           set({ graphError: msg, graphLoading: false });
         }
@@ -408,16 +633,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       searchCode: async (query: string, topK: number = 10) => {
         if (!query) return;
+        const targetRepoId = get().activeRepositoryId;
+        const repoPath = get().activeRepository || undefined;
         set({ searchLoading: true, searchError: null, lastSearchQuery: query });
         try {
-          const repoPath = get().activeRepository || undefined;
-          const response: SearchResponse = await semanticSearch(query, topK, repoPath);
+          const response: SearchResponse = await semanticSearch(query, topK, repoPath, targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId) return;
           set({
             searchResults: response.results,
             searchTotal: response.total,
             searchLoading: false,
           });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId) return;
           const msg = err instanceof Error ? err.message : 'Search failed.';
           set({ searchError: msg, searchLoading: false });
         }
@@ -493,7 +721,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                   };
                 });
               }
-            }
+            },
+            get().activeRepositoryId
           );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Error during streaming.';
@@ -518,9 +747,11 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       loadPersistentChatHistory: async () => {
         const repoPath = get().activeRepository;
+        const targetRepoId = get().activeRepositoryId;
         if (!repoPath) return;
         try {
-          const history = await getChatHistory(repoPath, get().activeConversationId || undefined);
+          const history = await getChatHistory(repoPath, get().activeConversationId || undefined, targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           if (history && history.length > 0) {
             const msgs: ChatMessage[] = [];
             history.forEach((h, idx) => {
@@ -546,6 +777,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             }));
           }
         } catch (err) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           console.warn('Could not load persistent chat history:', err);
         }
       },
@@ -553,7 +785,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       clearChatHistory: () => {
         const repoPath = get().activeRepository;
         if (repoPath) {
-          clearChatHistoryApi(repoPath, get().activeConversationId || undefined).catch(() => {});
+          clearChatHistoryApi(repoPath, get().activeConversationId || undefined, get().activeRepositoryId).catch(() => {});
         }
         set((state) => ({
           chatMessages: [],
@@ -566,10 +798,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
       generateDocs: async (format: 'markdown' | 'html' = 'markdown') => {
         const repoPath = get().activeRepository;
+        const targetRepoId = get().activeRepositoryId;
         if (!repoPath) return;
         set({ docsLoading: true, docsError: null });
         try {
-          const docs = await generateDocumentation(repoPath, format);
+          const docs = await generateDocumentation(repoPath, format, targetRepoId);
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           set({ generatedDocs: docs, docsLoading: false });
           useToastStore.getState().addToast({
             type: 'success',
@@ -577,6 +811,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             message: `${docs.modules || 0} module references generated.`,
           });
         } catch (err: unknown) {
+          if (get().activeRepositoryId !== targetRepoId || get().activeRepository !== repoPath) return;
           const msg = err instanceof Error ? err.message : 'Failed to generate docs.';
           set({ docsError: msg, docsLoading: false });
           useToastStore.getState().addToast({
@@ -587,7 +822,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
       },
 
-      clearWorkspace: () => {
+      clearWorkspace: (options?: { silent?: boolean }) => {
         set({
           activeRepository: null,
           activeRepositoryId: null,
@@ -600,6 +835,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           scanProgress: 0,
           scanMessage: '',
           scanError: null,
+          fileError: null,
+          currentScanJobId: null,
+          pendingChatMessage: null,
+          recentRepositories: [],
           graphData: null,
           analysisResult: null,
           searchResults: [],
@@ -607,11 +846,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           chatMessagesByRepo: {},
           generatedDocs: null,
         });
-        useToastStore.getState().addToast({
-          type: 'info',
-          title: 'Workspace Cleared',
-          message: 'All scan data, graphs, and chat history have been reset.',
-        });
+        if (!options?.silent) {
+          useToastStore.getState().addToast({
+            type: 'info',
+            title: 'Workspace Cleared',
+            message: 'All scan data, graphs, and chat history have been reset.',
+          });
+        }
       },
 
       setRepoModalOpen: (open: boolean) => {
@@ -644,6 +885,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: 'antigravity-workspace',
+      storage: createJSONStorage(() => userNamespacedStorage),
       // Only persist these keys (not loading states or transient data)
       partialize: (state) => ({
         activeRepository: state.activeRepository,

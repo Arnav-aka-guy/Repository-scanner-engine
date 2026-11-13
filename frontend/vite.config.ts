@@ -20,21 +20,21 @@ export default defineConfig({
     }
   },
   build: {
-    chunkSizeWarningLimit: 800,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('cytoscape')) {
-              return 'vendor-cytoscape';
-            }
             if (id.includes('@xyflow')) {
               return 'vendor-xyflow';
             }
             if (id.includes('highlight.js')) {
               return 'vendor-highlight';
             }
-            if (id.includes('framer-motion') || id.includes('lucide-react')) {
+            if (id.includes('framer-motion') || id.includes('lenis')) {
+              return 'vendor-motion';
+            }
+            if (id.includes('lucide-react')) {
               return 'vendor-ui';
             }
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom') || id.includes('zustand')) {

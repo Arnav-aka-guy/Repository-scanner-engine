@@ -12,9 +12,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 
@@ -29,7 +29,7 @@ from backend.security.rate_limiter import limiter
 logger = logging.getLogger(__name__)
 
 
-# ── Lifespan ────────────────────────────────────────────────────────────
+# Lifespan
 
 
 @asynccontextmanager
@@ -49,12 +49,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # 2. Ensure configuration and data directories are ready
     settings.ensure_directories()
 
-    # 3. Initialise database tables (no-op when DATABASE_ENABLED=false)
+    # 3. Initialise database tables (fail-closed if enabled; no-op when disabled)
     try:
         await init_db()
     except Exception as exc:
-        # Database is optional; a failed init is logged but does not crash startup.
-        logger.warning("Database init skipped: %s", exc)
+        if settings.database_enabled or settings.app_mode.lower() == "cloud":
+            logger.critical("Database initialization failed in database-enabled mode: %s", exc, exc_info=True)
+            raise RuntimeError(f"Database initialization failed: {exc}") from exc
+        logger.warning("Database init skipped (filesystem-only mode): %s", exc)
 
     # 4. Pre-warm the dependency container so services are available
     container = get_container()
@@ -69,7 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("Repository Scanner Engine shutdown complete")
 
 
-# ── App factory ─────────────────────────────────────────────────────────
+# App factory
 
 _settings = get_settings()
 
@@ -87,7 +89,7 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
-# ── Middleware stack (order matters — outermost first) ──────────────────
+# Middleware stack (order matters — outermost first)
 
 # 1. Request logging (outermost — logs every request)
 app.add_middleware(RequestLoggingMiddleware)
@@ -104,7 +106,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 3. Rate limiting
+# 4. Rate limiting
 
 
 def custom_rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
@@ -125,14 +127,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, custom_rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
-# ── Static files & Frontend mounting ────────────────────────────────────
+# Static files & Frontend mounting
 
 _dist_dir = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if (_dist_dir / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(_dist_dir / "assets")), name="assets")
 
 
-# ── Health-check endpoints ──────────────────────────────────────────────
+# Health-check endpoints
 
 
 @app.get("/", tags=["health"])
@@ -147,18 +149,24 @@ async def root(request: Request) -> Any:
 
 @app.get("/health", tags=["health"])
 @app.get("/api/health", tags=["health"])
-async def health_check() -> dict[str, str]:
-    """Detailed health check with provider and model info."""
+async def health_check() -> dict[str, Any]:
+    """Detailed health check with provider, model, and readiness components."""
     settings = get_settings()
+    from backend.core.health import check_readiness
+
+    _, details = await check_readiness()
     return {
         "status": "healthy",
         "version": settings.app_version,
         "llm_provider": settings.llm_provider,
         "llm_model": settings.llm_model,
         "embedding_model": settings.embedding_model,
+        "readiness": details.get("status"),
+        "components": details.get("components", {}),
     }
 
 
+@app.get("/health/live", tags=["health"])
 @app.get("/livez", tags=["health"])
 async def livez_endpoint() -> dict[str, str]:
     """Fast liveness probe: confirms process is alive."""
@@ -167,9 +175,10 @@ async def livez_endpoint() -> dict[str, str]:
     return await check_liveness()
 
 
+@app.get("/health/ready", tags=["health"])
 @app.get("/readyz", tags=["health"])
 async def readyz_endpoint(response: Response) -> dict[str, Any]:
-    """Readiness probe: validates database, storage, and models."""
+    """Readiness probe: validates database, storage, embeddings, and worker."""
     from backend.core.health import check_readiness
 
     is_ready, details = await check_readiness()
@@ -178,9 +187,7 @@ async def readyz_endpoint(response: Response) -> dict[str, Any]:
     return details
 
 
-# ── Mount API routers ───────────────────────────────────────────────────
-
-from fastapi import Depends  # noqa: E402
+# Mount API routers
 
 from backend.api.ai_settings import router as settings_router  # noqa: E402
 from backend.api.architecture import router as architecture_router  # noqa: E402
@@ -190,6 +197,7 @@ from backend.api.documentation import router as docs_router  # noqa: E402
 from backend.api.graph import router as graph_router  # noqa: E402
 from backend.api.repositories import router as repositories_router  # noqa: E402
 from backend.api.repository import router as repository_router  # noqa: E402
+from backend.api.scans import router as scans_router  # noqa: E402
 from backend.api.search import router as search_router  # noqa: E402
 from backend.api.visualization import router as viz_router  # noqa: E402
 from backend.security.auth import get_current_user  # noqa: E402
@@ -201,23 +209,8 @@ app.include_router(repositories_router)
 
 _auth_deps = [Depends(get_current_user)]
 
+app.include_router(scans_router, dependencies=_auth_deps)
 app.include_router(repository_router, dependencies=_auth_deps)
-
-# Alias /api/scans/{job_id}/events directly for standard REST SSE client compatibility
-scans_alias_router = APIRouter(prefix="/api/scans", tags=["repository"])
-
-
-@scans_alias_router.get("/{job_id}/events")
-async def stream_scan_events_alias(
-    job_id: str,
-    current_user: dict = Depends(get_current_user),
-) -> StreamingResponse:
-    from backend.api.repository import stream_scan_job_events
-
-    return await stream_scan_job_events(job_id, current_user=current_user)
-
-
-app.include_router(scans_alias_router, dependencies=_auth_deps)
 app.include_router(graph_router, dependencies=_auth_deps)
 app.include_router(search_router, dependencies=_auth_deps)
 app.include_router(chat_router, dependencies=_auth_deps)
@@ -227,25 +220,38 @@ app.include_router(settings_router, dependencies=_auth_deps)
 app.include_router(architecture_router, dependencies=_auth_deps)
 
 # Portfolio feature routers
+from backend.api.change_impact import router as impact_router  # noqa: E402
+from backend.api.code_review import router as review_router  # noqa: E402
 from backend.api.compare import router as compare_router  # noqa: E402
 from backend.api.dependency_risk import router as risk_router  # noqa: E402
 from backend.api.health_score import router as health_router  # noqa: E402
 from backend.api.tech_debt import router as debt_router  # noqa: E402
 
+app.include_router(impact_router, dependencies=_auth_deps)
+app.include_router(review_router, dependencies=_auth_deps)
 app.include_router(health_router, dependencies=_auth_deps)
 app.include_router(debt_router, dependencies=_auth_deps)
 app.include_router(risk_router, dependencies=_auth_deps)
 app.include_router(compare_router, dependencies=_auth_deps)
 
+# System design diagram feature (add-on)
+from backend.api.system_design import router as system_design_router  # noqa: E402
 
-# ── Static SPA fallback ─────────────────────────────────────────────────
+app.include_router(system_design_router, dependencies=_auth_deps)
+
+
+# Static SPA fallback
 
 
 @app.get("/{full_path:path}", include_in_schema=False)
 async def serve_spa_route(full_path: str, request: Request) -> Any:
     """Fallback handler to support client-side SPA routing."""
     clean_path = full_path.strip("/")
-    if clean_path in ("api", "health", "livez", "readyz") or full_path.startswith("api/"):
+    if (
+        clean_path in ("api", "health", "livez", "readyz")
+        or clean_path.startswith("health/")
+        or full_path.startswith("api/")
+    ):
         raise HTTPException(status_code=404, detail="Endpoint not found")
     index_file = _dist_dir / "index.html"
     if index_file.exists():

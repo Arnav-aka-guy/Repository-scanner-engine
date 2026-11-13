@@ -49,6 +49,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 export const DocumentationGenerator: React.FC = () => {
   const navigate = useNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
+  const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
   const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
   const files = useWorkspaceStore((s) => s.files);
@@ -63,21 +64,40 @@ export const DocumentationGenerator: React.FC = () => {
   const [moduleSort, setModuleSort] = useState<'name' | 'path'>('name');
   const [copied, setCopied] = useState(false);
 
+  const abortRef = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => {
+    setDocsData(null);
+    setError(null);
+    setActiveModulePath('');
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [repoPath, repoId]);
+
   const handleGenerate = async (format: 'markdown' | 'html' = 'markdown') => {
     if (!repoPath) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
-      const res = await generateDocumentation(repoPath, format);
+      const res = await generateDocumentation(repoPath, format, repoId);
+      if (controller.signal.aborted) return;
       setDocsData(res.docs as DocsData);
       const moduleKeys = Object.keys(res.docs?.modules || {});
       if (moduleKeys.length > 0) {
         setActiveModulePath(moduleKeys[0]);
       }
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       setError(err.message || 'Failed to generate documentation.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   };
 

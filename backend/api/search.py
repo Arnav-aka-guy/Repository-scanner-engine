@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_embeddings
+from backend.core.config import settings
 from backend.db.database import get_db
 from backend.embeddings.service import EmbeddingsService
 from backend.security.auth import get_current_user
@@ -25,6 +26,7 @@ class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000, description="Natural-language search query")
     top_k: int = Field(default=10, ge=1, le=100, description="Maximum number of results to return")
     repo_path: str | None = Field(default=None, description="Optional repository root path for isolated repo search")
+    repository_id: int | None = Field(default=None, description="Optional repository ID for isolated repo search")
 
 
 class SearchResultItem(BaseModel):
@@ -48,7 +50,6 @@ class SearchResponse(BaseModel):
     total: int = 0
 
 
-
 @router.post("", response_model=SearchResponse)
 @router.post("/", response_model=SearchResponse)
 @limiter.limit(SEARCH_RATE)
@@ -64,20 +65,21 @@ async def search(
     sanitized = SanitizedQuery(query=body.query)
 
     validated_repo_path: str | None = None
-    if current_user.get("auth") and current_user.get("user_id"):
-        if not body.repo_path or not body.repo_path.strip():
+    ident = body.repository_id if body.repository_id is not None else body.repo_path
+    if settings.auth_enabled and current_user.get("auth") and current_user.get("user_id"):
+        if not ident or (isinstance(ident, str) and not ident.strip()):
             raise HTTPException(
                 status_code=400,
-                detail="repo_path is required for authenticated search.",
+                detail="repo_path or repository_id is required for authenticated search.",
             )
         from backend.security.repo_auth import authorize_repository_access
 
-        _, path = await authorize_repository_access(db, current_user, body.repo_path)
+        _, path = await authorize_repository_access(db, current_user, ident)
         validated_repo_path = str(path)
-    elif body.repo_path and body.repo_path.strip():
+    elif ident and str(ident).strip():
         from backend.security.repo_auth import authorize_repository_access
 
-        _, path = await authorize_repository_access(db, current_user, body.repo_path)
+        _, path = await authorize_repository_access(db, current_user, ident)
         validated_repo_path = str(path)
 
     try:

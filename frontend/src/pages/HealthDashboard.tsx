@@ -1140,7 +1140,7 @@ export const HealthDashboard: React.FC = () => {
                 </div>
               )
             ) : (
-              /* ── View Mode: All Findings Flat List ── */
+              /* View Mode: All Findings Flat List */
               filteredIssues.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {filteredIssues.map((issue, idx) => {

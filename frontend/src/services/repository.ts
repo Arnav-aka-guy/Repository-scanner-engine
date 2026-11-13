@@ -14,13 +14,22 @@ export async function browseFolder(): Promise<{ path: string }> {
   return apiPost<{ path: string }>('/repository/browse-folder', {});
 }
 
-export async function listFiles(repoPath: string): Promise<FileInfo[]> {
-  return apiGet<FileInfo[]>('/repository/files', { repo_path: repoPath });
+export async function listFiles(
+  repoPath?: string | null,
+  repoId?: number | null
+): Promise<FileInfo[]> {
+  const params: Record<string, string> = {};
+  if (repoId != null) {
+    params.repository_id = String(repoId);
+  } else if (repoPath) {
+    params.repo_path = repoPath;
+  }
+  return apiGet<FileInfo[]>('/repository/files', params);
 }
 
 export interface ScanJob {
   job_id: string;
-  status: 'pending' | 'scanning' | 'completed' | 'failed';
+  status: 'pending' | 'scanning' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   message: string;
   result?: RepositoryInfo | null;
@@ -142,22 +151,23 @@ export function subscribeScanEvents(
 
 export async function getFile(
   filePath: string,
-  repoPath?: string
+  repoPath?: string | null,
+  repositoryId?: number | null
 ): Promise<{
   file_path: string;
   content: string;
   language: string;
   entities: CodeEntity[];
 }> {
-  // Encode path segments individually so slashes are preserved for FastAPI {file_path:path}
-  // while special characters like '#', '?', '%', and spaces are safely percent-encoded.
   const safePath = filePath
     .replace(/\\/g, '/')
     .split('/')
     .map(encodeURIComponent)
     .join('/');
   const params: Record<string, string> = {};
-  if (repoPath) {
+  if (repositoryId != null) {
+    params.repository_id = String(repositoryId);
+  } else if (repoPath) {
     params.repo_path = repoPath;
   }
   return apiGet<{
@@ -179,8 +189,18 @@ export interface RepoOnboardingGuide {
   starting_points: string[];
 }
 
-export async function getOnboardingGuide(repoPath: string): Promise<RepoOnboardingGuide> {
-  return apiGet<RepoOnboardingGuide>('/repository/onboarding', { repo_path: repoPath });
+export async function getOnboardingGuide(
+  repoPath: string,
+  repositoryId?: number | null
+): Promise<RepoOnboardingGuide> {
+  const params: Record<string, string> = {};
+  if (repositoryId != null) {
+    params.repository_id = String(repositoryId);
+  }
+  if (repoPath) {
+    params.repo_path = repoPath;
+  }
+  return apiGet<RepoOnboardingGuide>('/repository/onboarding', params);
 }
 
 export async function getUserRepositories(): Promise<RepositoryListResponse> {
@@ -196,8 +216,18 @@ export async function createUserRepository(data: {
   return apiPost<SavedRepository>('/repositories', data);
 }
 
+const inFlightRepoRequests = new Map<number, Promise<SavedRepository>>();
+
 export async function getUserRepository(id: number): Promise<SavedRepository> {
-  return apiGet<SavedRepository>(`/repositories/${id}`);
+  const existing = inFlightRepoRequests.get(id);
+  if (existing) {
+    return existing;
+  }
+  const promise = apiGet<SavedRepository>(`/repositories/${id}`).finally(() => {
+    inFlightRepoRequests.delete(id);
+  });
+  inFlightRepoRequests.set(id, promise);
+  return promise;
 }
 
 export async function updateUserRepository(
@@ -211,7 +241,18 @@ export async function deleteUserRepository(id: number): Promise<{ status: string
   return apiDelete<{ status: string; message: string }>(`/repositories/${id}`);
 }
 
-export async function scanUserRepository(id: number): Promise<SavedRepository> {
-  return apiPost<SavedRepository>(`/repositories/${id}/scan`, {});
+export interface ScanJobTriggerResponse {
+  job_id: string;
+  status: string;
+  message: string;
+  repository_id: number;
 }
 
+export async function scanUserRepository(id: number): Promise<ScanJobTriggerResponse> {
+  return apiPost<ScanJobTriggerResponse>(`/repositories/${id}/scan`, {});
+}
+
+
+export async function cancelScanJob(jobId: string): Promise<ScanJob> {
+  return apiPost<ScanJob>(`/repository/scan/jobs/${jobId}/cancel`, {});
+}

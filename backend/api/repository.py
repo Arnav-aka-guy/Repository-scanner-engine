@@ -3,10 +3,12 @@
 import asyncio
 import json
 import logging
+import subprocess
+import sys
 import time
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -99,7 +101,6 @@ class RepoOnboardingGuide(BaseModel):
     dependencies_summary: str
     known_issues: list[str] = Field(default_factory=list)
     starting_points: list[str] = Field(default_factory=list)
-
 
 
 @router.post("/scan", response_model=RepositoryInfo)
@@ -210,21 +211,57 @@ async def browse_folder() -> dict[str, str]:
 
     def _open_dialog() -> str:
         try:
-            import tkinter as tk
-            from tkinter import filedialog
-
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes("-topmost", True)
-            folder_path = filedialog.askdirectory(title="Select Repository Folder")
-            root.destroy()
-            return str(folder_path or "")
+            script = "import tkinter as tk\nfrom tkinter import filedialog\ntry:\n    root = tk.Tk()\n    root.withdraw()\n    root.attributes('-topmost', True)\n    path = filedialog.askdirectory(title='Select Repository Folder')\n    root.destroy()\n    print(path or '')\nexcept Exception:\n    print('')\n"
+            res = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=120)
+            return res.stdout.strip()
         except Exception as exc:
-            logger.warning("Native folder dialog unavailable: %s", exc)
+            logger.warning("Native folder dialog subprocess failed: %s", exc)
             return ""
 
     folder = await asyncio.to_thread(_open_dialog)
     return {"path": folder}
+
+
+async def _update_repo_status_in_db(
+    repo_id: int | None,
+    path_str: str,
+    status: str,
+    repo_info: RepositoryInfo | None = None,
+) -> None:
+    """Helper to update a Repository row status, stats, and last_scanned_at with real DB commit."""
+    try:
+        from sqlalchemy import select
+
+        from backend.db.database import get_async_session
+        from backend.db.models import Repository
+        from backend.db.repositories import update_repository_stats
+
+        factory = get_async_session()
+        async with factory() as db:
+            target_repo: Repository | None = None
+            if repo_id:
+                target_repo = await db.get(Repository, repo_id)
+            if target_repo is None:
+                norm = path_str.replace("\\", "/").rstrip("/")
+                stmt = select(Repository).where(
+                    (Repository.path == norm) | (Repository.source_path == norm) | (Repository.path == path_str)
+                )
+                res = await db.execute(stmt)
+                target_repo = res.scalars().first()
+
+            if target_repo:
+                target_repo.status = status
+                if status == "READY" and repo_info is not None:
+                    await update_repository_stats(
+                        db,
+                        target_repo,
+                        total_files=repo_info.total_files,
+                        total_lines=repo_info.total_lines,
+                        languages=repo_info.languages,
+                    )
+                await db.commit()
+    except Exception as exc:
+        logger.debug("Database update for scan job skipped/failed: %s", exc)
 
 
 async def _run_scan_job(
@@ -232,6 +269,7 @@ async def _run_scan_job(
     path_str: str,
     parser: ParserService,
     embeddings: EmbeddingsService,
+    repo_id: int | None = None,
 ) -> None:
     """Background worker for asynchronous repository scan jobs."""
     try:
@@ -239,6 +277,8 @@ async def _run_scan_job(
         _scan_jobs[job_id]["message"] = "Discovering and analyzing repository files..."
         _scan_jobs[job_id]["progress"] = 0.3
         save_scan_job(job_id, _scan_jobs[job_id])
+
+        await _update_repo_status_in_db(repo_id, path_str, status="SCANNING")
 
         repo_info = await parser.scan_repository(path_str)
         register_scanned_repo(path_str)
@@ -259,17 +299,90 @@ async def _run_scan_job(
         _scan_jobs[job_id]["result"] = repo_info
         save_scan_job(job_id, _scan_jobs[job_id])
 
+        await _update_repo_status_in_db(repo_id, path_str, status="READY", repo_info=repo_info)
+
     except ScanLimitError as exc:
         _scan_jobs[job_id]["status"] = "failed"
         _scan_jobs[job_id]["error"] = f"Repository limit exceeded: {exc.code}"
-        _scan_jobs[job_id]["message"] = "Scan stopped: repository limits exceeded."
+        if exc.code in ("max_files", "repository_too_large"):
+            if exc.limit is not None:
+                _scan_jobs[job_id]["message"] = f"Scan stopped: file count exceeded maximum limit ({exc.limit} files)."
+            else:
+                _scan_jobs[job_id]["message"] = "Scan stopped: file count exceeded maximum limit."
+        elif exc.code == "max_depth":
+            if exc.limit is not None:
+                _scan_jobs[job_id]["message"] = (
+                    f"Scan stopped: directory depth exceeded maximum limit ({exc.limit} levels)."
+                )
+            else:
+                _scan_jobs[job_id]["message"] = "Scan stopped: directory depth exceeded maximum limit."
+        elif exc.code == "max_size":
+            _scan_jobs[job_id]["message"] = "Scan stopped: individual file size limit exceeded."
+        else:
+            _scan_jobs[job_id]["message"] = f"Scan stopped: repository limits exceeded ({exc.code})."
         save_scan_job(job_id, _scan_jobs[job_id])
+        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
+    except HTTPException as exc:
+        logger.warning("Async scan job %s HTTP error: %s", job_id, exc.detail)
+        _scan_jobs[job_id]["status"] = "failed"
+        _scan_jobs[job_id]["error"] = str(exc.detail)
+        _scan_jobs[job_id]["message"] = f"Scan failed: {exc.detail}"
+        save_scan_job(job_id, _scan_jobs[job_id])
+        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
     except Exception as exc:
         logger.error("Async scan job %s failed: %s", job_id, exc, exc_info=True)
         _scan_jobs[job_id]["status"] = "failed"
-        _scan_jobs[job_id]["error"] = "Repository scan failed."
-        _scan_jobs[job_id]["message"] = "Scan job failed."
+        err_msg = str(exc)
+        if "not allowed" in err_msg.lower() or "forbidden" in err_msg.lower():
+            user_msg = "Scan failed: repository path is not permitted by security policy."
+        elif "clone" in err_msg.lower():
+            user_msg = "Scan failed: git clone failed. Please verify repository URL and access rights."
+        elif "too many" in err_msg.lower() or "limit" in err_msg.lower():
+            user_msg = "Scan failed: repository exceeds resource limits."
+        else:
+            user_msg = f"Repository scan failed: {err_msg}" if err_msg else "Repository scan failed."
+        _scan_jobs[job_id]["error"] = err_msg or "Repository scan failed."
+        _scan_jobs[job_id]["message"] = user_msg
         save_scan_job(job_id, _scan_jobs[job_id])
+        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
+
+
+def queue_scan_job(
+    path: str,
+    background_tasks: BackgroundTasks,
+    parser: ParserService,
+    embeddings: EmbeddingsService,
+    user_id: int | None = None,
+    repo_id: int | None = None,
+) -> str:
+    """Unified entry point to register, initialize, and queue a background repository scan job."""
+    _cleanup_scan_jobs()
+    register_scanned_repo(path)
+    job_id = str(uuid.uuid4())
+
+    _scan_jobs[job_id] = {
+        "job_id": job_id,
+        "repo_path": str(path),
+        "status": "pending",
+        "progress": 0.0,
+        "message": "Scan job queued.",
+        "result": None,
+        "error": None,
+        "created_at": time.time(),
+        "user_id": user_id,
+        "repo_id": repo_id,
+    }
+    save_scan_job(job_id, _scan_jobs[job_id])
+
+    # Invalidate cache for fresh scan
+    from backend.storage.persistence import invalidate_analysis_cache
+
+    parser.invalidate_cache(str(path), clear_manifest=True)
+    embeddings.invalidate_repo(str(path), clear_cache=True)
+    invalidate_analysis_cache(str(path))
+
+    background_tasks.add_task(_run_scan_job, job_id, str(path), parser, embeddings, repo_id)
+    return job_id
 
 
 @router.post("/scan/async", response_model=ScanJobResponse)
@@ -290,34 +403,18 @@ async def scan_repository_async(
     from backend.security.repo_auth import authorize_repository_access
 
     sanitized = SanitizedRepoPath(path=body.path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path, allow_unscanned=True)
-
-    _cleanup_scan_jobs()
-    register_scanned_repo(path)
-    job_id = str(uuid.uuid4())
+    repo, path = await authorize_repository_access(db, current_user, sanitized.path, allow_unscanned=True)
     user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+    repo_id = repo.id if repo else None
 
-    _scan_jobs[job_id] = {
-        "job_id": job_id,
-        "repo_path": str(path),
-        "status": "pending",
-        "progress": 0.0,
-        "message": "Scan job queued.",
-        "result": None,
-        "error": None,
-        "created_at": time.time(),
-        "user_id": user_id,
-    }
-    save_scan_job(job_id, _scan_jobs[job_id])
-
-    # Invalidate cache for fresh scan
-    from backend.storage.persistence import invalidate_analysis_cache
-
-    parser.invalidate_cache(str(path), clear_manifest=True)
-    embeddings.invalidate_repo(str(path), clear_cache=True)
-    invalidate_analysis_cache(str(path))
-
-    background_tasks.add_task(_run_scan_job, job_id, str(path), parser, embeddings)
+    job_id = queue_scan_job(
+        path=str(path),
+        background_tasks=background_tasks,
+        parser=parser,
+        embeddings=embeddings,
+        user_id=user_id,
+        repo_id=repo_id,
+    )
 
     return ScanJobResponse(**_scan_jobs[job_id])
 
@@ -366,6 +463,26 @@ async def get_scan_job_status(
             raise HTTPException(status_code=404, detail="Scan job not found.")
 
     return ScanJobResponse(**job)
+
+
+@router.post("/scan/jobs/{job_id}/cancel", response_model=ScanJobResponse)
+async def cancel_scan_job(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> ScanJobResponse:
+    """Cancel a running scan job."""
+    from backend.services.scan_worker import get_scan_job_manager
+
+    manager = get_scan_job_manager()
+    user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+    try:
+        updated = await manager.cancel_job(job_id, user_id=user_id)
+        _scan_jobs[job_id] = updated
+        return ScanJobResponse(**updated)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Scan job not found.") from None
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Permission denied to cancel this job.") from None
 
 
 @router.get("/scan/jobs/{job_id}/events")
@@ -445,7 +562,8 @@ async def stream_scan_job_events(
 @limiter.limit(FILE_RATE)
 async def list_files(
     request: Request,
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    repo_path: str | None = Query(None, description="Absolute path to the repository root"),
+    repository_id: int | None = Query(None, description="Repository database ID"),
     parser: ParserService = Depends(get_parser),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -453,8 +571,15 @@ async def list_files(
     """Return a flat list of all source files discovered in the repository."""
     from backend.security.repo_auth import authorize_repository_access
 
-    sanitized = SanitizedRepoPath(path=repo_path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path)
+    ident = (
+        repository_id if repository_id is not None else (SanitizedRepoPath(path=repo_path).path if repo_path else None)
+    )
+    if ident is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Either repo_path or repository_id must be provided.",
+        )
+    _, path = await authorize_repository_access(db, current_user, ident)
 
     if not is_repo_scanned(path):
         raise HTTPException(
@@ -479,7 +604,8 @@ async def list_files(
 async def get_file(
     request: Request,
     file_path: str,
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    repo_path: str | None = Query(None, description="Absolute path to the repository root"),
+    repository_id: int | None = Query(None, description="Repository database ID"),
     parser: ParserService = Depends(get_parser),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -491,8 +617,15 @@ async def get_file(
     """
     from backend.security.repo_auth import authorize_repository_access
 
-    sanitized_repo = SanitizedRepoPath(path=repo_path)
-    _, root = await authorize_repository_access(db, current_user, sanitized_repo.path)
+    ident = (
+        repository_id if repository_id is not None else (SanitizedRepoPath(path=repo_path).path if repo_path else None)
+    )
+    if ident is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Either repo_path or repository_id must be provided.",
+        )
+    _, root = await authorize_repository_access(db, current_user, ident)
 
     if not is_repo_scanned(root):
         raise HTTPException(
@@ -564,7 +697,8 @@ async def get_file(
 
 @router.get("/onboarding", response_model=RepoOnboardingGuide)
 async def get_onboarding_guide(
-    repo_path: str = Query(..., description="Absolute path to the repository root"),
+    repo_path: str | None = Query(default=None, description="Absolute path to the repository root"),
+    repository_id: int | None = Query(default=None, description="Optional repository database ID"),
     parser: ParserService = Depends(get_parser),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -572,8 +706,10 @@ async def get_onboarding_guide(
     """Generate a high-level developer onboarding guide grounded in repository structure."""
     from backend.security.repo_auth import authorize_repository_access
 
-    sanitized = SanitizedRepoPath(path=repo_path)
-    _, path = await authorize_repository_access(db, current_user, sanitized.path)
+    ident = repository_id if repository_id is not None else (repo_path.strip() if repo_path else None)
+    if not ident:
+        raise HTTPException(status_code=400, detail="Either repo_path or repository_id must be provided.")
+    _, path = await authorize_repository_access(db, current_user, ident)
 
     parsed_files = await parser.parse_repository(str(path))
     files = parser._scanner.get_files(str(path))
@@ -619,7 +755,6 @@ async def get_onboarding_guide(
         known_issues=known_issues,
         starting_points=starting_points,
     )
-
 
 
 async def _index_embeddings(

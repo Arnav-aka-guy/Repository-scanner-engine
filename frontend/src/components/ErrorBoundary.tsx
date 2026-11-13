@@ -2,6 +2,7 @@ import React from 'react';
 
 interface Props {
   children: React.ReactNode;
+  resetKey?: string | number;
 }
 
 interface State {
@@ -21,6 +22,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   render() {

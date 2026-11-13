@@ -19,32 +19,32 @@
 }
 
 :root {
-  /* ── Core Background ── */
+  /* Core Background */
   --bg-primary: #0D0F0E;
   --bg-secondary: #151816;
   --bg-tertiary: #1C201D;
   --bg-surface: #151816;
   --bg-elevated: #262B28;
 
-  /* ── Text ── */
+  /* Text */
   --text-primary: #E9ECE6;
   --text-secondary: #8A928B;
   --text-muted: #5E645F;
 
-  /* ── Accents ── */
+  /* Accents */
   --accent-signal: #F2A93B;
   --accent-edge: #7CC4C9;
   --accent-primary: #F2A93B;
   --accent-green: #7FB77E;
   --accent-rose: #E5654B;
 
-  /* ── Borders & Grids ── */
+  /* Borders & Grids */
   --border-color: #262B28;
   --border-subtle: #1C201D;
   --border-strong: #3A423D;
   --border-active: #F2A93B;
 
-  /* ── Transitions & Motion ── */
+  /* Transitions & Motion */
   --ease-survey: cubic-bezier(0.22, 1, 0.36, 1);
 }
 

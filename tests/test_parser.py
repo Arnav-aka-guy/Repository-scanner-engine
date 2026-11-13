@@ -19,9 +19,7 @@ from backend.parser.models import (
     ParsedFile,
 )
 
-# ---------------------------------------------------------------------------
 # Sample source code used across multiple tests
-# ---------------------------------------------------------------------------
 
 SAMPLE_SOURCE = textwrap.dedent("""\
     \"\"\"Sample module docstring.\"\"\"
@@ -86,9 +84,7 @@ def parsed_tree() -> ast.Module:
     return ast.parse(SAMPLE_SOURCE)
 
 
-# ---------------------------------------------------------------------------
 # Tests — Import extraction
-# ---------------------------------------------------------------------------
 
 
 class TestImportExtraction:
@@ -122,9 +118,7 @@ class TestImportExtraction:
         assert info.alias == "np"
 
 
-# ---------------------------------------------------------------------------
 # Tests — Class extraction
-# ---------------------------------------------------------------------------
 
 
 class TestClassExtraction:
@@ -181,9 +175,7 @@ class TestClassExtraction:
         assert docstring == "A simple calculator class."
 
 
-# ---------------------------------------------------------------------------
 # Tests — Function extraction
-# ---------------------------------------------------------------------------
 
 
 class TestFunctionExtraction:
@@ -232,9 +224,7 @@ class TestFunctionExtraction:
         assert docstring == "A standalone helper function."
 
 
-# ---------------------------------------------------------------------------
 # Tests — ParsedFile model
-# ---------------------------------------------------------------------------
 
 
 class TestParsedFileModel:

@@ -22,9 +22,10 @@ import { SurveyHero } from '../components/SurveyHero';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { token, user } = useAuthStore();
+  const { token, user, authEnabled } = useAuthStore();
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
   const isAuthenticated = Boolean(token);
+  const targetWorkspace = activeRepository ? '/explorer' : authEnabled && token ? '/app' : '/overview';
   const lenisRef = useRef<Lenis | null>(null);
 
   // Initialize Lenis smooth scroll on landing page only, respecting prefers-reduced-motion
@@ -168,7 +169,7 @@ export const LandingPage: React.FC = () => {
               } else if (window.history.length > 1) {
                 navigate(-1);
               } else {
-                navigate('/app');
+                navigate(targetWorkspace);
               }
             }}
             className="btn-secondary text-xs inline-flex items-center gap-1.5 px-2.5 py-1"
@@ -231,6 +232,15 @@ export const LandingPage: React.FC = () => {
             </button>
           ) : (
             <>
+              {!authEnabled && (
+                <button
+                  onClick={() => navigate(targetWorkspace)}
+                  className="btn-primary text-xs inline-flex items-center gap-1.5"
+                >
+                  <span>Open Workspace</span>
+                  <ArrowRight size={14} />
+                </button>
+              )}
               <Link
                 to="/login"
                 className="text-xs font-mono text-[#8A928B] hover:text-[#E9ECE6] px-3 py-1.5 rounded transition-colors"
@@ -239,7 +249,7 @@ export const LandingPage: React.FC = () => {
               </Link>
               <button
                 onClick={() => navigate('/signup')}
-                className="btn-primary text-xs inline-flex items-center gap-1.5"
+                className="btn-secondary text-xs inline-flex items-center gap-1.5"
               >
                 <span>Get Started</span>
                 <ArrowRight size={13} />
@@ -269,10 +279,10 @@ export const LandingPage: React.FC = () => {
 
         <div className="flex items-center justify-center gap-3 mb-12">
           <button
-            onClick={() => navigate(activeRepository ? '/explorer' : '/app')}
+            onClick={() => navigate(targetWorkspace)}
             className="btn-primary px-5 py-2 text-sm font-medium gap-2"
           >
-            <span>{activeRepository ? 'Resume Analysis' : isAuthenticated ? 'Open Workspace' : 'Get Started Free'}</span>
+            <span>{activeRepository ? 'Resume Analysis' : 'Open Workspace'}</span>
             <ArrowRight size={15} />
           </button>
 

@@ -14,12 +14,12 @@ from backend.main import app
 @pytest.fixture
 def client():
     """Create a test client for the FastAPI app."""
+    import contextlib
+
     from backend.security.rate_limiter import limiter
 
-    try:
+    with contextlib.suppress(Exception):
         limiter.reset()
-    except Exception:
-        pass
     with TestClient(app) as c:
         yield c
 
@@ -337,3 +337,120 @@ class TestUserDataIsolation:
         new_login = client.post("/api/auth/login", json={"email": email, "password": "newsecurepassword123"})
         assert new_login.status_code == 200
         assert "access_token" in new_login.json()
+
+
+class TestGithubRepositoryDiskPath:
+    """Verify GitHub repositories with URL source_path use on-disk path for scanning and schemas."""
+
+    def test_repo_disk_path_prefers_disk_path_over_github_url(self):
+        from backend.db.models import Repository
+        from backend.security.repo_auth import repo_disk_path
+
+        repo = Repository(
+            id=10,
+            user_id=1,
+            name="Remote Repo",
+            source_type="github",
+            source_path="https://github.com/org/repo.git",
+            path="C:/data/cloned_repos/org_repo_12345",
+        )
+        assert repo_disk_path(repo) == "C:/data/cloned_repos/org_repo_12345"
+
+    def test_repository_item_exposes_disk_path(self):
+        from backend.api.repositories import _to_item
+        from backend.db.models import Repository
+
+        repo = Repository(
+            id=11,
+            user_id=1,
+            name="Remote Repo",
+            source_type="github",
+            source_path="https://github.com/org/repo.git",
+            path="C:/data/cloned_repos/org_repo_12345",
+            status="READY",
+        )
+        item = _to_item(repo)
+        assert item.path == "C:/data/cloned_repos/org_repo_12345"
+        assert item.source_path == "https://github.com/org/repo.git"
+
+    def test_scan_user_repository_returns_202_and_job_id(self, client: TestClient, tmp_path: Path):
+        """POST /api/repositories/{id}/scan must return 202 Accepted with a job_id."""
+        email = f"user_scan_{tempfile.mktemp()[-6:]}@example.com"
+        reg = client.post(
+            "/api/auth/register", json={"name": "Scanner User", "email": email, "password": "password123!"}
+        )
+        token = reg.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        repo_dir = tmp_path / "scan_repo_test"
+        repo_dir.mkdir()
+        (repo_dir / "index.py").write_text("x = 100\n", encoding="utf-8")
+
+        create = client.post(
+            "/api/repositories",
+            headers=headers,
+            json={"name": "Scan Target", "source_path": str(repo_dir), "source_type": "local"},
+        )
+        assert create.status_code == 201
+        repo_id = create.json()["id"]
+
+        scan_resp = client.post(f"/api/repositories/{repo_id}/scan", headers=headers)
+        assert scan_resp.status_code == 202
+        data = scan_resp.json()
+        assert "job_id" in data
+        assert data["status"] == "pending"
+        assert data["repository_id"] == repo_id
+
+
+class TestLocalModeRepositoryWorkflow:
+    """Verify that in local mode (no auth, no token), /api/repositories works seamlessly: list, create, scan, delete."""
+
+    def test_local_mode_crud_without_token(self, client: TestClient, tmp_path: Path):
+        from backend.core.config import settings
+
+        # Ensure local mode with auth disabled
+        assert not settings.auth_enabled
+
+        # 1. List repositories with no token -> 200 and clean leftover test repositories
+        list_resp = client.get("/api/repositories")
+        assert list_resp.status_code == 200
+        for r in list_resp.json().get("repositories", []):
+            client.delete(f"/api/repositories/{r['id']}")
+        list_resp = client.get("/api/repositories")
+        initial_count = list_resp.json()["count"]
+
+        # 2. Create repository with no token -> 201
+        repo_dir = tmp_path / "local_repo_unauthenticated"
+        repo_dir.mkdir()
+        (repo_dir / "app.py").write_text("print('hello local world')\n", encoding="utf-8")
+
+        create_resp = client.post(
+            "/api/repositories",
+            json={
+                "name": "Local Unauthed Project",
+                "source_path": str(repo_dir),
+                "source_type": "local",
+            },
+        )
+        assert create_resp.status_code == 201
+        created = create_resp.json()
+        assert created["name"] == "Local Unauthed Project"
+        repo_id = created["id"]
+
+        # Verify it shows up in list without token
+        list_resp2 = client.get("/api/repositories")
+        assert list_resp2.status_code == 200
+        assert list_resp2.json()["count"] == initial_count + 1
+
+        # 3. Scan repository with no token -> 202 Accepted
+        scan_resp = client.post(f"/api/repositories/{repo_id}/scan")
+        assert scan_resp.status_code == 202
+        assert "job_id" in scan_resp.json()
+
+        # 4. Delete repository with no token -> 200 / 204
+        del_resp = client.delete(f"/api/repositories/{repo_id}")
+        assert del_resp.status_code in (200, 204)
+
+        # Verify it was removed
+        get_del = client.get(f"/api/repositories/{repo_id}")
+        assert get_del.status_code == 404

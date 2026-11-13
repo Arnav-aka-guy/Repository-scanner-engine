@@ -44,7 +44,7 @@ class DependencyRiskReport:
     pinning_score: float = 0.0  # 0-100, how well dependencies are pinned
 
 
-# ── Version pinning patterns ────────────────────────────────────────────
+# Version pinning patterns
 
 _PIP_EXACT = re.compile(r"^==\d")
 _PIP_RANGE = re.compile(r"^[><=!~]")
@@ -210,7 +210,7 @@ def analyse_dependency_risk(repo_path: str) -> DependencyRiskReport:
     # Generate suggestions
     suggestions: list[str] = []
     if risk_counts["high"] > 0:
-        suggestions.append(f"⚠️ {risk_counts['high']} high-risk dependencies need immediate attention")
+        suggestions.append(f"{risk_counts['high']} high-risk dependencies need immediate attention")
     if risk_counts["medium"] > 3:
         suggestions.append(f"Consider pinning {risk_counts['medium']} loosely-constrained dependencies")
     if python_count + node_count > 30:
