@@ -50,7 +50,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
 
   const commands: CommandItem[] = [
-    // ── Navigation ──
+    // Navigation
     {
       id: 'nav-overview',
       title: 'Open Overview',
@@ -144,7 +144,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       run: () => navigateRepo('settings'),
     },
 
-    // ── Actions ──
+    // Actions
     {
       id: 'act-rescan',
       title: 'Rescan Current Repository',

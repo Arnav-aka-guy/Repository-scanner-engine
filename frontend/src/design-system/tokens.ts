@@ -1,6 +1,6 @@
 // Design tokens — single source of truth for all visual values
 // Follows .agents/skills/design-direction/SKILL.md ("survey map for code")
-// and preserves Phase 0 baseline token assertions.
+// and preserves token assertions.
 
 export const colors = {
   bg: {

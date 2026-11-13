@@ -35,7 +35,7 @@ interface FileDetail {
 }
 
 interface WorkspaceState {
-  // ── Repository ─────────────────────────────────────────────────────
+  // Repository
   activeRepository: string | null;
   activeRepositoryId: number | null;
   repositoryInfo: RepositoryInfo | null;
@@ -56,37 +56,37 @@ interface WorkspaceState {
   queueChatMessage: (question: string) => void;
   consumePendingChatMessage: () => string | null;
 
-  // ── Graph ──────────────────────────────────────────────────────────
+  // Graph
   graphData: GraphData | null;
   graphType: 'dependency' | 'call' | 'symbol';
   graphLoading: boolean;
   graphError: string | null;
   analysisResult: AnalysisResult | null;
 
-  // ── Search ─────────────────────────────────────────────────────────
+  // Search
   searchResults: SearchResult[];
   searchTotal: number;
   lastSearchQuery: string;
   searchLoading: boolean;
   searchError: string | null;
 
-  // ── Chat ───────────────────────────────────────────────────────────
+  // Chat
   chatMessages: ChatMessage[];
   chatMessagesByRepo: Record<string, ChatMessage[]>;
   chatLoading: boolean;
   chatError: string | null;
   activeConversationId: string | null;
 
-  // ── Documentation ──────────────────────────────────────────────────
+  // Documentation
   generatedDocs: GenerateDocsResponse | null;
   docsLoading: boolean;
   docsError: string | null;
 
-  // ── Health Cache ──────────────────────────────────────────────────
+  // Health Cache
   cachedHealthScore: Record<string, HealthScore>;
   setCachedHealthScore: (repoPath: string, score: HealthScore) => void;
 
-  // ── Actions ────────────────────────────────────────────────────────
+  // Actions
   setActiveRepository: (path: string, repoId?: number | null) => void;
   openRepository: (repo: SavedRepository) => Promise<void>;
   scanRepo: (path: string, repoId?: number | null) => Promise<void>;
@@ -105,7 +105,7 @@ interface WorkspaceState {
   setRepoModalOpen: (open: boolean) => void;
 }
 
-// ── Tree builder helper ──────────────────────────────────────────────
+// Tree builder helper
 
 function buildTree(fileList: FileInfo[], rootPath: string): FileTreeNode[] {
   const root: FileTreeNode[] = [];
@@ -160,10 +160,10 @@ function buildTree(fileList: FileInfo[], rootPath: string): FileTreeNode[] {
   return root;
 }
 
-// ── Store ────────────────────────────────────────────────────────────
+// Store
 
 
-// ── Multi-user isolated workspace storage ────────────────────────────
+// Multi-user isolated workspace storage
 
 export function getWorkspaceStorageKey(): string {
   try {
@@ -208,7 +208,7 @@ const userNamespacedStorage = {
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set, get) => ({
-      // ── Initial state ──────────────────────────────────────────────
+      // Initial state
       activeRepository: null,
       activeRepositoryId: null,
       repositoryInfo: null,
@@ -278,14 +278,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       docsLoading: false,
       docsError: null,
 
-      // ── Health Cache ────────────────────────────────────────────────
+      // Health Cache
       cachedHealthScore: {},
       setCachedHealthScore: (repoPath: string, score: HealthScore) =>
         set((s) => ({
           cachedHealthScore: { ...s.cachedHealthScore, [repoPath]: score },
         })),
 
-      // ── Actions ────────────────────────────────────────────────────
+      // Actions
 
       setActiveRepository: (path: string, repoId: number | null = null) => {
         const normPath = path ? path.replace(/\\/g, '/').replace(/\/+$/, '') : null;

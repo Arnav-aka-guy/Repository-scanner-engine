@@ -127,7 +127,7 @@ export const AIChat: React.FC = () => {
     };
   }, [messages, graphData]);
 
-  // PRD Phase 9 Starter Questions
+  // Starter Questions
   const starterQuestions = [
     'Explain this repository',
     'Where does the application start?',

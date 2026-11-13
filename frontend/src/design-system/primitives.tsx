@@ -3,7 +3,7 @@ import { Loader2, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { colors, font, radius, transition } from './tokens';
 import { CodeBlock as CodeBlockComponent } from '../components/CodeBlock';
 
-// ─── Button ──────────────────────────────────────────────────
+// Button
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -85,7 +85,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((
 });
 Button.displayName = 'Button';
 
-// ─── IconButton ──────────────────────────────────────────────
+// IconButton
 
 export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -124,7 +124,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>((
 });
 IconButton.displayName = 'IconButton';
 
-// ─── Input ───────────────────────────────────────────────────
+// Input
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -206,7 +206,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>((
 });
 Input.displayName = 'Input';
 
-// ─── Select ──────────────────────────────────────────────────
+// Select
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
@@ -255,7 +255,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>((
 });
 Select.displayName = 'Select';
 
-// ─── Badge ───────────────────────────────────────────────────
+// Badge
 
 export type BadgeVariant = 'default' | 'blue' | 'green' | 'yellow' | 'red' | 'purple';
 
@@ -294,7 +294,7 @@ export const Badge: React.FC<BadgeProps> = ({ variant = 'default', children, sty
   </span>
 );
 
-// ─── Panel ───────────────────────────────────────────────────
+// Panel
 
 export interface PanelProps {
   children: React.ReactNode;
@@ -318,7 +318,7 @@ export const Panel: React.FC<PanelProps> = ({ children, padding = '16px', style,
   </div>
 );
 
-// ─── SectionHeader ───────────────────────────────────────────
+// SectionHeader
 
 export interface SectionHeaderProps {
   label: string;
@@ -371,7 +371,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   </div>
 );
 
-// ─── Metric (with Progressive Disclosure Support) ────────────
+// Metric (with Progressive Disclosure Support)
 
 export interface MetricProps {
   label: string;
@@ -460,7 +460,7 @@ export const Metric: React.FC<MetricProps> = ({
   </div>
 );
 
-// ─── StatusIndicator ─────────────────────────────────────────
+// StatusIndicator
 
 export type IndicatorStatus = 'online' | 'offline' | 'warning' | 'idle';
 
@@ -494,7 +494,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({ status, label,
   </div>
 );
 
-// ─── Tooltip ─────────────────────────────────────────────────
+// Tooltip
 
 export interface TooltipProps {
   content: React.ReactNode;
@@ -539,7 +539,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children }) => {
   );
 };
 
-// ─── EmptyState ──────────────────────────────────────────────
+// EmptyState
 
 export interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -590,7 +590,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, description
   </div>
 );
 
-// ─── LoadingState ─────────────────────────────────────────────
+// LoadingState
 
 export interface LoadingStateProps {
   label?: string;
@@ -628,7 +628,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({ label = 'Loading...'
   );
 };
 
-// ─── DataTable ────────────────────────────────────────────────
+// DataTable
 
 export interface Column<T> {
   key: string;
@@ -741,7 +741,7 @@ export function DataTable<T>({
   );
 }
 
-// ─── ProgressiveDisclosure (Beginner-Friendly UX) ────────────
+// ProgressiveDisclosure (Beginner-Friendly UX)
 
 export interface ProgressiveDisclosureProps {
   title: string;
@@ -819,7 +819,7 @@ export const ProgressiveDisclosure: React.FC<ProgressiveDisclosureProps> = ({
   );
 };
 
-// ─── FilePath ─────────────────────────────────────────────────
+// FilePath
 
 export interface FilePathProps {
   path: string;
@@ -855,7 +855,7 @@ export const FilePath: React.FC<FilePathProps> = ({ path, showFull = false, styl
   );
 };
 
-// ─── Divider ──────────────────────────────────────────────────
+// Divider
 
 export interface DividerProps {
   style?: React.CSSProperties;
@@ -874,10 +874,10 @@ export const Divider: React.FC<DividerProps> = ({ style, vertical = false }) => 
   />
 );
 
-// ─── Re-export CodeBlock ──────────────────────────────────────
+// Re-export CodeBlock
 export const CodeBlock = CodeBlockComponent;
 
-// ─── Spinner animation injection ─────────────────────────────
+// Spinner animation injection
 if (typeof document !== 'undefined') {
   const styleId = 'ds-primitives-keyframes';
   if (!document.getElementById(styleId)) {

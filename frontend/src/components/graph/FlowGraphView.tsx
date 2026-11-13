@@ -19,7 +19,7 @@ import { colors, font, radius } from '../../design-system/tokens';
 import { buildGraphView, CLUSTER_PREFIX, parseGraphData, type GraphFilter } from './graphModel';
 import { layoutGraphView, type LayoutType } from './graphLayout';
 
-/* ── visual constants ─────────────────────────────────────────── */
+/* visual constants */
 
 const TYPE_COLOR: Record<string, string> = {
   file: '#5B8DEF',
@@ -160,7 +160,7 @@ const ClusterNode = memo(function ClusterNode({ data }: NodeProps) {
 
 const nodeTypes = { codeNode: ItemNode, clusterNode: ClusterNode };
 
-/* ── props (unchanged public API) ─────────────────────────────── */
+/* props (unchanged public API) */
 
 export interface FlowGraphViewProps {
   graphData: unknown;

@@ -27,7 +27,7 @@ import {
   TEXT_SECONDARY,
 } from './diagramTheme';
 
-/* ── node renderers ─────────────────────────────────────────────── */
+/* node renderers */
 
 type GroupData = { label: string; groupId: keyof typeof GROUP_THEME; width: number; height: number };
 type DesignData = {
@@ -169,7 +169,7 @@ const DesignNode = memo(function DesignNode({ data }: NodeProps) {
 
 const nodeTypes = { designGroup: GroupBox, designNode: DesignNode };
 
-/* ── helpers ────────────────────────────────────────────────────── */
+/* helpers */
 
 const CONTROLS_CSS = `
 .sd-canvas .react-flow__controls { box-shadow: 0 4px 16px rgba(0,0,0,0.35); border-radius: 6px; overflow: hidden; }
@@ -188,7 +188,7 @@ function pickHandles(
     : { sourceHandle: 's-left', targetHandle: 't-right' };
 }
 
-/* ── canvas ─────────────────────────────────────────────────────── */
+/* canvas */
 
 export interface SystemDesignCanvasProps {
   diagram: SystemDesignDiagram;

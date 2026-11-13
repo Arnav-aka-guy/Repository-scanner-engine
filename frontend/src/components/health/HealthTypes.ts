@@ -1,4 +1,4 @@
-/* ─── Health Dashboard Shared Types ───────────────────────── */
+/* Health Dashboard Shared Types */
 
 export interface Deduction {
   reason: string;
