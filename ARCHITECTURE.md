@@ -2,7 +2,7 @@
 
 ## 1. System Overview
 
-**Repository Scanner Engine V2.1** is a high-performance, production-oriented repository intelligence platform. It provides structural AST analysis, unified dependency graphs, hybrid vector retrieval, explainable code health scoring, automated code review, and change impact blast-radius analysis.
+**Repository Scanner Engine** provides structural AST analysis, dependency graphs, hybrid vector search, code health scoring, code review, change impact analysis, and automated system design diagrams.
 
 ```mermaid
 flowchart TD
@@ -137,3 +137,13 @@ The code review module combines deterministic static rules with optional LLM rea
 
 - Chronological snapshots recorded after each health scan in `HealthHistoryService`.
 - Scan-over-scan comparisons calculate score deltas, debt minutes saved, letter grade changes, resolved findings, and degrading modules.
+
+---
+
+## 7. System Design Diagram Engine
+
+The system design module generates architecture diagrams from source code and dependency metadata:
+1. **Fact Collection**: Scans directory structures, package manifests (`package.json`, `pyproject.toml`), environment templates, and import statements to identify components, technologies, and entry points.
+2. **Graph Construction**: Builds a normalized component graph with typed edges (network, database, dependency) and assigns semantic clusters (client, backend, data, external).
+3. **Resilient LLM Enrichment**: Enriches node roles and system flows via Groq (`SYSTEM_DESIGN_MODEL`) with automatic OpenRouter fallback and deterministic offline defaults.
+4. **Interactive Multi-Format Output**: Exposes structured JSON via `GET /api/system-design` and generates SVG, PNG, and Mermaid diagram representations.

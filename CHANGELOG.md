@@ -10,7 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.0] - 2026-11-06 — Production Upgrade Release
 
 ### Added
-- **Multi-Language AST Parsing Engine (Phase 9)**:
+- **System Design Architecture Diagrams**:
+  - Automated component map and data flow discovery extracting frontends, backends, entry points, routers, and third-party services.
+  - Multi-provider resilient LLM enrichment with automatic Groq -> OpenRouter fallback and deterministic offline AST defaults.
+  - Interactive diagram canvas with Overview and Detailed views, flow tracing, and multi-format export (SVG, PNG, JSON, Mermaid).
+  - Endpoints: `POST /api/system-design/generate` and `GET /api/system-design`.
+- **Multi-Language AST Parsing Engine**:
   - First-class native parsers for **Java** (`JavaParser`), **Go** (`GoParser`), **Rust** (`RustParser`), **C/C++** (`CppParser`), and **C#** (`CSharpParser`).
   - AST entity extraction for classes, interfaces, records, methods, structs, functions, trait implementations, receiver methods, and language-specific imports/includes.
   - Full registration in `ParserService` with automatic file extension routing (`.java`, `.go`, `.rs`, `.c`, `.cpp`, `.h`, `.hpp`, `.cs`).
