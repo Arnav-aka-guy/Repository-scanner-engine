@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Folder,
   FolderOpen,
@@ -28,6 +29,7 @@ function getRepoBasename(path: string): string {
 }
 
 export const RepositoryModal: React.FC = () => {
+  const navigate = useNavigate();
   const isOpen = useWorkspaceStore((s) => s.isRepoModalOpen);
   const setOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
@@ -57,6 +59,16 @@ export const RepositoryModal: React.FC = () => {
     }
   }, [isOpen, activeTab]);
 
+  const syncNavigatedRepo = () => {
+    const state = useWorkspaceStore.getState();
+    if (state.scanStatus !== 'error') {
+      setOpen(false);
+      if (state.activeRepositoryId) {
+        navigate(`/app/repositories/${state.activeRepositoryId}/overview`, { replace: true });
+      }
+    }
+  };
+
   const handleBrowseFolder = async () => {
     setLocalError(null);
     setIsBrowsing(true);
@@ -66,14 +78,14 @@ export const RepositoryModal: React.FC = () => {
         if (path) {
           setLocalPath(path);
           await scanRepo(path);
-          setOpen(false);
+          syncNavigatedRepo();
         }
       } else {
         const res = await browseFolder();
         if (res && res.path) {
           setLocalPath(res.path);
           await scanRepo(res.path);
-          setOpen(false);
+          syncNavigatedRepo();
         } else if (fileInputRef.current) {
           fileInputRef.current.click();
         }
@@ -105,9 +117,7 @@ export const RepositoryModal: React.FC = () => {
     if (!localPath.trim() || isScanning) return;
     setLocalError(null);
     await scanRepo(localPath.trim());
-    if (useWorkspaceStore.getState().scanStatus !== 'error') {
-      setOpen(false);
-    }
+    syncNavigatedRepo();
   };
 
   const handleGitHubSubmit = async (e: React.FormEvent) => {
@@ -115,21 +125,18 @@ export const RepositoryModal: React.FC = () => {
     if (!githubUrl.trim() || isScanning) return;
     setLocalError(null);
     await scanRepo(githubUrl.trim());
-    if (useWorkspaceStore.getState().scanStatus !== 'error') {
-      setOpen(false);
-    }
+    syncNavigatedRepo();
   };
 
   const handleSelectRecent = async (repo: string) => {
     await scanRepo(repo);
-    if (useWorkspaceStore.getState().scanStatus !== 'error') {
-      setOpen(false);
-    }
+    syncNavigatedRepo();
   };
 
   const handleUnloadWorkspace = () => {
     clearWorkspace();
     setOpen(false);
+    navigate('/app');
   };
 
   const sampleRepos = [
