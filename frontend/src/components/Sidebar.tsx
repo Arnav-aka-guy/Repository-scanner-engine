@@ -84,6 +84,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile }) => {
   const location = useLocation();
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
+  const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
   const scanStatus = useWorkspaceStore((s) => s.scanStatus);
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
@@ -93,7 +94,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
   const repoMatch = location.pathname.match(/^\/app\/repositories\/([^/]+)/);
   const currentRepoId = repoMatch ? repoMatch[1] : activeRepositoryId;
   const repoPrefix = currentRepoId ? `/app/repositories/${currentRepoId}` : '';
-  const repoName = activeRepository ? getRepoBasename(activeRepository) : null;
+  const repoName = repositoryInfo?.name || (activeRepository ? getRepoBasename(activeRepository) : null);
+  const displayPath = (repositoryInfo?.source_type === 'github' && repositoryInfo?.source_path)
+    ? repositoryInfo.source_path
+    : (activeRepository || '');
   const isScanning = scanStatus === 'scanning';
   const status = STATUS[scanStatus] ?? STATUS.idle;
 
@@ -141,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
               type="button"
               onClick={() => setRepoModalOpen(true)}
               className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-              title={activeRepository ? `${activeRepository}: switch repository` : 'Open a repository'}
+              title={activeRepository ? `${repoName} (${displayPath}): switch repository` : 'Open a repository'}
             >
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface-2 text-[13px] font-semibold text-fg">
                 {(repoName || '?').slice(0, 1).toUpperCase()}

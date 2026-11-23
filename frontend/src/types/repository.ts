@@ -22,6 +22,8 @@ export interface CodeEntity {
 export interface RepositoryInfo {
   path: string;
   name: string;
+  source_path?: string;
+  source_type?: 'local' | 'github' | string;
   total_files: number;
   total_lines: number;
   languages: Record<string, number>;

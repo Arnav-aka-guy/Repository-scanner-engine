@@ -15,6 +15,7 @@ import {
   listFiles,
   getFile,
   getUserRepositories,
+  getUserRepository,
   createUserRepository,
   type ScanJob,
 } from '../services/repository';
@@ -309,6 +310,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const repoInfo: RepositoryInfo = {
           path: diskPath,
           name: repo.name,
+          source_path: repo.source_path,
+          source_type: repo.source_type,
           total_files: repo.total_files ?? repo.file_count ?? 0,
           total_lines: repo.total_lines ?? 0,
           languages: repo.languages || {},
@@ -521,11 +524,29 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           recent.unshift(targetPath);
           if (recent.length > 10) recent.pop();
 
+          let repoDisplayName = info.name;
+          let repoSourcePath = isGitHub ? normInputPath : undefined;
+          let repoSourceType = isGitHub ? 'github' : 'local';
+          if (resolvedRepoId != null) {
+            try {
+              const saved = await getUserRepository(resolvedRepoId);
+              if (saved?.name) repoDisplayName = saved.name;
+              if (saved?.source_path) repoSourcePath = saved.source_path;
+              if (saved?.source_type) repoSourceType = saved.source_type;
+            } catch {}
+          }
+          const finalInfo: RepositoryInfo = {
+            ...info,
+            name: repoDisplayName,
+            source_path: repoSourcePath,
+            source_type: repoSourceType,
+          };
+
           const repoChat = get().chatMessagesByRepo[targetPath] || [];
           set({
             activeRepository: targetPath,
             activeRepositoryId: resolvedRepoId,
-            repositoryInfo: info,
+            repositoryInfo: finalInfo,
             files: fileList,
             fileTree: tree,
             scanStatus: 'indexed',

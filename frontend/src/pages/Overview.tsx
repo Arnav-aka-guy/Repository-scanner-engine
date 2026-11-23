@@ -345,7 +345,10 @@ export const Overview: React.FC = () => {
     );
   }
 
-  const repoBasename = getRepoBasename(activeRepository);
+  const repoDisplayName = repositoryInfo?.name || getRepoBasename(activeRepository);
+  const displayPath = (repositoryInfo?.source_type === 'github' && repositoryInfo?.source_path)
+    ? repositoryInfo.source_path
+    : activeRepository;
   const totalFiles = repositoryInfo?.total_files || 0;
   const totalLines = repositoryInfo?.total_lines || 0;
   const lastScanned = formatLastScanned(repositoryInfo?.scanned_at);
@@ -414,11 +417,11 @@ export const Overview: React.FC = () => {
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <PageHeader
         icon={<Folder size={19} />}
-        title={repoBasename}
+        title={repoDisplayName}
         meta={
           <>
-            <span className="max-w-full truncate font-mono text-[12.5px] text-fg-3" title={activeRepository}>
-              {activeRepository}
+            <span className="max-w-full truncate font-mono text-[12.5px] text-fg-3" title={displayPath}>
+              {displayPath}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Clock size={13} />

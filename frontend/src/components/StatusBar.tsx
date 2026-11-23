@@ -10,6 +10,7 @@ import {
 
 interface StatusBarProps {
   repoPath?: string;
+  repoName?: string;
   connected?: boolean;
   totalFiles?: number;
   totalLines?: number;
@@ -17,6 +18,7 @@ interface StatusBarProps {
 
 export const StatusBar: React.FC<StatusBarProps> = ({
   repoPath,
+  repoName,
   totalFiles = 0,
   totalLines = 0,
 }) => {
@@ -73,12 +75,15 @@ export const StatusBar: React.FC<StatusBarProps> = ({
     };
   }, []);
 
+  const displayName = repoName || (repoPath ? repoPath.replace(/\\/g, '/').split('/').filter(Boolean).pop() : null);
+
   const getRepoStatusText = () => {
     if (!repoPath) return { text: 'No repository selected', tone: 'text-fg-4', dot: 'bg-fg-4' };
-    if (scanStatus === 'scanning') return { text: 'Scanning and indexing…', tone: 'text-ion', dot: 'bg-ion live-dot' };
-    if (scanStatus === 'indexed') return { text: 'Repository indexed', tone: 'text-fg-3', dot: 'bg-mint' };
-    if (scanStatus === 'error') return { text: scanError ? `Scan failed: ${scanError}` : 'Scan failed', tone: 'text-rose', dot: 'bg-rose' };
-    return { text: 'Repository loaded', tone: 'text-fg-3', dot: 'bg-fg-4' };
+    const prefix = displayName ? `${displayName}: ` : '';
+    if (scanStatus === 'scanning') return { text: `${prefix}Scanning and indexing…`, tone: 'text-ion', dot: 'bg-ion live-dot' };
+    if (scanStatus === 'indexed') return { text: `${prefix}Indexed`, tone: 'text-fg-3', dot: 'bg-mint' };
+    if (scanStatus === 'error') return { text: scanError ? `${prefix}Scan failed: ${scanError}` : `${prefix}Scan failed`, tone: 'text-rose', dot: 'bg-rose' };
+    return { text: `${prefix}Loaded`, tone: 'text-fg-3', dot: 'bg-fg-4' };
   };
 
   const repoStatus = getRepoStatusText();

@@ -42,11 +42,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
+  const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
   const selectLocalDirectory = useWorkspaceStore((s) => s.selectLocalDirectory);
   const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
   const clearChatHistory = useWorkspaceStore((s) => s.clearChatHistory);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
+
+  const repoDisplayName = repositoryInfo?.name || (activeRepository ? activeRepository.replace(/\\/g, '/').split('/').filter(Boolean).pop() : null);
 
   const commands: CommandItem[] = [
     // Navigation
@@ -147,7 +150,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     {
       id: 'act-rescan',
       title: 'Rescan Current Repository',
-      subtitle: activeRepository ? `Re-index: ${activeRepository}` : 'No active repository to scan',
+      subtitle: activeRepository ? `Re-index: ${repoDisplayName || activeRepository}` : 'No active repository to scan',
       category: 'Actions',
       icon: <RefreshCw size={15} />,
       shortcut: 'R',

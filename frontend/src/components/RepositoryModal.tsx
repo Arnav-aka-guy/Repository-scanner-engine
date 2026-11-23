@@ -33,6 +33,7 @@ export const RepositoryModal: React.FC = () => {
   const isOpen = useWorkspaceStore((s) => s.isRepoModalOpen);
   const setOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
+  const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
   const scanStatus = useWorkspaceStore((s) => s.scanStatus);
   const scanError = useWorkspaceStore((s) => s.scanError);
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
@@ -49,6 +50,10 @@ export const RepositoryModal: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isScanning = scanStatus === 'scanning';
+  const repoDisplayName = repositoryInfo?.name || (activeRepository ? getRepoBasename(activeRepository) : '');
+  const displayPath = (repositoryInfo?.source_type === 'github' && repositoryInfo?.source_path)
+    ? repositoryInfo.source_path
+    : (activeRepository || '');
 
   useEffect(() => {
     if (isOpen) {
@@ -184,10 +189,15 @@ export const RepositoryModal: React.FC = () => {
                 </span>
                 <span
                   className="font-mono text-[12px] font-medium text-[#F4F4F5] truncate"
-                  title={activeRepository}
+                  title={displayPath}
                 >
-                  {getRepoBasename(activeRepository)}
+                  {repoDisplayName}
                 </span>
+                {displayPath && displayPath !== repoDisplayName && (
+                  <span className="text-[11px] text-[#71717A] truncate font-mono" title={displayPath}>
+                    {displayPath}
+                  </span>
+                )}
               </div>
             </div>
             <button

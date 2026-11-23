@@ -57,6 +57,16 @@ export const MainLayout: React.FC = () => {
   const lastFetchedRepoId = useRef<number | null>(null);
   const isInitialMount = useRef(true);
 
+  const repoDisplayName = repositoryInfo?.name || (activeRepository ? activeRepository.replace(/\\/g, '/').split('/').filter(Boolean).pop() : null);
+
+  useEffect(() => {
+    if (repoDisplayName) {
+      document.title = `${pageTitle} · ${repoDisplayName} · Repository Scanner`;
+    } else {
+      document.title = `${pageTitle} · Repository Scanner`;
+    }
+  }, [pageTitle, repoDisplayName]);
+
   // Centralized route-based repository sync with dedup
   useEffect(() => {
     const match = location.pathname.match(/\/app\/repositories\/(\d+)/);
@@ -232,6 +242,7 @@ export const MainLayout: React.FC = () => {
       {/* Bottom Status bar */}
       <StatusBar
         repoPath={activeRepository || ''}
+        repoName={repoDisplayName || undefined}
         totalFiles={repositoryInfo?.total_files || 0}
         totalLines={repositoryInfo?.total_lines || 0}
       />
