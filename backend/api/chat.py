@@ -308,7 +308,11 @@ async def get_history(
             for m in db_messages:
                 if m.role == "user":
                     curr_q = m.content
-                    curr_time = m.created_at.isoformat() if m.created_at else datetime.now(tz=UTC).isoformat()
+                    if m.created_at:
+                        dt = m.created_at if m.created_at.tzinfo is not None else m.created_at.replace(tzinfo=UTC)
+                        curr_time = dt.isoformat()
+                    else:
+                        curr_time = datetime.now(tz=UTC).isoformat()
                     curr_conv = m.conversation_id
                 elif m.role == "assistant" and curr_q is not None:
                     entries.append(

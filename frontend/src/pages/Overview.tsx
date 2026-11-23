@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRepoNavigate } from '../hooks/useRepoNavigate';
+import { parseServerDate } from '../utils/date';
 import {
   Folder,
   RefreshCw,
@@ -41,7 +42,8 @@ import {
 function formatLastScanned(dateString?: string): string {
   if (!dateString) return 'Not scanned yet';
   try {
-    const date = new Date(dateString);
+    const date = parseServerDate(dateString);
+    if (!date) return dateString;
     const now = new Date();
     const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
 

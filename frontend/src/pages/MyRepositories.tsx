@@ -27,6 +27,7 @@ import {
 } from '../services/repository';
 import { SavedRepository } from '../types/repository';
 import { AddRepositoryModal } from '../components/AddRepositoryModal';
+import { parseServerDate } from '../utils/date';
 import { LogoMark } from '../components/brand/Logo';
 
 interface ActiveScan {
@@ -404,7 +405,7 @@ export const MyRepositories: React.FC = () => {
                             {repo.last_scanned_at && (
                               <span className="inline-flex items-center gap-1.5">
                                 <Clock size={13} />
-                                Scanned {new Date(repo.last_scanned_at).toLocaleDateString()}
+                                Scanned {parseServerDate(repo.last_scanned_at)?.toLocaleDateString()}
                               </span>
                             )}
                           </div>

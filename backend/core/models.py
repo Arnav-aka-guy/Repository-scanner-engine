@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from functools import partial
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class FileInfo(BaseModel):
@@ -46,3 +46,10 @@ class RepositoryInfo(BaseModel):
         description="Mapping of language name to file count",
     )
     scanned_at: datetime = Field(default_factory=partial(datetime.now, tz=UTC))
+
+    @field_validator("scanned_at", mode="after")
+    @classmethod
+    def ensure_utc(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v.tzinfo is None:
+            return v.replace(tzinfo=UTC)
+        return v

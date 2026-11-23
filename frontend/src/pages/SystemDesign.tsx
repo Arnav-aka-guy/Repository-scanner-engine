@@ -23,6 +23,7 @@ import { SystemDesignCanvas } from '../components/diagram/SystemDesignCanvas';
 import type { SystemDesignLayout } from '../components/diagram/systemDesignLayout';
 import { buildDiagramSvg, downloadPng, downloadText, safeFileName } from '../components/diagram/exportDiagram';
 import { GROUP_THEME, KIND_ACCENT, KIND_LABEL } from '../components/diagram/diagramTheme';
+import { parseServerDate } from '../utils/date';
 import { colors, font, radius } from '../design-system/tokens';
 
 const panelSection: React.CSSProperties = {
@@ -597,7 +598,7 @@ const SystemDesignView: React.FC<ViewProps> = ({ repoId, repoPath, detail, setDe
               <div>
                 {diagram.nodes.length} parts · {diagram.edges.length} connections
               </div>
-              {diagram.generated_at && <div>{new Date(diagram.generated_at).toLocaleString()}</div>}
+              {diagram.generated_at && <div>{parseServerDate(diagram.generated_at)?.toLocaleString()}</div>}
               <button
                 type="button"
                 onClick={() => runExport('copy')}

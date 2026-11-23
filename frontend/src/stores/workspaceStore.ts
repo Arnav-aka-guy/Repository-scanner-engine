@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { RepositoryInfo, FileInfo, FileTreeNode, SavedRepository } from '../types/repository';
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
+import { parseServerDate } from '../utils/date';
 import {
   scanGitHubRepository,
   scanRepositoryAsync,
@@ -755,17 +756,18 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           if (history && history.length > 0) {
             const msgs: ChatMessage[] = [];
             history.forEach((h, idx) => {
+              const timeStr = parseServerDate(h.timestamp)?.toLocaleTimeString() || h.timestamp;
               msgs.push({
                 id: `hist-q-${idx}-${h.timestamp}`,
                 role: 'user',
                 content: h.question,
-                timestamp: new Date(h.timestamp).toLocaleTimeString(),
+                timestamp: timeStr,
               });
               msgs.push({
                 id: `hist-a-${idx}-${h.timestamp}`,
                 role: 'assistant',
                 content: h.answer,
-                timestamp: new Date(h.timestamp).toLocaleTimeString(),
+                timestamp: timeStr,
               });
             });
             set((state) => ({
