@@ -1024,6 +1024,7 @@ export const HealthDashboard: React.FC = () => {
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '12px',
+                          flexShrink: 0,
                         }}
                       >
                         {/* Header: Symbol & File */}
@@ -1167,6 +1168,7 @@ export const HealthDashboard: React.FC = () => {
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '10px',
+                          flexShrink: 0,
                         }}
                       >
                         {/* Top line: Severity, Confidence, File, Symbol */}

@@ -131,7 +131,7 @@ const FileTreeNodeItem: React.FC<FileTreeNodeItemProps> = ({
       {/* Node Row */}
       <motion.div
         onClick={handleClick}
-        className="relative flex items-center gap-1.5 py-[5px] cursor-pointer rounded-md group"
+        className="relative flex items-center gap-1.5 py-[5px] cursor-pointer rounded-md group shrink-0"
         style={{
           paddingLeft: `${depth * 14 + 8}px`,
           paddingRight: '8px',

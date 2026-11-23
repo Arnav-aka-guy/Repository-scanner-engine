@@ -503,6 +503,7 @@ export const SemanticSearch: React.FC = () => {
                       flexDirection: 'column',
                       gap: '10px',
                       transition: 'border-color 0.12s ease',
+                      flexShrink: 0,
                     }}
                   >
                     {/* Top Row: Symbol name, Match Strength badge, Actions */}

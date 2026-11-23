@@ -385,6 +385,7 @@ export const DocumentationGenerator: React.FC = () => {
                         setActiveModulePath(mPath);
                       }}
                       style={{
+                        flexShrink: 0,
                         textAlign: 'left',
                         padding: '5px 8px',
                         borderRadius: radius.sm,

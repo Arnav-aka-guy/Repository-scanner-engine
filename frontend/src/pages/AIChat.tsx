@@ -445,6 +445,7 @@ export const AIChat: React.FC = () => {
                           backgroundColor: colors.bg.surfaceSecondary,
                           border: `1px solid ${colors.border.subtle}`,
                           cursor: 'pointer',
+                          flexShrink: 0,
                         }}
                       >
                         <FileCode size={12} style={{ color: colors.accent.blue, flexShrink: 0 }} />
