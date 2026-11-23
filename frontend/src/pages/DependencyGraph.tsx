@@ -231,13 +231,13 @@ export const DependencyGraph: React.FC = () => {
         >
           {/* Row 1: Title & Mode Tabs */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ color: colors.accent.blue, display: 'flex', alignItems: 'center' }}>
                 <Share2 size={16} />
               </span>
               <h1
                 style={{
-                  fontSize: font.size.sm,
+                  fontSize: '18px', letterSpacing: '-0.01em',
                   fontWeight: 600,
                   color: colors.text.primary,
                   fontFamily: font.sans,
@@ -562,8 +562,7 @@ export const DependencyGraph: React.FC = () => {
                       style={{
                         fontSize: '11px',
                         fontWeight: 600,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.06em',
+                        letterSpacing: '0',
                         color: colors.text.muted,
                       }}
                     >
@@ -621,7 +620,7 @@ export const DependencyGraph: React.FC = () => {
                         gap: '2px',
                       }}
                     >
-                      <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '10px', color: colors.text.muted }}>
                         Imports
                       </span>
                       <span style={{ fontSize: font.size.lg, fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>
@@ -643,7 +642,7 @@ export const DependencyGraph: React.FC = () => {
                         gap: '2px',
                       }}
                     >
-                      <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '10px', color: colors.text.muted }}>
                         Imported by
                       </span>
                       <span style={{ fontSize: font.size.lg, fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>
@@ -657,7 +656,7 @@ export const DependencyGraph: React.FC = () => {
 
                   {/* Depends on (Outgoing dependencies) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                       Depends on ({nodeRelationships.totalOut})
                     </span>
                     {nodeRelationships.dependsOn.length > 0 ? (
@@ -695,7 +694,7 @@ export const DependencyGraph: React.FC = () => {
 
                   {/* Used by (Inbound callers) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                       Used by ({nodeRelationships.totalIn})
                     </span>
                     {nodeRelationships.usedBy.length > 0 ? (
@@ -751,8 +750,7 @@ export const DependencyGraph: React.FC = () => {
                             fontSize: '11px',
                             fontWeight: 600,
                             color: colors.text.secondary,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.04em',
+                            letterSpacing: '0',
                           }}
                         >
                           Change Impact Analysis
@@ -837,7 +835,6 @@ export const DependencyGraph: React.FC = () => {
                                 fontSize: '10px',
                                 fontWeight: 600,
                                 color: colors.text.muted,
-                                textTransform: 'uppercase',
                               }}
                             >
                               Most Affected Files
@@ -946,8 +943,7 @@ export const DependencyGraph: React.FC = () => {
                       style={{
                         fontSize: '11px',
                         fontWeight: 600,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.06em',
+                        letterSpacing: '0',
                         color: colors.text.muted,
                       }}
                     >
@@ -976,7 +972,7 @@ export const DependencyGraph: React.FC = () => {
                             style={{
                               padding: '6px 8px',
                               borderRadius: radius.sm,
-                              backgroundColor: 'rgba(201, 90, 90, 0.08)',
+                              backgroundColor: 'rgba(255, 92, 122, 0.08)',
                               border: `1px solid ${colors.status.dangerBorder}`,
                               color: colors.status.danger,
                               fontSize: '11px',

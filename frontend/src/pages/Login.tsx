@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, ArrowLeft, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { Lock, Mail, Loader2, Laptop } from 'lucide-react';
+import { AuthShell, AuthError, AuthField } from '../components/auth/AuthShell';
 import { useAuthStore } from '../stores/authStore';
 
 export const Login: React.FC = () => {
@@ -9,7 +10,6 @@ export const Login: React.FC = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,318 +36,72 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100%',
-        backgroundColor: '#0F1115',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-      }}
-    >
-      {/* Back to Home Link */}
-      <div style={{ width: '100%', maxWidth: '380px', marginBottom: '16px' }}>
-        <Link
-          to="/"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '12px',
-            color: '#A0A8B5',
-            textDecoration: 'none',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#E6EAF0')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#A0A8B5')}
-        >
-          <ArrowLeft size={14} />
-          <span>Back to overview</span>
-        </Link>
-      </div>
-
-      {/* Login Card */}
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '380px',
-          backgroundColor: '#151922',
-          border: '1px solid #292F38',
-          borderRadius: '8px',
-          padding: '28px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-        }}
-      >
-        {/* Header */}
-        <div style={{ marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <div
-              style={{
-                width: '24px',
-                height: '24px',
-                backgroundColor: '#5B8DEF',
-                borderRadius: '5px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '13px',
-              }}
-            >
-              A
-            </div>
-            <span style={{ fontSize: '14px', fontWeight: 600, color: '#E6EAF0' }}>
-              Repository Scanner
-            </span>
-          </div>
-          <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#E6EAF0', margin: '0 0 4px' }}>
-            Log in to your workspace
-          </h1>
-          <p style={{ fontSize: '12px', color: '#6F7887', margin: 0 }}>
-            Access and manage your saved codebases
-          </p>
-        </div>
-
-        {!authEnabled && (
-          <div
-            style={{
-              marginBottom: '16px',
-              padding: '12px',
-              borderRadius: '6px',
-              backgroundColor: 'rgba(242, 169, 59, 0.1)',
-              border: '1px solid rgba(242, 169, 59, 0.3)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#F2A93B', fontSize: '12px', fontWeight: 600 }}>
-              <Sparkles size={14} />
-              <span>Local Workspace Mode Active</span>
-            </div>
-            <span style={{ fontSize: '11px', color: '#8A928B' }}>
-              Authentication is not required to scan codebases in local mode.
-            </span>
-            <button
-              type="button"
-              onClick={() => navigate('/app')}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '4px',
-                backgroundColor: '#F2A93B',
-                color: '#0D0F0E',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: 'none',
-                marginTop: '4px',
-              }}
-            >
-              Enter Workspace Directly (No Login Required) →
-            </button>
-          </div>
-        )}
-
-        {/* Error Alert */}
-        {(localError || loginError) && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: '8px',
-              backgroundColor: 'rgba(201, 90, 90, 0.1)',
-              border: '1px solid rgba(201, 90, 90, 0.25)',
-              borderRadius: '6px',
-              padding: '10px 12px',
-              marginBottom: '18px',
-              fontSize: '12px',
-              color: '#C95A5A',
-            }}
-          >
-            <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '1px' }} />
-            <span>{localError || loginError}</span>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label
-              htmlFor="login-email"
-              style={{
-                display: 'block',
-                fontSize: '12px',
-                fontWeight: 500,
-                color: '#A0A8B5',
-                marginBottom: '6px',
-              }}
-            >
-              Email or Username
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Mail
-                size={14}
-                style={{
-                  position: 'absolute',
-                  left: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#6F7887',
-                }}
-              />
-              <input
-                id="login-email"
-                type="text"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="developer@example.com"
-                disabled={isLoggingIn}
-                style={{
-                  width: '100%',
-                  height: '34px',
-                  padding: '0 12px 0 32px',
-                  backgroundColor: '#0F1115',
-                  color: '#E6EAF0',
-                  border: '1px solid #292F38',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  outline: 'none',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = '#5B8DEF')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = '#292F38')}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label
-                htmlFor="login-password"
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: '#A0A8B5',
-                }}
-              >
-                Password
-              </label>
-              <Link
-                to="/forgot-password"
-                style={{
-                  fontSize: '11px',
-                  color: '#5B8DEF',
-                  textDecoration: 'none',
-                }}
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <div style={{ position: 'relative' }}>
-              <Lock
-                size={14}
-                style={{
-                  position: 'absolute',
-                  left: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#6F7887',
-                }}
-              />
-              <input
-                id="login-password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                disabled={isLoggingIn}
-                style={{
-                  width: '100%',
-                  height: '34px',
-                  padding: '0 34px 0 32px',
-                  backgroundColor: '#0F1115',
-                  color: '#E6EAF0',
-                  border: '1px solid #292F38',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  outline: 'none',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = '#5B8DEF')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = '#292F38')}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#6F7887',
-                  cursor: 'pointer',
-                  padding: '2px',
-                }}
-              >
-                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoggingIn}
-            className="btn-primary"
-            style={{
-              width: '100%',
-              height: '34px',
-              fontSize: '13px',
-              marginTop: '4px',
-            }}
-          >
-            {isLoggingIn ? (
-              <>
-                <Loader2 size={14} style={{ animation: 'ds-spin 1s linear infinite' }} />
-                <span>Signing in...</span>
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </button>
-        </form>
-
-        {/* Footer Links */}
-        <div
-          style={{
-            marginTop: '20px',
-            paddingTop: '16px',
-            borderTop: '1px solid #1E2530',
-            textAlign: 'center',
-            fontSize: '12px',
-            color: '#6F7887',
-          }}
-        >
-          <span>Don't have an account? </span>
-          <Link
-            to="/signup"
-            style={{
-              color: '#5B8DEF',
-              textDecoration: 'none',
-              fontWeight: 500,
-            }}
-          >
+    <AuthShell
+      title="Log in to your workspace"
+      subtitle="Pick up where you left off with your saved repositories."
+      footer={
+        <>
+          Don't have an account?{' '}
+          <Link to="/signup" className="font-medium text-fg hover:text-ion">
             Sign up
           </Link>
+        </>
+      }
+    >
+      {!authEnabled && (
+        <div className="mb-6 rounded-[12px] border border-line bg-surface p-4">
+          <div className="flex items-center gap-2 text-[14px] font-semibold">
+            <Laptop size={16} className="text-ion" />
+            Local mode is on
+          </div>
+          <p className="mt-1 text-[13.5px] text-fg-3">You can scan code on this computer without an account.</p>
+          <button type="button" onClick={() => navigate('/app')} className="btn-secondary mt-3 h-9 w-full">
+            Continue without logging in
+          </button>
         </div>
-      </div>
-    </div>
+      )}
+
+      {(localError || loginError) && <AuthError message={(localError || loginError) as string} />}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+        <AuthField
+          id="login-email"
+          label="Email or Username"
+          icon={<Mail size={16} />}
+          type="text"
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          disabled={isLoggingIn}
+        />
+        <AuthField
+          id="login-password"
+          label="Password"
+          icon={<Lock size={16} />}
+          revealable
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Your password"
+          disabled={isLoggingIn}
+          aside={
+            <Link to="/forgot-password" className="text-[13px] text-fg-3 hover:text-fg">
+              Forgot password?
+            </Link>
+          }
+        />
+        <button type="submit" disabled={isLoggingIn} className="btn-primary mt-1 h-11 w-full text-[14.5px]">
+          {isLoggingIn ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Signing in…
+            </>
+          ) : (
+            'Sign In'
+          )}
+        </button>
+      </form>
+    </AuthShell>
   );
 };

@@ -61,7 +61,7 @@ const GroupBox = memo(function GroupBox({ data }: NodeProps) {
           color: theme.title,
           fontSize: 14,
           fontWeight: 700,
-          letterSpacing: '0.04em',
+          letterSpacing: '0',
         }}
       >
         {d.label}
@@ -111,7 +111,7 @@ const DesignNode = memo(function DesignNode({ data }: NodeProps) {
           />
         </React.Fragment>
       ))}
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: accent, textTransform: 'uppercase' }}>
+      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0', color: accent }}>
         {KIND_LABEL[d.kind] ?? d.kind}
       </div>
       <div
@@ -151,8 +151,8 @@ const DesignNode = memo(function DesignNode({ data }: NodeProps) {
             minWidth: 18,
             height: 18,
             borderRadius: 9,
-            background: '#F2A93B',
-            color: '#151816',
+            background: '#35D7FF',
+            color: '#0D0D10',
             fontSize: 11,
             fontWeight: 800,
             display: 'flex',
@@ -173,8 +173,8 @@ const nodeTypes = { designGroup: GroupBox, designNode: DesignNode };
 
 const CONTROLS_CSS = `
 .sd-canvas .react-flow__controls { box-shadow: 0 4px 16px rgba(0,0,0,0.35); border-radius: 6px; overflow: hidden; }
-.sd-canvas .react-flow__controls-button { background: #151922; border-bottom: 1px solid #292F38; fill: #E6EAF0; color: #E6EAF0; }
-.sd-canvas .react-flow__controls-button:hover { background: #1B2028; }
+.sd-canvas .react-flow__controls-button { background: #0D0D10; border-bottom: 1px solid #222228; fill: #F4F4F5; color: #F4F4F5; }
+.sd-canvas .react-flow__controls-button:hover { background: #141418; }
 `;
 
 function pickHandles(
@@ -297,13 +297,13 @@ const CanvasInner: React.FC<SystemDesignCanvasProps> = ({ diagram, selectedId, o
         labelBgPadding: [6, 3] as [number, number],
         labelBgBorderRadius: 4,
         style: {
-          stroke: highlighted && flowMode ? '#F2A93B' : color,
+          stroke: highlighted && flowMode ? '#35D7FF' : color,
           strokeWidth: highlighted ? 2.4 : 1.4,
           opacity: dimmed ? 0.12 : highlighted ? 1 : 0.7,
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: highlighted && flowMode ? '#F2A93B' : color,
+          color: highlighted && flowMode ? '#35D7FF' : color,
           width: 16,
           height: 16,
         },
@@ -324,8 +324,8 @@ const CanvasInner: React.FC<SystemDesignCanvasProps> = ({ diagram, selectedId, o
         target: steps[i + 1],
         ...pickHandles(s, t),
         type: 'smoothstep',
-        style: { stroke: '#F2A93B', strokeWidth: 2, strokeDasharray: '6 5' },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#F2A93B', width: 16, height: 16 },
+        style: { stroke: '#35D7FF', strokeWidth: 2, strokeDasharray: '6 5' },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#35D7FF', width: 16, height: 16 },
         zIndex: 6,
       });
     }
@@ -361,7 +361,7 @@ const CanvasInner: React.FC<SystemDesignCanvasProps> = ({ diagram, selectedId, o
       style={{ background: CANVAS_BG }}
     >
       <style>{CONTROLS_CSS}</style>
-      <Background color="rgba(111, 120, 135, 0.10)" gap={22} size={1} />
+      <Background color="rgba(107, 107, 117, 0.10)" gap={22} size={1} />
       <Controls position="bottom-right" showInteractive={false} />
     </ReactFlow>
   );

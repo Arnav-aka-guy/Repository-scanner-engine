@@ -76,20 +76,18 @@ export const RepositorySwitcher: React.FC = () => {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="inline-flex max-w-[260px] items-center gap-2 rounded-[4px] border border-[#262B28] bg-[#1C201D] px-2.5 py-1 text-[12px] font-sans font-medium text-[#E9ECE6] transition-colors hover:border-[#F2A93B] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#F2A93B]"
+            className="inline-flex h-8 max-w-[200px] items-center gap-1.5 rounded-md px-2 text-[13px] font-medium text-fg transition-colors hover:bg-surface-2 sm:max-w-[240px]"
           >
-            <FolderGit2 size={13} className="shrink-0 text-[#F2A93B]" />
+            <FolderGit2 size={15} className="shrink-0 text-fg-3" />
             <span className="truncate">{displayName}</span>
-            <ChevronDown size={12} className="shrink-0 text-[#8A928B]" />
+            <ChevronDown size={14} className="shrink-0 text-fg-4" />
           </button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent className="w-[280px]">
-          <div className="flex items-center justify-between px-2.5 py-1.5 text-[11px] text-[#8A928B]">
-            <span className="font-mono uppercase tracking-wider text-[10px] font-semibold">
-              Repositories
-            </span>
-            <span className="font-mono text-[10px] text-[#E9ECE6]">
+          <div className="flex items-center justify-between px-2.5 py-2 text-[12px] text-fg-3">
+            <span className="font-medium">Repositories</span>
+            <span className="tabular-nums">
               {count} / {maxLimit}
             </span>
           </div>
@@ -106,23 +104,23 @@ export const RepositorySwitcher: React.FC = () => {
                   key={repo.id}
                   onClick={() => handleSelect(repo)}
                   className={`justify-between ${
-                    isSelected ? 'bg-[#1C201D] text-[#F2A93B]' : ''
+                    isSelected ? 'bg-surface-2 text-fg' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {repo.source_type === 'github' ? (
-                      <GitFork size={13} className="shrink-0 text-[#8A928B]" />
+                      <GitFork size={13} className="shrink-0 text-[#9A9AA3]" />
                     ) : (
-                      <HardDrive size={13} className="shrink-0 text-[#8A928B]" />
+                      <HardDrive size={13} className="shrink-0 text-[#9A9AA3]" />
                     )}
                     <div className="min-w-0">
                       <div className="truncate font-sans font-medium">{repo.name}</div>
-                      <div className="font-mono text-[10px] text-[#8A928B]">
+                      <div className="text-[12px] text-fg-4">
                         {repo.file_count || 0} files
                       </div>
                     </div>
                   </div>
-                  {isSelected && <Check size={13} className="shrink-0 text-[#F2A93B]" />}
+                  {isSelected && <Check size={14} className="shrink-0 text-ion" />}
                 </DropdownMenuItem>
               );
             })}
@@ -133,10 +131,10 @@ export const RepositorySwitcher: React.FC = () => {
           <DropdownMenuItem
             disabled={count >= maxLimit}
             onClick={() => setIsModalOpen(true)}
-            className="text-[#F2A93B]"
+            className="text-ion"
           >
             <Plus size={13} />
-            <span>{count >= maxLimit ? 'Limit reached (5/5)' : 'Add Repository...'}</span>
+            <span>{count >= maxLimit ? 'Limit reached (5/5)' : 'Add repository'}</span>
           </DropdownMenuItem>
 
           <DropdownMenuItem onClick={() => navigate('/app')}>

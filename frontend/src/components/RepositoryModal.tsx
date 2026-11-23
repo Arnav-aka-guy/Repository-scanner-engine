@@ -152,10 +152,10 @@ export const RepositoryModal: React.FC = () => {
         onChange={handleWebkitDirectoryChange}
       />
 
-      <DialogContent className="max-w-[580px]">
+      <DialogContent className="!max-w-[580px]">
         <DialogHeader>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[4px] border border-[#F2A93B]/30 bg-[#F2A93B]/10 text-[#F2A93B]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-[#35D7FF]/30 bg-[#35D7FF]/10 text-[#35D7FF]">
               <FolderOpen size={15} />
             </div>
             <div>
@@ -168,15 +168,15 @@ export const RepositoryModal: React.FC = () => {
         </DialogHeader>
 
         {activeRepository && (
-          <div className="flex items-center justify-between gap-3 rounded-[4px] border border-[#262B28] bg-[#1C201D] px-3 py-2 text-[12px] mb-3">
+          <div className="flex items-center justify-between gap-3 rounded-[6px] border border-[#222228] bg-[#18181C] px-3 py-2 text-[12px] mb-3">
             <div className="flex items-center gap-2 min-w-0">
-              <Folder size={14} className="text-[#F2A93B] shrink-0" />
+              <Folder size={14} className="text-[#35D7FF] shrink-0" />
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] uppercase font-mono tracking-wider text-[#8A928B]">
+                <span className="text-[12px] text-[#9A9AA3]">
                   Current workspace:
                 </span>
                 <span
-                  className="font-mono text-[12px] font-medium text-[#E9ECE6] truncate"
+                  className="font-mono text-[12px] font-medium text-[#F4F4F5] truncate"
                   title={activeRepository}
                 >
                   {getRepoBasename(activeRepository)}
@@ -186,7 +186,7 @@ export const RepositoryModal: React.FC = () => {
             <button
               onClick={handleUnloadWorkspace}
               title="Close current workspace"
-              className="inline-flex items-center gap-1 rounded-[4px] px-2 py-1 text-[11px] font-medium text-[#E5654B] hover:bg-[#E5654B]/10"
+              className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11px] font-medium text-[#FF5C7A] hover:bg-[#FF5C7A]/10"
             >
               <Trash2 size={12} />
               <span>Unload</span>
@@ -214,7 +214,7 @@ export const RepositoryModal: React.FC = () => {
           <TabsContent value="local">
             <form onSubmit={handleLocalSubmit} className="flex flex-col gap-3.5 pt-2">
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#8A928B] mb-1.5">
+                <label className="block text-[11px] font-mono text-[#9A9AA3] mb-1.5">
                   Local Repository Directory
                 </label>
                 <div className="flex gap-2">
@@ -225,55 +225,55 @@ export const RepositoryModal: React.FC = () => {
                     onChange={(e) => setLocalPath(e.target.value)}
                     placeholder="e.g. D:\projects\summer-project-1 or /home/user/my-app"
                     disabled={isScanning}
-                    className="flex-1 h-[34px] rounded-[4px] border border-[#262B28] bg-[#0D0F0E] px-3 font-mono text-[12px] text-[#E9ECE6] outline-none transition-colors focus:border-[#F2A93B]"
+                    className="flex-1 h-[34px] rounded-[6px] border border-[#222228] bg-[#000000] px-3 font-mono text-[12px] text-[#F4F4F5] outline-none transition-colors focus:border-[#35D7FF]"
                   />
                   <button
                     type="button"
                     onClick={handleBrowseFolder}
                     disabled={isScanning || isBrowsing}
-                    className="inline-flex h-[34px] items-center gap-1.5 rounded-[4px] border border-[#262B28] bg-[#1C201D] px-3 text-[12px] font-medium text-[#E9ECE6] transition-colors hover:border-[#F2A93B] disabled:opacity-40"
+                    className="inline-flex h-[34px] items-center gap-1.5 rounded-[6px] border border-[#222228] bg-[#18181C] px-3 text-[12px] font-medium text-[#F4F4F5] transition-colors hover:border-[#35D7FF] disabled:opacity-40"
                   >
                     {isBrowsing ? (
-                      <RefreshCw size={13} className="animate-spin text-[#F2A93B]" />
+                      <RefreshCw size={13} className="animate-spin text-[#35D7FF]" />
                     ) : (
-                      <FolderOpen size={13} className="text-[#F2A93B]" />
+                      <FolderOpen size={13} className="text-[#35D7FF]" />
                     )}
                     <span>Browse</span>
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-[4px] border border-[#262B28] bg-[#1C201D] p-2.5 text-[11px] text-[#8A928B] leading-relaxed">
+              <div className="rounded-[6px] border border-[#222228] bg-[#18181C] p-2.5 text-[11px] text-[#9A9AA3] leading-relaxed">
                 Click <strong>Browse</strong> to select any project folder, or paste its full path directly.
               </div>
 
               {localError && (
-                <div className="flex items-center gap-2 rounded-[4px] border border-[#E5654B]/30 bg-[#E5654B]/10 p-2.5 text-[12px] text-[#E5654B]">
+                <div className="flex items-center gap-2 rounded-[6px] border border-[#FF5C7A]/30 bg-[#FF5C7A]/10 p-2.5 text-[12px] text-[#FF5C7A]">
                   <AlertCircle size={14} className="shrink-0" />
                   <span>{localError}</span>
                 </div>
               )}
 
               {scanError && (
-                <div className="flex items-center gap-2 rounded-[4px] border border-[#E5654B]/30 bg-[#E5654B]/10 p-2.5 text-[12px] text-[#E5654B]">
+                <div className="flex items-center gap-2 rounded-[6px] border border-[#FF5C7A]/30 bg-[#FF5C7A]/10 p-2.5 text-[12px] text-[#FF5C7A]">
                   <AlertCircle size={14} className="shrink-0" />
                   <span>{scanError}</span>
                 </div>
               )}
 
-              <div className="flex justify-end gap-2.5 pt-2 border-t border-[#262B28]">
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-[#222228]">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
                   disabled={isScanning}
-                  className="h-[32px] rounded-[4px] px-3 text-[12px] font-medium text-[#8A928B] hover:text-[#E9ECE6]"
+                  className="h-[32px] rounded-[6px] px-3 text-[12px] font-medium text-[#9A9AA3] hover:text-[#F4F4F5]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!localPath.trim() || isScanning}
-                  className="inline-flex h-[32px] items-center gap-1.5 rounded-[4px] bg-[#F2A93B] px-4 text-[12px] font-semibold text-[#0D0F0E] transition-opacity hover:opacity-90 disabled:opacity-40"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-[7px] bg-fg px-4 text-[13px] font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
                   {isScanning ? (
                     <>
@@ -292,7 +292,7 @@ export const RepositoryModal: React.FC = () => {
           <TabsContent value="github">
             <form onSubmit={handleGitHubSubmit} className="flex flex-col gap-3.5 pt-2">
               <div>
-                <label className="block text-[11px] font-mono uppercase tracking-wider text-[#8A928B] mb-1.5">
+                <label className="block text-[11px] font-mono text-[#9A9AA3] mb-1.5">
                   Public GitHub Repository URL
                 </label>
                 <input
@@ -301,13 +301,13 @@ export const RepositoryModal: React.FC = () => {
                   onChange={(e) => setGithubUrl(e.target.value)}
                   placeholder="https://github.com/owner/repository"
                   disabled={isScanning}
-                  className="w-full h-[34px] rounded-[4px] border border-[#262B28] bg-[#0D0F0E] px-3 font-mono text-[12px] text-[#E9ECE6] outline-none transition-colors focus:border-[#F2A93B]"
+                  className="w-full h-[34px] rounded-[6px] border border-[#222228] bg-[#000000] px-3 font-mono text-[12px] text-[#F4F4F5] outline-none transition-colors focus:border-[#35D7FF]"
                 />
               </div>
 
               <div>
-                <span className="flex items-center gap-1 text-[11px] text-[#8A928B] mb-1.5">
-                  <Sparkles size={11} className="text-[#F2A93B]" /> Quick popular repositories:
+                <span className="flex items-center gap-1 text-[11px] text-[#9A9AA3] mb-1.5">
+                  <Sparkles size={11} className="text-[#35D7FF]" /> Quick popular repositories:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {sampleRepos.map((sample) => (
@@ -315,7 +315,7 @@ export const RepositoryModal: React.FC = () => {
                       key={sample.url}
                       type="button"
                       onClick={() => setGithubUrl(sample.url)}
-                      className="rounded-[4px] border border-[#262B28] bg-[#1C201D] px-2.5 py-1 text-[11px] text-[#8A928B] transition-colors hover:border-[#F2A93B] hover:text-[#E9ECE6]"
+                      className="rounded-[6px] border border-[#222228] bg-[#18181C] px-2.5 py-1 text-[11px] text-[#9A9AA3] transition-colors hover:border-[#35D7FF] hover:text-[#F4F4F5]"
                     >
                       {sample.name}
                     </button>
@@ -323,30 +323,30 @@ export const RepositoryModal: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-[4px] border border-[#262B28] bg-[#1C201D] p-2.5 text-[11px] text-[#8A928B] leading-relaxed">
+              <div className="rounded-[6px] border border-[#222228] bg-[#18181C] p-2.5 text-[11px] text-[#9A9AA3] leading-relaxed">
                 Clones into an isolated local cache, generates syntax & dependency trees, and prepares semantic search.
               </div>
 
               {scanError && (
-                <div className="flex items-center gap-2 rounded-[4px] border border-[#E5654B]/30 bg-[#E5654B]/10 p-2.5 text-[12px] text-[#E5654B]">
+                <div className="flex items-center gap-2 rounded-[6px] border border-[#FF5C7A]/30 bg-[#FF5C7A]/10 p-2.5 text-[12px] text-[#FF5C7A]">
                   <AlertCircle size={14} className="shrink-0" />
                   <span>{scanError}</span>
                 </div>
               )}
 
-              <div className="flex justify-end gap-2.5 pt-2 border-t border-[#262B28]">
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-[#222228]">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
                   disabled={isScanning}
-                  className="h-[32px] rounded-[4px] px-3 text-[12px] font-medium text-[#8A928B] hover:text-[#E9ECE6]"
+                  className="h-[32px] rounded-[6px] px-3 text-[12px] font-medium text-[#9A9AA3] hover:text-[#F4F4F5]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!githubUrl.trim() || isScanning}
-                  className="inline-flex h-[32px] items-center gap-1.5 rounded-[4px] bg-[#F2A93B] px-4 text-[12px] font-semibold text-[#0D0F0E] transition-opacity hover:opacity-90 disabled:opacity-40"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-[7px] bg-fg px-4 text-[13px] font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-40"
                 >
                   {isScanning ? (
                     <>
@@ -365,7 +365,7 @@ export const RepositoryModal: React.FC = () => {
           <TabsContent value="recents">
             <div className="flex flex-col gap-2 pt-2">
               {recentRepositories.length === 0 ? (
-                <div className="py-8 text-center font-mono text-[12px] text-[#8A928B]">
+                <div className="py-8 text-center font-mono text-[12px] text-[#9A9AA3]">
                   No recent repositories found.
                 </div>
               ) : (
@@ -376,29 +376,29 @@ export const RepositoryModal: React.FC = () => {
                       <div
                         key={repo}
                         onClick={() => !isScanning && handleSelectRecent(repo)}
-                        className={`flex items-center justify-between rounded-[4px] border p-2.5 transition-colors cursor-pointer ${
+                        className={`flex items-center justify-between rounded-[6px] border p-2.5 transition-colors cursor-pointer ${
                           isCurrent
-                            ? 'border-[#F2A93B]/40 bg-[#F2A93B]/10'
-                            : 'border-[#262B28] bg-[#1C201D] hover:border-[#3A423D] hover:bg-[#262B28]'
+                            ? 'border-[#35D7FF]/40 bg-[#35D7FF]/10'
+                            : 'border-[#222228] bg-[#18181C] hover:border-[#33333B] hover:bg-[#222228]'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <Folder size={14} className="text-[#F2A93B] shrink-0" />
+                          <Folder size={14} className="text-[#35D7FF] shrink-0" />
                           <div className="flex flex-col min-w-0">
-                            <span className="font-sans text-[12px] font-medium text-[#E9ECE6] truncate">
+                            <span className="font-sans text-[12px] font-medium text-[#F4F4F5] truncate">
                               {getRepoBasename(repo)}
                             </span>
-                            <span className="font-mono text-[10px] text-[#8A928B] truncate">
+                            <span className="text-[12px] text-[#9A9AA3] truncate">
                               {repo}
                             </span>
                           </div>
                         </div>
                         {isCurrent ? (
-                          <span className="rounded-[2px] bg-[#F2A93B]/20 px-1.5 py-0.5 font-mono text-[10px] uppercase font-semibold text-[#F2A93B]">
+                          <span className="rounded-[6px] bg-[#35D7FF]/20 px-1.5 py-0.5 text-[12px] font-semibold text-[#35D7FF]">
                             Active
                           </span>
                         ) : (
-                          <ArrowRight size={13} className="text-[#8A928B]" />
+                          <ArrowRight size={13} className="text-[#9A9AA3]" />
                         )}
                       </div>
                     );
@@ -406,11 +406,11 @@ export const RepositoryModal: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-between items-center pt-3 border-t border-[#262B28]">
+              <div className="flex justify-between items-center pt-3 border-t border-[#222228]">
                 <button
                   type="button"
                   onClick={handleUnloadWorkspace}
-                  className="inline-flex items-center gap-1.5 text-[11px] text-[#E5654B] hover:underline"
+                  className="inline-flex items-center gap-1.5 text-[11px] text-[#FF5C7A] hover:underline"
                 >
                   <Trash2 size={12} />
                   <span>Clear All Workspace Data</span>
@@ -418,7 +418,7 @@ export const RepositoryModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="h-[30px] rounded-[4px] border border-[#262B28] bg-[#1C201D] px-3 text-[12px] font-medium text-[#E9ECE6] hover:bg-[#262B28]"
+                  className="h-[30px] rounded-[6px] border border-[#222228] bg-[#18181C] px-3 text-[12px] font-medium text-[#F4F4F5] hover:bg-[#222228]"
                 >
                   Close
                 </button>

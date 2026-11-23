@@ -12,7 +12,7 @@ export const TooltipContent = React.forwardRef<
   <TooltipPrimitive.Content
     ref={ref}
     sideOffset={sideOffset}
-    className={`z-50 overflow-hidden rounded-[4px] border border-[#262B28] bg-[#1C201D] px-2.5 py-1 text-[11px] font-mono text-[#E9ECE6] shadow-md ${className}`}
+    className={`z-50 overflow-hidden rounded-md border border-line-strong bg-elevated px-2.5 py-1.5 text-[12px] text-fg shadow-[0_8px_24px_rgba(0,0,0,0.6)] ${className}`}
     {...props}
   >
     {children}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Lock, Eye, EyeOff, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
-import { ErrorCard } from '../components/ErrorCard';
+import { Lock, Loader2, CheckCircle2 } from 'lucide-react';
+import { AuthShell, AuthError, AuthField } from '../components/auth/AuthShell';
 
 export const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -9,7 +9,6 @@ export const ResetPassword: React.FC = () => {
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,236 +54,62 @@ export const ResetPassword: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100%',
-        backgroundColor: '#0F1115',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: '380px', marginBottom: '16px' }}>
-        <Link
-          to="/login"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '12px',
-            color: '#A0A8B5',
-            textDecoration: 'none',
-          }}
-        >
-          <ArrowLeft size={14} />
-          <span>Back to login</span>
-        </Link>
-      </div>
-
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '380px',
-          backgroundColor: '#151922',
-          border: '1px solid #292F38',
-          borderRadius: '8px',
-          padding: '28px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-        }}
-      >
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#E6EAF0', margin: '0 0 4px' }}>
-            Set new password
-          </h1>
-          <p style={{ fontSize: '12px', color: '#6F7887', margin: 0 }}>
-            Enter your new password below to update your account credentials.
-          </p>
+    <AuthShell title="Set new password" subtitle="Enter your new password below to update your account credentials.">
+      {submitted ? (
+        <div className="rounded-[12px] border border-mint/30 bg-mint/[0.06] p-4">
+          <div className="flex items-center gap-2 text-[14.5px] font-semibold text-mint">
+            <CheckCircle2 size={17} />
+            Password updated
+          </div>
+          <p className="mt-1.5 text-[14px] text-fg-2">Your password has been successfully updated.</p>
+          <Link to="/login" className="btn-primary mt-4 h-10 w-full">
+            Log in with new password
+          </Link>
         </div>
-
-        {error && (
-          <div style={{ marginBottom: '16px' }}>
-            <ErrorCard title="Reset failed" whatHappened={error} />
-          </div>
-        )}
-
-        {submitted ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'center' }}>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '40px',
-                height: '40px',
-                margin: '0 auto',
-                borderRadius: '50%',
-                backgroundColor: 'rgba(76, 175, 121, 0.1)',
-                color: '#4CAF79',
-              }}
-            >
-              <CheckCircle2 size={24} />
-            </div>
-            <p style={{ fontSize: '13px', color: '#A0A8B5', margin: 0, lineHeight: 1.5 }}>
-              Your password has been successfully updated.
-            </p>
-            <Link
-              to="/login"
-              className="btn-primary"
-              style={{
-                width: '100%',
-                height: '34px',
-                fontSize: '13px',
-                textDecoration: 'none',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              Log in with new password
-            </Link>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label
-                htmlFor="new-password"
-                style={{
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: '#A0A8B5',
-                  marginBottom: '6px',
-                }}
-              >
-                New password (min. 8 characters)
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock
-                  size={14}
-                  style={{
-                    position: 'absolute',
-                    left: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: '#6F7887',
-                  }}
-                />
-                <input
-                  id="new-password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  disabled={isSubmitting}
-                  style={{
-                    width: '100%',
-                    height: '34px',
-                    padding: '0 34px 0 32px',
-                    backgroundColor: '#0F1115',
-                    color: '#E6EAF0',
-                    border: '1px solid #292F38',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                    outline: 'none',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '8px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#6F7887',
-                    cursor: 'pointer',
-                    padding: '2px',
-                  }}
-                >
-                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="confirm-password"
-                style={{
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: '#A0A8B5',
-                  marginBottom: '6px',
-                }}
-              >
-                Confirm new password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Lock
-                  size={14}
-                  style={{
-                    position: 'absolute',
-                    left: '10px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: '#6F7887',
-                  }}
-                />
-                <input
-                  id="confirm-password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  disabled={isSubmitting}
-                  style={{
-                    width: '100%',
-                    height: '34px',
-                    padding: '0 12px 0 32px',
-                    backgroundColor: '#0F1115',
-                    color: '#E6EAF0',
-                    border: '1px solid #292F38',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontFamily: 'Inter, system-ui, sans-serif',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
+      ) : (
+        <>
+          {error && <AuthError message={`Reset failed. ${error}`} />}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+            <AuthField
+              id="reset-password"
+              label="New password"
+              icon={<Lock size={16} />}
+              revealable
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="At least 8 characters"
               disabled={isSubmitting}
-              className="btn-primary"
-              style={{
-                width: '100%',
-                height: '34px',
-                fontSize: '13px',
-                marginTop: '4px',
-              }}
-            >
+            />
+            <AuthField
+              id="reset-confirm"
+              label="Confirm new password"
+              icon={<Lock size={16} />}
+              revealable
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Type it again"
+              disabled={isSubmitting}
+            />
+            <button type="submit" disabled={isSubmitting} className="btn-primary h-11 w-full text-[14.5px]">
               {isSubmitting ? (
                 <>
-                  <Loader2 size={14} style={{ animation: 'ds-spin 1s linear infinite' }} />
-                  <span>Updating password...</span>
+                  <Loader2 size={16} className="animate-spin" />
+                  Saving…
                 </>
               ) : (
-                'Reset Password'
+                'Update password'
               )}
             </button>
           </form>
-        )}
-      </div>
-    </div>
+          <p className="mt-6 text-[14px] text-fg-3">
+            <Link to="/login" className="font-medium text-fg hover:text-ion">
+              Back to login
+            </Link>
+          </p>
+        </>
+      )}
+    </AuthShell>
   );
 };

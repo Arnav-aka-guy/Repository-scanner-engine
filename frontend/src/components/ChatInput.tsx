@@ -122,7 +122,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         style={{ marginTop: '-4px' }}
       >
         <span
-          className="text-[10px] font-mono select-none"
+          className="text-[12px] select-none"
           style={{
             color: text.length > 1000
               ? 'var(--accent-rose)'

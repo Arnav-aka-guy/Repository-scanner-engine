@@ -24,7 +24,7 @@ const buttonBase: React.CSSProperties = {
   border: 'none',
   cursor: 'pointer',
   fontFamily: font.sans,
-  fontWeight: font.weight.medium,
+  fontWeight: font.weight.semibold,
   transition: `background-color ${transition.fast}, color ${transition.fast}, opacity ${transition.fast}`,
   userSelect: 'none',
   flexShrink: 0,
@@ -32,8 +32,8 @@ const buttonBase: React.CSSProperties = {
 
 const buttonVariantStyles: Record<ButtonVariant, React.CSSProperties> = {
   primary: {
-    backgroundColor: colors.accent.blue,
-    color: '#fff',
+    backgroundColor: colors.text.primary,
+    color: '#000',
     border: 'none',
   },
   secondary: {
@@ -48,15 +48,15 @@ const buttonVariantStyles: Record<ButtonVariant, React.CSSProperties> = {
   },
   danger: {
     backgroundColor: colors.status.danger,
-    color: '#fff',
+    color: '#000',
     border: 'none',
   },
 };
 
 const buttonSizeStyles: Record<ButtonSize, React.CSSProperties> = {
-  sm: { padding: '4px 10px', fontSize: font.size.sm, borderRadius: radius.md, height: '26px' },
-  md: { padding: '6px 14px', fontSize: font.size.md, borderRadius: radius.lg, height: '32px' },
-  lg: { padding: '8px 18px', fontSize: font.size.base, borderRadius: radius.lg, height: '38px' },
+  sm: { padding: '0 10px', fontSize: font.size.sm, borderRadius: radius.md, height: '28px' },
+  md: { padding: '0 14px', fontSize: font.size.sm, borderRadius: radius.md, height: '34px' },
+  lg: { padding: '0 18px', fontSize: font.size.md, borderRadius: radius.md, height: '40px' },
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>((
@@ -271,7 +271,7 @@ const badgeVariantStyles: Record<BadgeVariant, React.CSSProperties> = {
   green: { backgroundColor: colors.status.successSubtle, color: colors.status.success, border: `1px solid ${colors.status.successBorder}` },
   yellow: { backgroundColor: colors.status.warningSubtle, color: colors.status.warning, border: `1px solid ${colors.status.warningBorder}` },
   red: { backgroundColor: colors.status.dangerSubtle, color: colors.status.danger, border: `1px solid ${colors.status.dangerBorder}` },
-  purple: { backgroundColor: colors.accent.purpleSubtle, color: colors.accent.purple, border: `1px solid rgba(149, 128, 202, 0.2)` },
+  purple: { backgroundColor: colors.accent.purpleSubtle, color: colors.accent.purple, border: `1px solid rgba(157, 140, 255, 0.2)` },
 };
 
 export const Badge: React.FC<BadgeProps> = ({ variant = 'default', children, style }) => (
@@ -339,27 +339,15 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <span style={{
-          fontSize: font.size.xs,
+          fontSize: '15px',
           fontWeight: font.weight.semibold,
-          color: colors.text.muted,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
+          color: colors.text.primary,
+          letterSpacing: '-0.01em',
           fontFamily: font.sans,
         }}>
           {label}
         </span>
-        {technicalLabel && (
-          <span style={{
-            fontSize: '10px',
-            fontFamily: font.mono,
-            color: colors.text.muted,
-            backgroundColor: colors.bg.elevated,
-            padding: '1px 5px',
-            borderRadius: radius.sm,
-          }}>
-            {technicalLabel}
-          </span>
-        )}
+        {technicalLabel ? <span style={{ display: 'none' }}>{technicalLabel}</span> : null}
       </div>
       {description && (
         <span style={{ fontSize: font.size.sm, color: colors.text.secondary, fontFamily: font.sans }}>
@@ -409,8 +397,7 @@ export const Metric: React.FC<MetricProps> = ({
         fontSize: font.size.xs,
         fontWeight: font.weight.semibold,
         color: colors.text.muted,
-        textTransform: 'uppercase',
-        letterSpacing: '0.06em',
+        letterSpacing: '0',
       }}>
         {label}
       </span>
@@ -677,8 +664,7 @@ export function DataTable<T>({
                   fontSize: font.size.xs,
                   fontWeight: font.weight.semibold,
                   color: colors.text.muted,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0',
                   width: col.width,
                   textAlign: col.align || 'left',
                 }}

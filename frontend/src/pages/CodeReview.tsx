@@ -84,26 +84,26 @@ export const CodeReview: React.FC = () => {
     switch (severity.toLowerCase()) {
       case 'critical':
         return (
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded border uppercase font-bold bg-rose-950/60 border-rose-600 text-rose-300">
+          <span className="text-[12px] px-2 py-0.5 rounded border font-bold bg-rose-950/60 border-rose-600 text-rose-300">
             Critical
           </span>
         );
       case 'high':
         return (
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded border uppercase font-bold bg-amber-950/60 border-amber-500 text-amber-300">
+          <span className="text-[12px] px-2 py-0.5 rounded border font-bold bg-amber-950/60 border-amber-500 text-amber-300">
             High
           </span>
         );
       case 'medium':
         return (
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded border uppercase font-bold bg-yellow-950/50 border-yellow-500 text-yellow-300">
+          <span className="text-[12px] px-2 py-0.5 rounded border font-bold bg-yellow-950/50 border-yellow-500 text-yellow-300">
             Medium
           </span>
         );
       case 'low':
       default:
         return (
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded border uppercase font-bold bg-slate-900 border-slate-700 text-slate-300">
+          <span className="text-[12px] px-2 py-0.5 rounded border font-bold bg-slate-900 border-slate-700 text-slate-300">
             Low
           </span>
         );
@@ -136,7 +136,7 @@ export const CodeReview: React.FC = () => {
     >
       {/* Header Bar */}
       <div
-        className="px-6 py-4 flex items-center justify-between border-b"
+        className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b"
         style={{
           borderColor: colors.border.default,
           backgroundColor: colors.bg.surface,
@@ -150,17 +150,10 @@ export const CodeReview: React.FC = () => {
             <ShieldCheck size={18} style={{ color: colors.accent.signal }} />
           </div>
           <div>
-            <h1 className="text-base font-semibold leading-tight flex items-center gap-2">
+            <h1 className="text-[18px] font-semibold leading-tight tracking-[-0.01em] flex items-center gap-2">
               Automated Code Review
-              <span
-                className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
-                style={{
-                  backgroundColor: colors.accent.signalMuted,
-                  borderColor: colors.accent.signal,
-                  color: colors.accent.signal,
-                }}
-              >
-                V2.1 ENGINE
+              <span className="rounded-full border border-line px-2 py-px text-[12px] font-medium text-fg-3">
+                Engine v2.1
               </span>
             </h1>
             <p className="text-xs" style={{ color: colors.text.secondary }}>
@@ -202,7 +195,7 @@ export const CodeReview: React.FC = () => {
                   onClick={() => setInputMode('working_tree')}
                   className={`px-3 py-1.5 rounded transition-colors ${
                     inputMode === 'working_tree'
-                      ? 'bg-amber-400 text-slate-950 font-semibold'
+                      ? 'bg-fg text-black font-semibold'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
@@ -212,7 +205,7 @@ export const CodeReview: React.FC = () => {
                   onClick={() => setInputMode('custom_diff')}
                   className={`px-3 py-1.5 rounded transition-colors ${
                     inputMode === 'custom_diff'
-                      ? 'bg-amber-400 text-slate-950 font-semibold'
+                      ? 'bg-fg text-black font-semibold'
                       : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                   }`}
                 >
@@ -237,7 +230,7 @@ export const CodeReview: React.FC = () => {
 
             {inputMode === 'custom_diff' && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                <label className="text-xs font-mono text-slate-400">
                   Raw Git Diff or Patch
                 </label>
                 <textarea
@@ -280,7 +273,7 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono uppercase text-slate-400">Total Findings</div>
+                <div className="text-[11px] font-mono text-slate-400">Total Findings</div>
                 <div className="text-2xl font-mono font-bold text-slate-200 mt-1">
                   {report.total_findings}
                 </div>
@@ -293,7 +286,7 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono uppercase text-rose-400">Critical</div>
+                <div className="text-[11px] font-mono text-rose-400">Critical</div>
                 <div className="text-2xl font-mono font-bold text-rose-400 mt-1">
                   {report.critical_count}
                 </div>
@@ -306,7 +299,7 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono uppercase text-amber-400">High</div>
+                <div className="text-[11px] font-mono text-amber-400">High</div>
                 <div className="text-2xl font-mono font-bold text-amber-400 mt-1">
                   {report.high_count}
                 </div>
@@ -319,7 +312,7 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono uppercase text-yellow-400">Medium</div>
+                <div className="text-[11px] font-mono text-yellow-400">Medium</div>
                 <div className="text-2xl font-mono font-bold text-yellow-400 mt-1">
                   {report.medium_count}
                 </div>
@@ -332,7 +325,7 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono uppercase text-slate-400">Low</div>
+                <div className="text-[11px] font-mono text-slate-400">Low</div>
                 <div className="text-2xl font-mono font-bold text-slate-300 mt-1">
                   {report.low_count}
                 </div>
@@ -351,7 +344,7 @@ export const CodeReview: React.FC = () => {
                     onClick={() => setSelectedCategory(cat)}
                     className={`px-2 py-0.5 rounded capitalize transition-colors ${
                       selectedCategory === cat
-                        ? 'bg-amber-400 text-slate-950 font-semibold'
+                        ? 'bg-fg text-black font-semibold'
                         : 'bg-slate-800 text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -366,7 +359,7 @@ export const CodeReview: React.FC = () => {
                   <button
                     key={sev}
                     onClick={() => setSelectedSeverity(sev)}
-                    className={`px-2 py-0.5 rounded uppercase transition-colors ${
+                    className={`px-2 py-0.5 rounded transition-colors ${
                       selectedSeverity === sev
                         ? 'bg-slate-200 text-slate-950 font-semibold'
                         : 'bg-slate-800 text-slate-400 hover:text-slate-200'
@@ -418,10 +411,10 @@ export const CodeReview: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-mono text-slate-500">
+                          <span className="text-[12px] text-slate-500">
                             Confidence: {Math.round(finding.confidence * 100)}%
                           </span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                          <span className="text-[12px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
                             {finding.source}
                           </span>
                         </div>
@@ -436,7 +429,7 @@ export const CodeReview: React.FC = () => {
                       {/* Code Evidence */}
                       {finding.evidence && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">
+                          <span className="text-[12px] text-slate-500">
                             Evidence Snippet
                           </span>
                           <pre className="text-xs font-mono p-2.5 rounded bg-slate-950 border border-slate-800 text-rose-300 overflow-x-auto">
@@ -448,7 +441,7 @@ export const CodeReview: React.FC = () => {
                       {/* Suggested Fix */}
                       {finding.suggested_fix && (
                         <div className="flex flex-col gap-1">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500">
+                          <span className="text-[12px] text-slate-500">
                             Suggested Fix
                           </span>
                           <pre className="text-xs font-mono p-2.5 rounded bg-slate-950 border border-slate-800 text-emerald-300 overflow-x-auto">

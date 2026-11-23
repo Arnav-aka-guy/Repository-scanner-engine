@@ -74,62 +74,43 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   }, []);
 
   const getRepoStatusText = () => {
-    if (!repoPath) return { text: 'No repository selected', color: '#5E645F' };
-    if (scanStatus === 'scanning') return { text: 'Scanning & indexing...', color: '#F2A93B' };
-    if (scanStatus === 'indexed') return { text: 'Repository indexed', color: '#7FB77E' };
-    if (scanStatus === 'error') return { text: scanError ? `Scan error: ${scanError}` : 'Scan failed', color: '#E5654B' };
-    return { text: 'Repository loaded', color: '#8A928B' };
+    if (!repoPath) return { text: 'No repository selected', tone: 'text-fg-4', dot: 'bg-fg-4' };
+    if (scanStatus === 'scanning') return { text: 'Scanning and indexing…', tone: 'text-ion', dot: 'bg-ion live-dot' };
+    if (scanStatus === 'indexed') return { text: 'Repository indexed', tone: 'text-fg-3', dot: 'bg-mint' };
+    if (scanStatus === 'error') return { text: scanError ? `Scan failed: ${scanError}` : 'Scan failed', tone: 'text-rose', dot: 'bg-rose' };
+    return { text: 'Repository loaded', tone: 'text-fg-3', dot: 'bg-fg-4' };
   };
 
   const repoStatus = getRepoStatusText();
 
   return (
     <TooltipProvider delayDuration={200}>
-      <footer className="h-[26px] min-h-[26px] w-full border-t border-[#262B28] bg-[#151816] flex items-center justify-between px-3 text-[11px] font-sans select-none shrink-0 text-[#8A928B]">
-        {/* ── Left section: Meaningful status disclosures ── */}
-        <div className="flex items-center gap-3 overflow-hidden">
-          {/* Backend Connectivity Status */}
+      <footer className="flex h-[28px] min-h-[28px] w-full shrink-0 select-none items-center justify-between gap-3 border-t border-line bg-ink px-4 text-[12px] text-fg-3">
+        <div className="flex min-w-0 items-center gap-4">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1.5 shrink-0 cursor-default">
-                <span
-                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: isConnected ? '#7FB77E' : '#E5654B' }}
-                />
-                <span className={isConnected ? 'text-[#8A928B]' : 'text-[#E5654B]'}>
-                  {isConnected ? 'Backend connected' : 'Backend unavailable'}
-                </span>
+              <div className="flex shrink-0 cursor-default items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${isConnected ? 'bg-mint' : 'bg-rose'}`} />
+                <span className={isConnected ? '' : 'text-rose'}>{isConnected ? 'Backend connected' : 'Backend unavailable'}</span>
               </div>
             </TooltipTrigger>
             <TooltipContent side="top">
-              {isConnected ? 'FastAPI daemon healthy' : 'Connection refused — retrying every 25s'}
+              {isConnected ? 'The API server is responding' : 'Cannot reach the API server. Retrying every 25 seconds.'}
             </TooltipContent>
           </Tooltip>
 
-          <span className="text-[#262B28]">|</span>
-
-          {/* Repository State Status */}
-          <div className="flex items-center gap-1.5 overflow-hidden">
-            {repoPath && (
-              <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ backgroundColor: repoStatus.color }}
-              />
-            )}
-            <span
-              className="truncate"
-              style={{ color: repoStatus.color }}
-            >
-              {repoStatus.text}
-            </span>
+          <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
+            {repoPath && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${repoStatus.dot}`} />}
+            <span className={`truncate ${repoStatus.tone}`}>{repoStatus.text}</span>
             {scanStatus === 'scanning' && currentScanJobId && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   cancelScan();
                 }}
-                className="ml-2 px-1.5 py-0.2 text-[9px] bg-red-950/60 border border-red-700/60 text-red-300 rounded hover:bg-red-900/80 transition-colors"
-                title="Cancel ongoing scan job"
+                className="ml-1 rounded border border-rose/40 px-1.5 text-[11px] text-rose hover:bg-rose/10"
+                title="Stop the running scan"
               >
                 Cancel
               </button>
@@ -137,34 +118,25 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           </div>
         </div>
 
-        {/* ── Right section: Metrics & Model context ── */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex shrink-0 items-center gap-4">
           {repoPath && (
-            <div className="flex items-center gap-2.5 font-mono text-[10px] tabular-nums text-[#8A928B]">
+            <div className="hidden items-center gap-3 tabular-nums sm:flex">
               <span>
-                <strong className="font-semibold text-[#E9ECE6]">
-                  {totalFiles.toLocaleString()}
-                </strong>{' '}
-                files
+                <strong className="font-semibold text-fg">{totalFiles.toLocaleString()}</strong> files
               </span>
               <span>
-                <strong className="font-semibold text-[#E9ECE6]">
-                  {totalLines.toLocaleString()}
-                </strong>{' '}
-                lines
+                <strong className="font-semibold text-fg">{totalLines.toLocaleString()}</strong> lines
               </span>
             </div>
           )}
-
-          {/* Embedding Model Badge */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] border border-[#262B28] bg-[#1C201D] text-[10px] font-mono text-[#8A928B] cursor-default">
-                <Cpu size={10} className="text-[#F2A93B] shrink-0" />
-                <span>{activeModel}</span>
+              <div className="hidden cursor-default items-center gap-1.5 md:flex">
+                <Cpu size={12} className="shrink-0 text-fg-4" />
+                <span className="max-w-[180px] truncate">{activeModel}</span>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="top">Active Vector Embedding Model</TooltipContent>
+            <TooltipContent side="top">Embedding model used for search</TooltipContent>
           </Tooltip>
         </div>
       </footer>

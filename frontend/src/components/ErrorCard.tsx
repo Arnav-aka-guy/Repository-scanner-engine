@@ -130,8 +130,7 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({
             style={{
               fontSize: font.size.xs,
               fontWeight: font.weight.semibold,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
+              letterSpacing: '0',
               color: colors.status.danger,
               fontFamily: font.sans,
             }}
@@ -158,8 +157,7 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({
               style={{
                 fontSize: font.size.xs,
                 fontWeight: font.weight.semibold,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
+                letterSpacing: '0',
                 color: colors.text.muted,
                 fontFamily: font.sans,
               }}
@@ -186,8 +184,7 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({
             style={{
               fontSize: font.size.xs,
               fontWeight: font.weight.semibold,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
+              letterSpacing: '0',
               color: colors.accent.blue,
               fontFamily: font.sans,
             }}

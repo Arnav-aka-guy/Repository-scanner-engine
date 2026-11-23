@@ -331,8 +331,7 @@ export const RepositoryExplorer: React.FC = () => {
                 style={{
                   fontSize: '11px',
                   fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0',
                   color: colors.text.muted,
                 }}
               >
@@ -667,7 +666,7 @@ export const RepositoryExplorer: React.FC = () => {
                   style={{
                     padding: '4px 10px',
                     borderRadius: radius.sm,
-                    backgroundColor: 'rgba(91, 141, 239, 0.1)',
+                    backgroundColor: 'rgba(157, 140, 255, 0.1)',
                     border: `1px solid ${colors.accent.blue}`,
                     color: colors.accent.blue,
                     fontSize: '11px',
@@ -817,8 +816,7 @@ export const RepositoryExplorer: React.FC = () => {
                           style={{
                             fontSize: '10px',
                             fontWeight: 700,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
+                            letterSpacing: '0',
                             color: colors.text.muted,
                           }}
                         >
@@ -843,8 +841,7 @@ export const RepositoryExplorer: React.FC = () => {
                           style={{
                             fontSize: '10px',
                             fontWeight: 700,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
+                            letterSpacing: '0',
                             color: colors.text.muted,
                           }}
                         >
@@ -869,8 +866,7 @@ export const RepositoryExplorer: React.FC = () => {
                           style={{
                             fontSize: '10px',
                             fontWeight: 700,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
+                            letterSpacing: '0',
                             color: colors.text.muted,
                           }}
                         >
@@ -933,8 +929,7 @@ export const RepositoryExplorer: React.FC = () => {
                     style={{
                       fontSize: '10px',
                       fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
+                      letterSpacing: '0',
                       color: colors.text.muted,
                     }}
                   >
@@ -988,8 +983,7 @@ export const RepositoryExplorer: React.FC = () => {
                     style={{
                       fontSize: '10px',
                       fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.08em',
+                      letterSpacing: '0',
                       color: colors.text.muted,
                     }}
                   >

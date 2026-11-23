@@ -80,12 +80,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           width: '28px',
           height: '28px',
           borderRadius: radius.md,
-          backgroundColor: isUser ? colors.accent.blue : colors.bg.surfaceSecondary,
-          border: `1px solid ${isUser ? colors.accent.blue : colors.border.default}`,
+          backgroundColor: isUser ? colors.text.primary : colors.bg.surfaceSecondary,
+          border: `1px solid ${isUser ? colors.text.primary : colors.border.default}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: isUser ? '#fff' : colors.accent.blue,
+          color: isUser ? '#000' : colors.accent.blue,
           flexShrink: 0,
           marginTop: '2px',
         }}
@@ -189,8 +189,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 style={{
                   fontSize: '10px',
                   fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0',
                   color: colors.text.muted,
                 }}
               >
@@ -238,7 +237,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 flexWrap: 'wrap',
               }}
             >
-              <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '10px', color: colors.text.muted }}>
                 Next steps:
               </span>
               {suggestedActions.map((actText, aIdx) => (

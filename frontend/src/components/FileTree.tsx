@@ -44,13 +44,13 @@ const getFileIconColor = (extension?: string): string => {
       return 'var(--accent-primary)';
     case '.js':
     case '.jsx':
-      return '#f59e0b'; // amber-500
+      return '#FFB020'; // amber-500
     case '.css':
     case '.scss':
     case '.sass':
       return 'var(--accent-purple)';
     case '.html':
-      return '#f97316'; // orange-500
+      return '#FF9F43'; // orange-500
     case '.json':
     case '.yaml':
     case '.yml':

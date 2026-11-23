@@ -112,7 +112,7 @@ describe('B1 MyRepositories scan tracking', () => {
 
     expect(getRepoSpy).toHaveBeenCalledWith(1);
     expect(container.textContent).toContain('Alpha Project');
-    expect(container.textContent).toContain('READY');
+    expect(container.textContent).toContain('Ready');
     expect(container.textContent).toContain('42 files');
     expect(openBtn?.getAttribute('disabled')).toBeNull();
   });

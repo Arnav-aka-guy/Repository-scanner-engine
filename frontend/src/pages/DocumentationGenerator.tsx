@@ -248,13 +248,15 @@ export const DocumentationGenerator: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          rowGap: '10px',
           flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <FileText size={17} style={{ color: colors.accent.blue }} />
-            <h1 style={{ fontSize: font.size.base, fontWeight: 600, color: colors.text.primary, margin: 0 }}>
+            <h1 style={{ fontSize: '18px', letterSpacing: '-0.01em', fontWeight: 600, color: colors.text.primary, margin: 0 }}>
               Documentation Workspace
             </h1>
             <Badge variant="default">Developer Onboarding</Badge>
@@ -331,7 +333,7 @@ export const DocumentationGenerator: React.FC = () => {
           {docsData && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '12px 8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Module References ({filteredModules.length})
                 </span>
               </div>
@@ -419,7 +421,7 @@ export const DocumentationGenerator: React.FC = () => {
               height: '38px',
             }}
           >
-            <span style={{ fontSize: '11px', fontFamily: font.mono, color: colors.text.muted, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '11px', fontFamily: font.mono, color: colors.text.muted }}>
               {activeSection === 'modules' ? getRelativePath(activeModulePath, repoPath) : activeSection.replace('_', ' ')}
             </span>
 
@@ -458,7 +460,7 @@ export const DocumentationGenerator: React.FC = () => {
                   alignItems: 'center',
                   gap: '8px',
                   fontSize: '12px',
-                  backgroundColor: 'rgba(201, 90, 90, 0.08)',
+                  backgroundColor: 'rgba(255, 92, 122, 0.08)',
                   border: `1px solid ${colors.status.dangerBorder}`,
                   color: colors.status.danger,
                 }}
@@ -548,19 +550,19 @@ export const DocumentationGenerator: React.FC = () => {
                       }}
                     >
                       <div>
-                        <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Repository</span>
+                        <span style={{ fontSize: '10px', color: colors.text.muted }}>Repository</span>
                         <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary }}>
                           {repositoryInfo?.name || repoPath.split(/[\\/]+/).pop()}
                         </div>
                       </div>
                       <div>
-                        <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Total Files</span>
+                        <span style={{ fontSize: '10px', color: colors.text.muted }}>Total Files</span>
                         <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary, fontFamily: font.mono }}>
                           {repositoryInfo?.total_files || files.length} files
                         </div>
                       </div>
                       <div>
-                        <span style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Languages</span>
+                        <span style={{ fontSize: '10px', color: colors.text.muted }}>Languages</span>
                         <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary }}>
                           {Object.keys(repositoryInfo?.languages || {}).join(', ') || 'TypeScript, Python'}
                         </div>
@@ -633,7 +635,7 @@ export const DocumentationGenerator: React.FC = () => {
                 {activeSection === 'api_reference' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                         Discovered API Endpoints & Routes ({apiEndpoints.length})
                       </span>
 
@@ -733,7 +735,7 @@ export const DocumentationGenerator: React.FC = () => {
                     {/* Most connected modules */}
                     {connectedModules.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                        <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                           Most Connected Modules (Hubs)
                         </span>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>

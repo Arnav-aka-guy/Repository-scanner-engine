@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
-import { Menu, Search, RefreshCw, Folder, FolderOpen, ChevronDown } from 'lucide-react';
+import { Menu, Search, RefreshCw, FolderOpen } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -9,7 +9,6 @@ import { CommandPalette } from '../components/CommandPalette';
 import { RepositoryModal } from '../components/RepositoryModal';
 import { RepositorySwitcher } from '../components/RepositorySwitcher';
 import { useWorkspaceStore } from '../stores/workspaceStore';
-import { colors, radius, font } from '../design-system/tokens';
 import { getUserRepository } from '../services/repository';
 
 function getPageTitle(pathname: string): string {
@@ -22,27 +21,23 @@ function getPageTitle(pathname: string): string {
   if (pathname.endsWith('/documentation')) return 'Documentation';
   if (pathname.endsWith('/health-dashboard')) return 'Code Health';
   if (pathname.endsWith('/settings')) return 'Settings';
+  if (pathname.endsWith('/impact')) return 'Change Impact';
+  if (pathname.endsWith('/review')) return 'Code Review';
   if (pathname.endsWith('/overview')) return 'Overview';
   return 'Workspace';
 }
 
-function getRepoBasename(path: string): string {
-  const normalized = path.replace(/\\/g, '/');
-  const segments = normalized.split('/').filter(Boolean);
-  return segments[segments.length - 1] || path;
-}
-
 const pageVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
+  initial: { opacity: 0, y: 4 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const } },
+  exit: { opacity: 0, transition: { duration: 0.12 } },
 };
 
 const PageFallback: React.FC = () => (
   <div className="flex-1 flex items-center justify-center min-h-[200px]">
-    <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-      <div className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
-      <span>Loading module...</span>
+    <div className="flex items-center gap-2.5 text-[13px] text-fg-3">
+      <span className="h-1.5 w-1.5 rounded-full bg-ion live-dot" />
+      <span>Loading page…</span>
     </div>
   </div>
 );
@@ -139,235 +134,85 @@ export const MainLayout: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const repoName = activeRepository ? getRepoBasename(activeRepository) : null;
   const isScanning = scanStatus === 'scanning';
 
-  const getStatusBadge = () => {
-    switch (scanStatus) {
-      case 'indexed':
-        return { text: 'Indexed', color: colors.status.success };
-      case 'scanning':
-        return { text: 'Scanning...', color: colors.accent.blue };
-      case 'error':
-        return { text: 'Scan error', color: colors.status.danger };
-      default:
-        return { text: 'Idle', color: colors.text.muted };
-    }
-  };
-
-  const statusBadge = getStatusBadge();
+  const statusBadge =
+    scanStatus === 'indexed'
+      ? { text: 'Indexed', cls: 'text-mint', dot: 'bg-mint' }
+      : scanStatus === 'scanning'
+        ? { text: 'Scanning…', cls: 'text-ion', dot: 'bg-ion live-dot' }
+        : scanStatus === 'error'
+          ? { text: 'Scan failed', cls: 'text-rose', dot: 'bg-rose' }
+          : { text: 'Not scanned', cls: 'text-fg-3', dot: 'bg-fg-4' };
 
   return (
-    <div
-      className="flex flex-col overflow-hidden w-screen h-screen font-sans relative"
-      style={{
-        backgroundColor: colors.bg.primary,
-        color: colors.text.primary,
-      }}
-    >
-      {/* Main horizontal layout: Sidebar + Main Content Column */}
-      <div className="flex-1 flex overflow-hidden w-full">
-        {/* Left Sidebar */}
-        <Sidebar
-          isMobileOpen={isMobileSidebarOpen}
-          onCloseMobile={() => setIsMobileSidebarOpen(false)}
-        />
+    <div className="relative flex h-[100dvh] w-screen flex-col overflow-hidden bg-ink font-sans text-fg">
+      <div className="flex w-full flex-1 overflow-hidden">
+        <Sidebar isMobileOpen={isMobileSidebarOpen} onCloseMobile={() => setIsMobileSidebarOpen(false)} />
 
-        {/* Right Main Column (Top Bar + Dynamic Viewport + Status Bar) */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-          {/* ── Top Bar ── */}
-          <header
-            style={{
-              height: '42px',
-              minHeight: '42px',
-              backgroundColor: colors.bg.surface,
-              borderBottom: `1px solid ${colors.border.default}`,
-              padding: '0 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '16px',
-              userSelect: 'none',
-              flexShrink: 0,
-              zIndex: 30,
-            }}
-          >
-            {/* Left section: Hamburger (mobile) + Repository Context Breadcrumb */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-              {/* Mobile hamburger toggle */}
+        <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          <header className="relative z-30 flex h-[52px] min-h-[52px] shrink-0 select-none items-center justify-between gap-3 border-b border-line bg-ink/90 px-3 backdrop-blur sm:px-5">
+            <div className="flex min-w-0 items-center gap-2">
               <button
+                type="button"
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="md:hidden p-1 rounded hover:bg-[#1B2028]"
-                style={{ color: colors.text.muted }}
+                className="grid h-9 w-9 place-items-center rounded-md text-fg-3 hover:bg-surface-2 hover:text-fg md:hidden"
                 aria-label="Open navigation menu"
               >
                 <Menu size={18} />
               </button>
-
-              {/* Product & Repository Breadcrumbs */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <Link
-                  to="/app"
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    color: colors.text.secondary,
-                    fontFamily: font.sans,
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = colors.accent.blue)}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = colors.text.secondary)}
-                >
-                  <span>Repositories</span>
+              <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px]">
+                <Link to="/app" className="hidden shrink-0 rounded px-1 text-fg-3 hover:text-fg lg:inline">
+                  Repositories
                 </Link>
-
-                <span style={{ color: colors.border.strong, fontSize: '13px' }}>/</span>
-
+                <span className="hidden text-fg-4 lg:inline">/</span>
                 <RepositorySwitcher />
-
-                {/* Status indicator pill */}
-                {activeRepository && (
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '1px 7px',
-                      borderRadius: radius.sm,
-                      backgroundColor: colors.bg.surfaceSecondary,
-                      border: `1px solid ${colors.border.subtle}`,
-                      fontSize: '11px',
-                      fontFamily: font.sans,
-                      color: statusBadge.color,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '5px',
-                        height: '5px',
-                        borderRadius: '50%',
-                        backgroundColor: statusBadge.color,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span>{statusBadge.text}</span>
-                  </div>
-                )}
-              </div>
+                <span className="hidden text-fg-4 sm:inline">/</span>
+                <span className="hidden truncate font-medium text-fg sm:inline">{pageTitle}</span>
+              </nav>
+              {activeRepository && (
+                <span className={`ml-1 hidden shrink-0 items-center gap-1.5 rounded-full border border-line px-2 py-0.5 text-[12px] md:inline-flex ${statusBadge.cls}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${statusBadge.dot}`} />
+                  {statusBadge.text}
+                </span>
+              )}
             </div>
 
-            {/* Center section: Command Palette Quick Trigger */}
-            <div style={{ display: 'flex', justifyContent: 'center', flex: 1, maxWidth: '420px' }}>
+            <div className="flex shrink-0 items-center gap-2">
               <button
+                type="button"
                 onClick={() => setIsCommandPaletteOpen(true)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '5px 12px',
-                  backgroundColor: colors.bg.primary,
-                  border: `1px solid ${colors.border.default}`,
-                  borderRadius: radius.md,
-                  color: colors.text.muted,
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontFamily: font.sans,
-                  transition: 'border-color 0.12s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = colors.accent.blue)}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = colors.border.default)}
+                className="flex h-9 items-center gap-2 rounded-md border border-line bg-surface px-2.5 text-[13px] text-fg-3 transition-colors hover:border-line-strong hover:text-fg-2 lg:w-[260px]"
+                aria-label="Search or run a command"
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Search size={13} style={{ color: colors.text.muted }} />
-                  <span>Search or run command...</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <kbd
-                    style={{
-                      padding: '1px 5px',
-                      fontSize: '10px',
-                      fontFamily: font.mono,
-                      backgroundColor: colors.bg.elevated,
-                      border: `1px solid ${colors.border.subtle}`,
-                      borderRadius: radius.sm,
-                      color: colors.text.secondary,
-                    }}
-                  >
-                    Ctrl K
-                  </kbd>
-                </div>
+                <Search size={15} />
+                <span className="hidden lg:inline">Search or jump to…</span>
+                <kbd className="ml-auto hidden rounded border border-line bg-surface-2 px-1.5 text-[11px] text-fg-3 lg:inline">Ctrl K</kbd>
               </button>
-            </div>
-
-            {/* Right section: Active Route Title & Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-              <span
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  color: colors.text.secondary,
-                  fontFamily: font.sans,
-                }}
-              >
-                {pageTitle}
-              </span>
-
               <button
+                type="button"
                 onClick={() => setRepoModalOpen(true)}
                 disabled={isScanning}
-                title="Switch or open repository"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '3px 8px',
-                  backgroundColor: colors.bg.surfaceSecondary,
-                  border: `1px solid ${colors.border.default}`,
-                  borderRadius: radius.md,
-                  color: colors.text.secondary,
-                  fontSize: '11px',
-                  fontFamily: font.sans,
-                  cursor: isScanning ? 'not-allowed' : 'pointer',
-                }}
+                title="Switch or open a repository"
+                className="hidden h-9 items-center gap-1.5 rounded-md border border-line px-3 text-[13px] text-fg-2 transition-colors hover:border-line-strong hover:text-fg disabled:opacity-50 sm:flex"
               >
-                <FolderOpen size={11} style={{ color: '#F2A93B' }} />
-                <span>Switch Repo</span>
+                <FolderOpen size={15} />
+                <span className="hidden xl:inline">Switch Repo</span>
               </button>
-
               {activeRepository && (
                 <button
+                  type="button"
                   onClick={() => scanRepo(activeRepository)}
                   disabled={isScanning}
                   title="Rescan repository"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '3px 8px',
-                    backgroundColor: colors.bg.surfaceSecondary,
-                    border: `1px solid ${colors.border.default}`,
-                    borderRadius: radius.md,
-                    color: isScanning ? '#F2A93B' : colors.text.secondary,
-                    fontSize: '11px',
-                    fontFamily: font.sans,
-                    cursor: isScanning ? 'not-allowed' : 'pointer',
-                  }}
+                  className="flex h-9 items-center gap-1.5 rounded-md bg-fg px-3 text-[13px] font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
-                  <RefreshCw
-                    size={11}
-                    style={{
-                      animation: isScanning ? 'ds-spin 1s linear infinite' : 'none',
-                    }}
-                  />
-                  <span>Rescan</span>
+                  <RefreshCw size={15} className={isScanning ? 'animate-spin' : ''} />
+                  <span className="hidden sm:inline">{isScanning ? 'Scanning…' : 'Rescan'}</span>
                 </button>
               )}
             </div>
+            {isScanning && <div className="scan-beam absolute inset-x-0 -bottom-px h-[2px]" aria-hidden="true" />}
           </header>
 
           {/* Dynamic Page Outlet */}

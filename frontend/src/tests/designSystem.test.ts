@@ -21,24 +21,24 @@ import {
 } from '../design-system/primitives';
 
 describe('Design Tokens', () => {
-  it('defines restrained color system without dominant purple', () => {
-    expect(colors.bg.primary).toBe('#0F1115');
-    expect(colors.bg.surface).toBe('#151922');
-    expect(colors.bg.surfaceSecondary).toBe('#1B2028');
-    expect(colors.border.default).toBe('#292F38');
-    expect(colors.text.primary).toBe('#E6EAF0');
-    expect(colors.accent.blue).toBe('#5B8DEF');
-    expect(colors.status.success).toBe('#4CAF79');
-    expect(colors.status.warning).toBe('#C9943A');
-    expect(colors.status.danger).toBe('#C95A5A');
+  it('defines the black canvas palette with ion accent', () => {
+    expect(colors.bg.primary).toBe('#000000');
+    expect(colors.bg.surface).toBe('#0D0D10');
+    expect(colors.bg.surfaceSecondary).toBe('#141418');
+    expect(colors.border.default).toBe('#222228');
+    expect(colors.text.primary).toBe('#F4F4F5');
+    expect(colors.accent.blue).toBe('#35D7FF');
+    expect(colors.status.success).toBe('#3DDC97');
+    expect(colors.status.warning).toBe('#FFB020');
+    expect(colors.status.danger).toBe('#FF5C7A');
   });
 
   it('defines standard dimensions and typography', () => {
     expect(radius.sm).toBeDefined();
     expect(spacing.md).toBeDefined();
-    expect(heights.header).toBe('36px');
-    expect(heights.statusBar).toBe('26px');
-    expect(font.sans).toContain('Inter');
+    expect(heights.header).toBe('52px');
+    expect(heights.statusBar).toBe('28px');
+    expect(font.sans).toContain('Hanken Grotesk');
     expect(font.mono).toContain('JetBrains Mono');
   });
 });

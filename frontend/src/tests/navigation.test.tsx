@@ -21,10 +21,10 @@ describe('Phase 1 Navigation & Shell Structure', () => {
     );
 
     // Section headers
-    expect(html).toContain('WORKSPACE');
-    expect(html).toContain('ANALYSIS');
-    expect(html).toContain('OUTPUT');
-    expect(html).toContain('SYSTEM');
+    expect(html).toContain('Workspace');
+    expect(html).toContain('Analysis');
+    expect(html).toContain('Output');
+    expect(html).toContain('System');
 
     // Nav items
     expect(html).toContain('Overview');

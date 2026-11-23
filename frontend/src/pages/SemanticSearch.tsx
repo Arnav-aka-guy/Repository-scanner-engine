@@ -93,7 +93,7 @@ function evaluateMatch(
       tier: 'Related',
       color: colors.accent.blue,
       bgColor: colors.accent.blueSubtle,
-      borderColor: 'rgba(91, 141, 239, 0.3)',
+      borderColor: 'rgba(157, 140, 255, 0.3)',
       summary: `Implements supporting logic related to "${query}".`,
       reasons: reasons.slice(0, 3),
     };
@@ -286,11 +286,11 @@ export const SemanticSearch: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <Search size={16} style={{ color: colors.accent.blue }} />
             <h1
               style={{
-                fontSize: font.size.base,
+                fontSize: '18px', letterSpacing: '-0.01em',
                 fontWeight: 600,
                 color: colors.text.primary,
                 fontFamily: font.sans,

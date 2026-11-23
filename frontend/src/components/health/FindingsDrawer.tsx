@@ -167,7 +167,7 @@ export const FindingsDrawer: React.FC<FindingsDrawerProps> = ({
             }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <span style={{ fontSize: font.size.xs, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: font.size.xs, color: colors.text.muted, letterSpacing: '0' }}>
                 Score Impact
               </span>
               <span style={{ fontSize: font.size.sm, color: colors.text.secondary }}>
@@ -188,7 +188,7 @@ export const FindingsDrawer: React.FC<FindingsDrawerProps> = ({
 
           {/* Location */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: font.size.xs, fontWeight: font.weight.semibold, color: colors.text.muted, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: font.size.xs, fontWeight: font.weight.semibold, color: colors.text.muted }}>
               Location in Repository
             </span>
             <div
@@ -224,7 +224,7 @@ export const FindingsDrawer: React.FC<FindingsDrawerProps> = ({
 
           {/* Explanation */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <span style={{ fontSize: font.size.xs, fontWeight: font.weight.semibold, color: colors.text.muted, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: font.size.xs, fontWeight: font.weight.semibold, color: colors.text.muted }}>
               Why It Matters & Technical Context
             </span>
             <div
@@ -247,9 +247,9 @@ export const FindingsDrawer: React.FC<FindingsDrawerProps> = ({
             <div
               style={{
                 padding: '14px',
-                backgroundColor: 'rgba(76, 175, 121, 0.08)',
+                backgroundColor: 'rgba(61, 220, 151, 0.08)',
                 borderRadius: radius.md,
-                border: `1px solid rgba(76, 175, 121, 0.2)`,
+                border: `1px solid rgba(61, 220, 151, 0.2)`,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',

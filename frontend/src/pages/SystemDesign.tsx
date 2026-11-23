@@ -32,8 +32,7 @@ const panelSection: React.CSSProperties = {
 const sectionTitle: React.CSSProperties = {
   fontSize: 10.5,
   fontWeight: 700,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
+  letterSpacing: '0',
   color: colors.text.secondary,
   marginBottom: 8,
 };
@@ -53,12 +52,12 @@ function buttonStyle(primary = false, disabled = false): React.CSSProperties {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 6,
-    height: 30,
+    height: 32,
     padding: '0 12px',
     borderRadius: radius.md,
     border: `1px solid ${primary ? 'transparent' : colors.border.default}`,
-    background: primary ? colors.accent.blue : colors.bg.surface,
-    color: primary ? '#fff' : colors.text.primary,
+    background: primary ? colors.text.primary : colors.bg.surface,
+    color: primary ? '#000' : colors.text.primary,
     fontSize: 12.5,
     fontWeight: 600,
     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -268,7 +267,7 @@ const SystemDesignView: React.FC<ViewProps> = ({ repoId, repoPath, detail, setDe
               disabled={busy}
               onClick={() => setDetail(d)}
               style={{
-                height: 30,
+                height: 32,
                 padding: '0 12px',
                 border: 'none',
                 background: detail === d ? colors.bg.surfaceSecondary : 'transparent',
@@ -551,14 +550,14 @@ const SystemDesignView: React.FC<ViewProps> = ({ repoId, repoPath, detail, setDe
                       marginBottom: 6,
                       padding: '8px 10px',
                       borderRadius: radius.md,
-                      border: `1px solid ${activeFlow === i ? '#F2A93B' : colors.border.default}`,
-                      background: activeFlow === i ? 'rgba(242,169,59,0.08)' : colors.bg.surfaceSecondary,
+                      border: `1px solid ${activeFlow === i ? '#35D7FF' : colors.border.default}`,
+                      background: activeFlow === i ? 'rgba(53,215,255,0.08)' : colors.bg.surfaceSecondary,
                       color: colors.text.primary,
                       cursor: 'pointer',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600 }}>
-                      <RouteIcon size={13} color="#F2A93B" /> {f.name}
+                      <RouteIcon size={13} color="#35D7FF" /> {f.name}
                     </div>
                     {activeFlow === i && (
                       <ol style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12, color: colors.text.secondary }}>

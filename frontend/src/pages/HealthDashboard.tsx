@@ -357,13 +357,15 @@ export const HealthDashboard: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          rowGap: '10px',
           flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <Activity size={17} style={{ color: colors.accent.blue }} />
-            <h1 style={{ fontSize: font.size.base, fontWeight: 600, color: colors.text.primary, margin: 0 }}>
+            <h1 style={{ fontSize: '18px', letterSpacing: '-0.01em', fontWeight: 600, color: colors.text.primary, margin: 0 }}>
               Code Health &amp; Technical Debt
             </h1>
             <Badge variant="default">Transparent Scoring</Badge>
@@ -386,7 +388,7 @@ export const HealthDashboard: React.FC = () => {
       </div>
 
       {/* ── 2. Scrollable Body ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div style={{ maxWidth: '980px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* ── Section A: Overall Health Summary & Score Transparency ── */}
@@ -401,7 +403,7 @@ export const HealthDashboard: React.FC = () => {
               gap: '16px',
             }}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '24px', alignItems: 'center' }}>
+            <div className="grid items-center gap-6 sm:grid-cols-[auto_1fr]">
               {/* Score Dial */}
               <div
                 style={{
@@ -413,7 +415,7 @@ export const HealthDashboard: React.FC = () => {
                   minWidth: '150px',
                 }}
               >
-                <span style={{ fontSize: '11px', color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', color: colors.text.muted, letterSpacing: '0', marginBottom: '4px' }}>
                   Overall Health
                 </span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
@@ -438,7 +440,7 @@ export const HealthDashboard: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Sparkles size={14} style={{ color: colors.accent.blue }} />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary, letterSpacing: '0' }}>
                     Score Composition &amp; Traceability
                   </span>
                 </div>
@@ -571,7 +573,7 @@ export const HealthDashboard: React.FC = () => {
           {/* ── Section B: Dimensions (5 Pillars with Drilldown) ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                 Scoring Dimensions (5 Pillars — 20 pts each)
               </span>
               <span style={{ fontSize: '11px', color: colors.text.muted }}>
@@ -704,7 +706,7 @@ export const HealthDashboard: React.FC = () => {
                         {/* What was measured */}
                         {dim.metrics && dim.metrics.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                               What was measured &amp; Observed Metrics
                             </span>
                             <div
@@ -761,7 +763,7 @@ export const HealthDashboard: React.FC = () => {
                         {/* Exact Penalties Applied */}
                         {dim.penalties && dim.penalties.length > 0 ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                               Deduction Rules Triggered ({dim.penalties.length})
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -861,7 +863,7 @@ export const HealthDashboard: React.FC = () => {
                         {/* Top Contributors */}
                         {dim.top_contributors && dim.top_contributors.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                               Top Contributing Files
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -921,7 +923,7 @@ export const HealthDashboard: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Prioritized Code Quality Issues ({filteredIssues.length})
                 </span>
 

@@ -27,12 +27,12 @@ import {
 } from '../components/health/HealthTypes';
 import { getHealthBand } from '../components/health/healthBands';
 import { colors, radius, font } from '../design-system/tokens';
+import { PageHeader } from '../design-system/PageHeader';
 import {
   Button,
   Badge,
   Panel,
   SectionHeader,
-  FilePath,
   LoadingState,
 } from '../design-system/primitives';
 
@@ -79,7 +79,6 @@ export const Overview: React.FC = () => {
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
   const selectLocalDirectory = useWorkspaceStore((s) => s.selectLocalDirectory);
   const recentRepositories = useWorkspaceStore((s) => s.recentRepositories);
-  const setRepoModalOpen = useWorkspaceStore((s) => s.setRepoModalOpen);
   const setCachedHealthScore = useWorkspaceStore((s) => s.setCachedHealthScore);
 
   const [inputPath, setInputPath] = useState('');
@@ -236,8 +235,7 @@ export const Overview: React.FC = () => {
                   fontSize: font.size.xs,
                   fontWeight: font.weight.semibold,
                   color: colors.text.muted,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0',
                 }}
               >
                 Repository Folder or GitHub URL
@@ -293,8 +291,7 @@ export const Overview: React.FC = () => {
                   fontSize: font.size.xs,
                   fontWeight: font.weight.semibold,
                   color: colors.text.muted,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0',
                 }}
               >
                 Recent Repositories
@@ -409,133 +406,48 @@ export const Overview: React.FC = () => {
   }
 
   return (
-    <div
-      className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6"
-      style={{ backgroundColor: colors.bg.primary }}
-    >
-      <header
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          paddingBottom: '16px',
-          borderBottom: `1px solid ${colors.border.default}`,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-          }}
-        >
-          {/* Repository Identity & Context */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: radius.md,
-                  backgroundColor: colors.bg.surfaceSecondary,
-                  border: `1px solid ${colors.border.default}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: colors.accent.blue,
-                }}
-              >
-                <Folder size={18} />
-              </div>
-
-              <div>
-                <h1
-                  style={{
-                    fontSize: font.size.xl,
-                    fontWeight: font.weight.bold,
-                    color: colors.text.primary,
-                    fontFamily: font.sans,
-                    lineHeight: '1.2',
-                  }}
-                >
-                  {repoBasename}
-                </h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                  <FilePath path={activeRepository} style={{ maxWidth: '380px' }} />
-                  <span style={{ color: colors.text.muted, fontSize: '12px' }}>•</span>
-                  <span
-                    style={{
-                      fontSize: font.size.xs,
-                      color: colors.text.muted,
-                      fontFamily: font.sans,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <Clock size={11} />
-                    Scanned {lastScanned}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Primary Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div className="flex-1 overflow-y-auto bg-ink">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+      <PageHeader
+        icon={<Folder size={19} />}
+        title={repoBasename}
+        meta={
+          <>
+            <span className="max-w-full truncate font-mono text-[12.5px] text-fg-3" title={activeRepository}>
+              {activeRepository}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock size={13} />
+              Scanned {lastScanned}
+            </span>
+          </>
+        }
+        actions={
+          <>
             <Button
               variant={showWalkthrough ? 'primary' : 'secondary'}
-              size="md"
-              icon={<Compass size={14} />}
+              icon={<Compass size={15} />}
               onClick={handleToggleWalkthrough}
             >
               {showWalkthrough ? 'Close Guide' : 'Understand Repository'}
             </Button>
-
             <Button
               variant="secondary"
-              size="md"
-              icon={<FolderOpen size={14} />}
-              onClick={() => setRepoModalOpen(true)}
-              disabled={isScanning}
-              title="Open or switch repository"
-            >
-              Switch Repository
-            </Button>
-
-            <Button
-              variant="secondary"
-              size="md"
-              icon={<RefreshCw size={14} className={isScanning ? 'animate-spin' : ''} />}
+              icon={<RefreshCw size={15} className={isScanning ? 'animate-spin' : ''} />}
               onClick={() => scanRepo(activeRepository)}
               disabled={isScanning}
-              loading={isScanning}
             >
               Rescan
             </Button>
-
-            <Button
-              variant="secondary"
-              size="md"
-              icon={<FolderTree size={14} />}
-              onClick={() => navigate('/explorer')}
-            >
+            <Button variant="secondary" icon={<FolderTree size={15} />} onClick={() => navigate('/explorer')}>
               Open Explorer
             </Button>
-
-            <Button
-              variant="primary"
-              size="md"
-              icon={<MessageSquare size={14} />}
-              onClick={() => navigate('/chat')}
-            >
+            <Button variant="primary" icon={<MessageSquare size={15} />} onClick={() => navigate('/chat')}>
               Ask Assistant
             </Button>
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {showWalkthrough && (
         <section
@@ -600,7 +512,7 @@ export const Overview: React.FC = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>01</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Purpose
                     </span>
                   </div>
@@ -623,7 +535,7 @@ export const Overview: React.FC = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>02</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Architecture Overview
                     </span>
                   </div>
@@ -646,7 +558,7 @@ export const Overview: React.FC = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>03</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Data Flow
                     </span>
                   </div>
@@ -669,7 +581,7 @@ export const Overview: React.FC = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>04</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Dependencies & Modules
                     </span>
                   </div>
@@ -701,7 +613,7 @@ export const Overview: React.FC = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>05</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Entry Points ({onboardingGuide.entry_points.length})
                     </span>
                   </div>
@@ -754,7 +666,7 @@ export const Overview: React.FC = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>06</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Important Files ({onboardingGuide.important_files.length})
                     </span>
                   </div>
@@ -801,7 +713,7 @@ export const Overview: React.FC = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>07</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Known Issues / Debt
                     </span>
                   </div>
@@ -829,7 +741,7 @@ export const Overview: React.FC = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>08</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Where Should I Start?
                     </span>
                   </div>
@@ -893,153 +805,48 @@ export const Overview: React.FC = () => {
         </section>
       )}
 
-      <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <SectionHeader
-          label="Repository Summary"
-          description="Size, code volume, and primary technologies detected."
-        />
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '12px',
-          }}
-        >
-          {/* Files Metric */}
-          <Panel padding="14px">
-            <span
-              style={{
-                fontSize: font.size.xs,
-                fontWeight: font.weight.semibold,
-                color: colors.text.muted,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-              }}
-            >
-              Source Files
-            </span>
-            <div
-              style={{
-                fontSize: font.size['2xl'],
-                fontWeight: font.weight.bold,
-                color: colors.text.primary,
-                fontFamily: font.mono,
-                marginTop: '4px',
-              }}
-            >
-              {totalFiles.toLocaleString()}
+      <section className="flex flex-col gap-4">
+        <SectionHeader label="Repository Summary" description="Size, code volume and the main languages found in the scan." />
+        <div className="grid grid-cols-2 overflow-hidden rounded-[12px] border border-line bg-surface lg:grid-cols-4">
+          <div className="border-b border-r border-line-soft p-5 lg:border-b-0">
+            <div className="text-[13px] text-fg-3">Source files</div>
+            <div className="mt-2 text-[32px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{totalFiles.toLocaleString()}</div>
+            <div className="mt-2 text-[12.5px] text-fg-4">Indexed in workspace tree</div>
+          </div>
+          <div className="border-b border-line-soft p-5 lg:border-b-0 lg:border-r">
+            <div className="text-[13px] text-fg-3">Total lines</div>
+            <div className="mt-2 text-[32px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{totalLines.toLocaleString()}</div>
+            <div className="mt-2 text-[12.5px] text-fg-4">Lines of code parsed</div>
+          </div>
+          <div className="border-r border-line-soft p-5">
+            <div className="text-[13px] text-fg-3">Primary languages</div>
+            {sortedLanguages.length > 0 ? (
+              <div className="mt-3 flex flex-col gap-2">
+                {sortedLanguages.slice(0, 3).map(([lang, count]) => {
+                  const total = sortedLanguages.reduce((sum, [, c]) => sum + c, 0) || 1;
+                  return (
+                    <div key={lang} className="flex items-center gap-2.5 text-[13px]">
+                      <span className="w-[84px] truncate text-fg-2">{lang}</span>
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                        <span className="block h-full rounded-full bg-iris" style={{ width: `${Math.max(4, (count / total) * 100)}%` }} />
+                      </span>
+                      <span className="w-8 text-right tabular-nums text-fg-3">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-3 text-[13px] text-fg-4">None detected</div>
+            )}
+          </div>
+          <div className="p-5">
+            <div className="text-[13px] text-fg-3">Index status</div>
+            <div className="mt-2.5 flex items-center gap-2 text-[17px] font-semibold">
+              <span className={`h-2 w-2 rounded-full ${scanStatus === 'indexed' ? 'bg-mint' : isScanning ? 'bg-ion live-dot' : 'bg-fg-4'}`} />
+              {scanStatus === 'indexed' ? 'Indexed & Ready' : isScanning ? 'Indexing…' : 'Not indexed'}
             </div>
-            <span style={{ fontSize: font.size.xs, color: colors.text.secondary, marginTop: '2px' }}>
-              Indexed in workspace tree
-            </span>
-          </Panel>
-
-          {/* Lines Metric */}
-          <Panel padding="14px">
-            <span
-              style={{
-                fontSize: font.size.xs,
-                fontWeight: font.weight.semibold,
-                color: colors.text.muted,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-              }}
-            >
-              Total Lines
-            </span>
-            <div
-              style={{
-                fontSize: font.size['2xl'],
-                fontWeight: font.weight.bold,
-                color: colors.text.primary,
-                fontFamily: font.mono,
-                marginTop: '4px',
-              }}
-            >
-              {totalLines.toLocaleString()}
-            </div>
-            <span style={{ fontSize: font.size.xs, color: colors.text.secondary, marginTop: '2px' }}>
-              Lines of code parsed
-            </span>
-          </Panel>
-
-          {/* Languages Distribution */}
-          <Panel padding="14px">
-            <span
-              style={{
-                fontSize: font.size.xs,
-                fontWeight: font.weight.semibold,
-                color: colors.text.muted,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-              }}
-            >
-              Primary Languages
-            </span>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '6px',
-                marginTop: '8px',
-              }}
-            >
-              {sortedLanguages.length > 0 ? (
-                sortedLanguages.slice(0, 4).map(([lang, count]) => (
-                  <Badge key={lang} variant="default">
-                    {lang}: {count}
-                  </Badge>
-                ))
-              ) : (
-                <span style={{ fontSize: font.size.xs, color: colors.text.muted }}>None detected</span>
-              )}
-            </div>
-          </Panel>
-
-          {/* Scan Status Metric */}
-          <Panel padding="14px">
-            <span
-              style={{
-                fontSize: font.size.xs,
-                fontWeight: font.weight.semibold,
-                color: colors.text.muted,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-              }}
-            >
-              Index Status
-            </span>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginTop: '6px',
-              }}
-            >
-              <span
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: scanStatus === 'indexed' ? colors.status.success : colors.accent.blue,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: font.size.lg,
-                  fontWeight: font.weight.semibold,
-                  color: colors.text.primary,
-                }}
-              >
-                {scanStatus === 'indexed' ? 'Indexed & Ready' : isScanning ? 'Indexing...' : 'Idle'}
-              </span>
-            </div>
-            <span style={{ fontSize: font.size.xs, color: colors.text.secondary, marginTop: '2px' }}>
-              AST & vector embeddings synchronized
-            </span>
-          </Panel>
+            <div className="mt-2 text-[12.5px] text-fg-4">Code structure and search index are up to date</div>
+          </div>
         </div>
       </section>
 
@@ -1116,8 +923,7 @@ export const Overview: React.FC = () => {
                     fontSize: font.size.xs,
                     fontWeight: font.weight.semibold,
                     color: colors.text.muted,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0',
                   }}
                 >
                   Quality Score
@@ -1404,6 +1210,7 @@ export const Overview: React.FC = () => {
             </div>
           </Panel>
         </section>
+      </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   FolderGit2,
   Plus,
@@ -27,6 +27,7 @@ import {
 } from '../services/repository';
 import { SavedRepository } from '../types/repository';
 import { AddRepositoryModal } from '../components/AddRepositoryModal';
+import { LogoMark } from '../components/brand/Logo';
 
 interface ActiveScan {
   jobId: string;
@@ -245,460 +246,227 @@ export const MyRepositories: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: '#0F1115',
-        color: '#E6EAF0',
-        minHeight: '100vh',
-        width: '100%',
-        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
-      }}
-    >
-      {/* ── App Top Navigation ─────────────────────────────────────────── */}
-      <header
-        style={{
-          height: '52px',
-          backgroundColor: '#151922',
-          borderBottom: '1px solid #292F38',
-          padding: '0 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
-            style={{
-              width: '24px',
-              height: '24px',
-              backgroundColor: '#5B8DEF',
-              borderRadius: '5px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '13px',
-            }}
-          >
-            A
+    <div className="flex min-h-[100dvh] w-full flex-col bg-ink font-sans text-fg">
+      <header className="sticky top-0 z-30 border-b border-line-soft bg-ink/85 backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-[1100px] items-center justify-between gap-4 px-5 sm:px-8">
+          <Link to="/" className="flex items-center gap-2.5">
+            <LogoMark size={24} />
+            <span className="hidden text-[14px] font-semibold tracking-[-0.01em] sm:inline">Repository Scanner</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-2 text-[13px] font-semibold text-fg-2">
+                {(user?.name || 'D').slice(0, 1).toUpperCase()}
+              </span>
+              <div className="hidden leading-tight sm:block">
+                <div className="text-[13px] font-medium">{user?.name || 'Developer'}</div>
+                <div className="text-[12px] text-fg-4">{user?.email || 'dev@local'}</div>
+              </div>
+            </div>
+            {authEnabled && token && (
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+                className="btn-ghost h-9 px-2.5"
+                title="Sign out"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            )}
           </div>
-          <span style={{ fontSize: '14px', fontWeight: 600, color: '#E6EAF0' }}>
-            Repository Scanner
-          </span>
-          <span style={{ color: '#6F7887', fontSize: '13px' }}>/</span>
-          <span style={{ fontSize: '13px', color: '#A0A8B5' }}>Workspace</span>
-        </div>
-
-        {/* User Account Menu */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ textAlign: 'right', fontSize: '12px' }}>
-            <div style={{ color: '#E6EAF0', fontWeight: 500 }}>{user?.name || 'Developer'}</div>
-            <div style={{ color: '#6F7887', fontSize: '11px' }}>{user?.email || 'dev@local'}</div>
-          </div>
-
-          <button
-            onClick={() => {
-              logout();
-              navigate('/login');
-            }}
-            className="btn-ghost"
-            title="Log Out"
-            style={{ padding: '6px 10px', height: '28px', color: '#6F7887' }}
-          >
-            <LogOut size={14} />
-            <span style={{ fontSize: '11px' }}>Sign Out</span>
-          </button>
         </div>
       </header>
 
-      <main style={{ maxWidth: '1040px', margin: '0 auto', padding: '36px 24px' }}>
-        {/* Workspace Title & Quota Meter Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            marginBottom: '28px',
-            flexWrap: 'wrap',
-            gap: '16px',
-          }}
-        >
+      <main className="mx-auto w-full max-w-[1100px] flex-1 px-5 py-10 sm:px-8 sm:py-14">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, margin: '0 0 6px', color: '#E6EAF0' }}>
-              My Repositories
-            </h1>
-            <p style={{ fontSize: '13px', color: '#A0A8B5', margin: 0 }}>
-              Manage and analyze your saved codebases
-            </p>
+            <h1 className="display text-[32px] leading-tight sm:text-[38px]">My Repositories</h1>
+            <p className="mt-2 text-[15px] text-fg-3">Manage and analyze your saved codebases</p>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* Quota Badge */}
-            <div
-              style={{
-                backgroundColor: isLimitReached ? 'rgba(201, 148, 58, 0.1)' : '#1B2028',
-                border: `1px solid ${isLimitReached ? 'rgba(201, 148, 58, 0.3)' : '#292F38'}`,
-                borderRadius: '6px',
-                padding: '6px 14px',
-                fontSize: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
+          <div className="flex items-center gap-3">
+            <span
+              className={`inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-[13px] tabular-nums ${
+                isLimitReached ? 'border-amber/40 text-amber' : 'border-line text-fg-3'
+              }`}
+              title="Saved repositories out of your limit"
             >
-              <HardDrive size={13} style={{ color: isLimitReached ? '#C9943A' : '#5B8DEF' }} />
-              <span
-                style={{
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontWeight: 600,
-                  color: isLimitReached ? '#C9943A' : '#E6EAF0',
-                }}
-              >
-                {count} / {maxLimit}
-              </span>
-              <span style={{ color: '#6F7887', fontSize: '11px' }}>repositories</span>
-            </div>
-
-            {/* Add Repository Action */}
+              <Layers size={14} />
+              {count} / {maxLimit} saved
+            </span>
             <button
+              type="button"
               onClick={() => setIsModalOpen(true)}
               disabled={isLimitReached}
-              className="btn-primary"
-              style={{
-                padding: '7px 16px',
-                fontSize: '13px',
-                opacity: isLimitReached ? 0.5 : 1,
-                cursor: isLimitReached ? 'not-allowed' : 'pointer',
-              }}
-              title={isLimitReached ? "You've reached your 5 repository limit" : 'Add a repository'}
+              className="btn-primary h-9 px-4"
             >
-              <Plus size={15} />
-              <span>Add Repository</span>
+              <Plus size={16} />
+              Add Repository
             </button>
           </div>
         </div>
 
-        {/* Limit Reached Banner */}
         {isLimitReached && (
-          <div
-            style={{
-              backgroundColor: 'rgba(201, 148, 58, 0.08)',
-              border: '1px solid rgba(201, 148, 58, 0.25)',
-              borderRadius: '6px',
-              padding: '12px 16px',
-              marginBottom: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontSize: '13px',
-              color: '#C9943A',
-            }}
-          >
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
-            <span>
-              You have reached your 5 repository limit. To analyze a new repository, delete an existing one.
-            </span>
-          </div>
+          <p className="mt-5 rounded-[10px] border border-amber/30 bg-amber/[0.06] px-4 py-3 text-[13.5px] text-amber">
+            You have reached the limit of {maxLimit} saved repositories. Delete one to add another.
+          </p>
         )}
 
-        {/* Global Error Banner */}
         {error && (
-          <div
-            style={{
-              backgroundColor: 'rgba(201, 90, 90, 0.1)',
-              border: '1px solid rgba(201, 90, 90, 0.25)',
-              borderRadius: '6px',
-              padding: '12px 16px',
-              marginBottom: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontSize: '13px',
-              color: '#C95A5A',
-            }}
-          >
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+          <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-[10px] border border-rose/30 bg-rose/[0.07] px-4 py-3 text-[13.5px] text-[#FF9AAE]">
+            <AlertCircle size={16} className="mt-0.5 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        {isLoading ? (
-          <div
-            style={{
-              padding: '60px 0',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              color: '#6F7887',
-            }}
-          >
-            <Loader2 size={24} style={{ color: '#5B8DEF', animation: 'ds-spin 1s linear infinite' }} />
-            <span style={{ fontSize: '13px' }}>Loading saved repositories...</span>
-          </div>
-        ) : count === 0 ? (
-          /* Empty State */
-          <div
-            style={{
-              backgroundColor: '#151922',
-              border: '1px dashed #292F38',
-              borderRadius: '8px',
-              padding: '64px 24px',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-            }}
-          >
-            <div
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '8px',
-                backgroundColor: '#1B2028',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#6F7887',
-                marginBottom: '4px',
-              }}
-            >
-              <FolderGit2 size={24} />
+        <div className="mt-8">
+          {isLoading ? (
+            <div className="flex flex-col gap-3">
+              {[0, 1, 2].map((k) => (
+                <div key={k} className="skeleton h-[92px]" />
+              ))}
+              <span className="sr-only">Loading saved repositories…</span>
             </div>
-            <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#E6EAF0', margin: 0 }}>
-              No repositories yet
-            </h2>
-            <p style={{ fontSize: '13px', color: '#6F7887', maxWidth: '360px', margin: 0 }}>
-              Add your first repository to start analyzing dependencies, architecture, and code health.
-            </p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn-primary"
-              style={{ marginTop: '8px', padding: '8px 18px', fontSize: '13px' }}
-            >
-              <Plus size={14} />
-              <span>Add Repository</span>
-            </button>
-          </div>
-        ) : (
-          /* Repository List */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {repositories.map((repo) => {
-              const scanInfo = activeScans[repo.id];
-              const isScanning = Boolean(
-                (scanInfo && (scanInfo.status === 'scanning' || scanInfo.status === 'pending')) ||
-                repo.status === 'SCANNING'
-              );
-              const hasScanned =
-                !isScanning &&
-                (repo.status === 'READY' || (repo.file_count > 0 || (repo.total_files ?? 0) > 0));
+          ) : repositories.length === 0 ? (
+            <div className="relative overflow-hidden rounded-[16px] border border-dashed border-line-strong px-6 py-16 text-center">
+              <span className="mx-auto grid h-12 w-12 place-items-center rounded-[12px] border border-line bg-surface text-fg-2">
+                <FolderGit2 size={22} />
+              </span>
+              <h2 className="mt-5 text-[19px] font-semibold">No repositories yet</h2>
+              <p className="mx-auto mt-2 max-w-[420px] text-[14.5px] leading-relaxed text-fg-3">
+                Add your first repository to start analyzing dependencies, architecture, and code health.
+              </p>
+              <button type="button" onClick={() => setIsModalOpen(true)} className="btn-primary mx-auto mt-6 h-10 px-5">
+                <Plus size={16} />
+                Add your first repository
+              </button>
+            </div>
+          ) : (
+            <ul className="overflow-hidden rounded-[14px] border border-line bg-surface">
+              {repositories.map((repo) => {
+                const scanInfo = activeScans[repo.id];
+                const isScanning = Boolean(
+                  (scanInfo && (scanInfo.status === 'scanning' || scanInfo.status === 'pending')) ||
+                    repo.status === 'SCANNING'
+                );
+                const hasScanned =
+                  !isScanning && (repo.status === 'READY' || repo.file_count > 0 || (repo.total_files ?? 0) > 0);
+                const status = isScanning
+                  ? { label: 'Scanning…', cls: 'text-ion border-ion/30', dot: 'bg-ion live-dot' }
+                  : repo.status === 'READY'
+                    ? { label: 'Ready', cls: 'text-mint border-mint/30', dot: 'bg-mint' }
+                    : repo.status === 'FAILED'
+                      ? { label: 'Scan failed', cls: 'text-rose border-rose/30', dot: 'bg-rose' }
+                      : { label: 'Not scanned', cls: 'text-fg-3 border-line', dot: 'bg-fg-4' };
+                const pct = scanInfo?.progress ? Math.round(scanInfo.progress * 100) : 0;
 
-              return (
-                <div
-                  key={repo.id}
-                  data-testid={`repo-card-${repo.id}`}
-                  style={{
-                    backgroundColor: '#151922',
-                    border: '1px solid #292F38',
-                    borderRadius: '6px',
-                    padding: '18px 20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '20px',
-                    transition: 'border-color 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#3D4654')}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#292F38')}
-                >
-                  {/* Left: Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '15px', fontWeight: 600, color: '#E6EAF0' }}>
-                        {repo.name}
-                      </span>
+                return (
+                  <li
+                    key={repo.id}
+                    data-testid={`repo-card-${repo.id}`}
+                    className="relative border-b border-line-soft px-5 py-5 last:border-b-0 sm:px-6"
+                  >
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div className="flex min-w-0 items-start gap-4">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-surface-2 text-[15px] font-semibold text-fg-2">
+                          {repo.name.slice(0, 1).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="truncate text-[16px] font-semibold">{repo.name}</h2>
+                            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-px text-[12px] ${status.cls}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                              {status.label}
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-[12px] text-fg-4">
+                              {repo.source_type === 'github' ? <GitFork size={12} /> : <HardDrive size={12} />}
+                              {repo.source_type === 'github' ? 'GitHub' : 'Local'}
+                            </span>
+                          </div>
+                          <div className="mt-1 truncate font-mono text-[12.5px] text-fg-4" title={repo.source_path}>
+                            {repo.source_path}
+                          </div>
+                          {repo.description && <p className="mt-1.5 text-[13.5px] text-fg-3">{repo.description}</p>}
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-fg-3">
+                            <span className="inline-flex items-center gap-1.5">
+                              <FileCode size={13} />
+                              <span className="text-fg-2">{repo.file_count ?? repo.total_files ?? 0}</span> files
+                            </span>
+                            {(repo.total_lines ?? 0) > 0 && (
+                              <span>
+                                <span className="text-fg-2">{repo.total_lines?.toLocaleString()}</span> lines
+                              </span>
+                            )}
+                            {repo.language && <span className="text-fg-2">{repo.language}</span>}
+                            {repo.last_scanned_at && (
+                              <span className="inline-flex items-center gap-1.5">
+                                <Clock size={13} />
+                                Scanned {new Date(repo.last_scanned_at).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          {scanInfo?.error && (
+                            <div className="mt-2 flex items-start gap-1.5 text-[13px] text-rose">
+                              <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                              <span>{scanInfo.error}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                      {/* Source Type */}
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '2px 7px',
-                          borderRadius: '4px',
-                          backgroundColor: '#1B2028',
-                          color: '#A0A8B5',
-                          border: '1px solid #292F38',
-                        }}
-                      >
-                        {repo.source_type === 'github' ? <GitFork size={11} /> : <HardDrive size={11} />}
-                        <span style={{ textTransform: 'capitalize' }}>{repo.source_type}</span>
-                      </span>
-
-                      {/* Status Badge */}
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          fontFamily: 'JetBrains Mono, monospace',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          backgroundColor:
-                            repo.status === 'READY' && !isScanning
-                              ? 'rgba(76, 175, 121, 0.1)'
-                              : isScanning
-                              ? 'rgba(91, 141, 239, 0.1)'
-                              : repo.status === 'FAILED'
-                              ? 'rgba(201, 90, 90, 0.1)'
-                              : '#1B2028',
-                          color:
-                            repo.status === 'READY' && !isScanning
-                              ? '#4CAF79'
-                              : isScanning
-                              ? '#5B8DEF'
-                              : repo.status === 'FAILED'
-                              ? '#C95A5A'
-                              : '#A0A8B5',
-                          border: `1px solid ${
-                            repo.status === 'READY' && !isScanning
-                              ? 'rgba(76, 175, 121, 0.2)'
-                              : isScanning
-                              ? 'rgba(91, 141, 239, 0.2)'
-                              : repo.status === 'FAILED'
-                              ? 'rgba(201, 90, 90, 0.2)'
-                              : '#292F38'
-                          }`,
-                        }}
-                      >
-                        {isScanning
-                          ? scanInfo?.progress
-                            ? `Scanning… ${Math.round(scanInfo.progress * 100)}%`
-                            : 'Scanning…'
-                          : repo.status}
-                      </span>
+                      <div className="flex shrink-0 items-center gap-2 pl-14 md:pl-0">
+                        <button
+                          type="button"
+                          onClick={() => handleScan(repo)}
+                          disabled={isScanning}
+                          title="Scan or re-index this repository"
+                          className="btn-secondary h-9"
+                        >
+                          {isScanning ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                          <span>{isScanning ? (pct ? `Scanning… ${pct}%` : 'Scanning…') : hasScanned ? 'Rescan' : 'Scan'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpen(repo)}
+                          disabled={isScanning || !hasScanned}
+                          title={isScanning ? 'Scan in progress' : !hasScanned ? 'Scan the repository before opening it' : 'Open repository workspace'}
+                          className="btn-primary h-9"
+                        >
+                          <Play size={14} />
+                          <span>Open</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(repo)}
+                          disabled={isScanning}
+                          title="Delete repository"
+                          aria-label={`Delete ${repo.name}`}
+                          className="btn-ghost h-9 w-9 px-0 hover:!text-rose"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Path / Description */}
-                    <div
-                      style={{
-                        fontSize: '11px',
-                        fontFamily: 'JetBrains Mono, monospace',
-                        color: '#6F7887',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        marginBottom: '8px',
-                      }}
-                      title={repo.source_path}
-                    >
-                      {repo.source_path}
-                    </div>
-
-                    {repo.description && (
-                      <p style={{ fontSize: '12px', color: '#A0A8B5', margin: '0 0 8px', lineHeight: 1.5 }}>
-                        {repo.description}
-                      </p>
-                    )}
-
-                    {/* Scanning Error message if failed */}
-                    {scanInfo?.error && (
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          color: '#C95A5A',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        <AlertCircle size={12} />
-                        <span>{scanInfo.error}</span>
+                    {isScanning && (
+                      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-line-soft">
+                        {pct > 0 ? (
+                          <div className="h-full bg-ion transition-[width] duration-500" style={{ width: `${pct}%` }} />
+                        ) : (
+                          <div className="scan-beam h-full" />
+                        )}
                       </div>
                     )}
-
-                    {/* Metadata chips */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '11px', color: '#6F7887' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <FileCode size={12} />
-                        <span style={{ color: '#A0A8B5' }}>{repo.file_count ?? repo.total_files ?? 0}</span> files
-                      </span>
-
-                      {(repo.total_lines ?? 0) > 0 && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Layers size={12} />
-                          <span style={{ color: '#A0A8B5' }}>{repo.total_lines?.toLocaleString()}</span> lines
-                        </span>
-                      )}
-
-                      {repo.language && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#5B8DEF' }} />
-                          <span style={{ color: '#A0A8B5' }}>{repo.language}</span>
-                        </span>
-                      )}
-
-                      {repo.last_scanned_at && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Clock size={12} />
-                          <span>Scanned {new Date(repo.last_scanned_at).toLocaleDateString()}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right: Actions */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    <button
-                      onClick={() => handleScan(repo)}
-                      disabled={isScanning}
-                      className="btn-secondary"
-                      title="Scan / Re-index repository"
-                      style={{ height: '32px', padding: '0 10px' }}
-                    >
-                      <RefreshCw size={13} style={{ animation: isScanning ? 'ds-spin 1s linear infinite' : 'none' }} />
-                      <span style={{ fontSize: '12px' }}>{isScanning ? 'Scanning…' : hasScanned ? 'Rescan' : 'Scan'}</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleOpen(repo)}
-                      disabled={isScanning || !hasScanned}
-                      className="btn-primary"
-                      title={isScanning ? 'Scan in progress' : !hasScanned ? 'Scan repository before opening' : 'Open repository workspace'}
-                      style={{
-                        height: '32px',
-                        padding: '0 14px',
-                        opacity: isScanning || !hasScanned ? 0.5 : 1,
-                        cursor: isScanning || !hasScanned ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      <Play size={13} />
-                      <span style={{ fontSize: '12px' }}>Open</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDelete(repo)}
-                      className="btn-ghost"
-                      title="Delete repository"
-                      style={{ height: '32px', width: '32px', padding: 0, color: '#6F7887' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = '#C95A5A')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = '#6F7887')}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </main>
 
-      {/* Add Repository Modal */}
       <AddRepositoryModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

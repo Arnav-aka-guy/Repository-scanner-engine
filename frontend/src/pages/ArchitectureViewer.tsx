@@ -174,17 +174,19 @@ export const ArchitectureViewer: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          rowGap: '10px',
           flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ color: colors.accent.blue, display: 'flex', alignItems: 'center' }}>
               <Tv size={17} />
             </span>
             <h1
               style={{
-                fontSize: font.size.base,
+                fontSize: '18px', letterSpacing: '-0.01em',
                 fontWeight: 600,
                 color: colors.text.primary,
                 fontFamily: font.sans,
@@ -250,13 +252,14 @@ export const ArchitectureViewer: React.FC = () => {
           <div style={{ maxWidth: '960px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* ── Summary & Score Breakdown ── */}
             <div
+              className="sm:!grid-cols-[auto_1fr]"
               style={{
                 backgroundColor: colors.bg.surface,
                 border: `1px solid ${colors.border.default}`,
                 borderRadius: radius.lg,
                 padding: '20px 24px',
                 display: 'grid',
-                gridTemplateColumns: 'auto 1fr',
+                gridTemplateColumns: '1fr',
                 gap: '24px',
                 alignItems: 'center',
               }}
@@ -304,7 +307,7 @@ export const ArchitectureViewer: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Sparkles size={14} style={{ color: colors.accent.blue }} />
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary, letterSpacing: '0' }}>
                     Why this score?
                   </span>
                 </div>
@@ -316,19 +319,19 @@ export const ArchitectureViewer: React.FC = () => {
                 {/* Dimensions pills */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '4px' }}>
                   <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Layers</div>
+                    <div style={{ fontSize: '10px', color: colors.text.muted }}>Layers</div>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>{report.stats.total_layers || Object.keys(report.layers).length}</div>
                   </div>
                   <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Cycles</div>
+                    <div style={{ fontSize: '10px', color: colors.text.muted }}>Cycles</div>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: (report.circular_dependencies?.length || 0) > 0 ? colors.status.danger : colors.status.success, fontFamily: font.mono }}>{report.circular_dependencies?.length || 0}</div>
                   </div>
                   <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Violations</div>
+                    <div style={{ fontSize: '10px', color: colors.text.muted }}>Violations</div>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: (report.violations?.length || 0) > 0 ? colors.status.warning : colors.status.success, fontFamily: font.mono }}>{report.violations?.length || 0}</div>
                   </div>
                   <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: colors.text.muted, textTransform: 'uppercase' }}>Unclassified</div>
+                    <div style={{ fontSize: '10px', color: colors.text.muted }}>Unclassified</div>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text.secondary, fontFamily: font.mono }}>{report.layers['Unclassified']?.length || 0}</div>
                   </div>
                 </div>
@@ -339,7 +342,7 @@ export const ArchitectureViewer: React.FC = () => {
             {report.circular_dependencies && report.circular_dependencies.length > 0 && (
               <div
                 style={{
-                  backgroundColor: 'rgba(201, 90, 90, 0.05)',
+                  backgroundColor: 'rgba(255, 92, 122, 0.05)',
                   border: `1px solid ${colors.status.dangerBorder}`,
                   borderRadius: radius.lg,
                   padding: '16px 20px',
@@ -390,7 +393,7 @@ export const ArchitectureViewer: React.FC = () => {
             {/* ── Violations & Concerns ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Boundary Violations & Architectural Concerns ({report.violations?.length || 0})
                 </span>
               </div>
@@ -478,7 +481,7 @@ export const ArchitectureViewer: React.FC = () => {
 
             {/* ── Architectural Layers ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                 Architectural Layers ({Object.keys(report.layers).length})
               </span>
 

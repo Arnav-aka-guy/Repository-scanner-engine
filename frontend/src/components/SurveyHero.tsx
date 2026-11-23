@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 /**
  * Technical SVG Survey Map Hero Animation.
  * Technical coordinate ticks, hairline 1px grid, AST node vertices, dependency arcs.
- * Signal accent (#F2A93B) and graph edge teal (#7CC4C9).
+ * Signal accent (#35D7FF) and graph edge teal (#3DDC97).
  * Pauses via IntersectionObserver when offscreen and on tab hidden.
  */
 export const SurveyHero: React.FC = () => {
@@ -36,28 +36,28 @@ export const SurveyHero: React.FC = () => {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-5xl mx-auto h-72 md:h-96 rounded border border-[#262B28] bg-[#0D0F0E] overflow-hidden select-none"
+      className="relative w-full max-w-5xl mx-auto h-72 md:h-96 rounded border border-[#222228] bg-[#000000] overflow-hidden select-none"
       style={{
         backgroundImage: `
-          linear-gradient(to right, rgba(38, 43, 40, 0.45) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(38, 43, 40, 0.45) 1px, transparent 1px)
+          linear-gradient(to right, rgba(34, 34, 40, 0.45) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(34, 34, 40, 0.45) 1px, transparent 1px)
         `,
         backgroundSize: '24px 24px',
       }}
     >
       {/* Top telemetry bar */}
-      <div className="absolute top-0 inset-x-0 h-7 border-b border-[#262B28] bg-[#151816]/90 px-3 flex items-center justify-between text-[11px] font-mono text-[#8A928B] z-10">
+      <div className="absolute top-0 inset-x-0 h-7 border-b border-[#222228] bg-[#0D0D10]/90 px-3 flex items-center justify-between text-[11px] font-mono text-[#9A9AA3] z-10">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-[#E9ECE6]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#7FB77E]" />
+          <span className="flex items-center gap-1.5 text-[#F4F4F5]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#3DDC97]" />
             GRID: ACTIVE
           </span>
-          <span className="hidden sm:inline text-[#5E645F]">|</span>
-          <span className="hidden sm:inline text-[#5E645F]">DATUM: EPSG::900913</span>
+          <span className="hidden sm:inline text-[#6B6B75]">|</span>
+          <span className="hidden sm:inline text-[#6B6B75]">DATUM: EPSG::900913</span>
         </div>
         <div className="flex items-center gap-4 tabular-nums">
           <span>VERTICES: 1,428</span>
-          <span className="text-[#F2A93B]">EDGES: 3,892</span>
+          <span className="text-[#35D7FF]">EDGES: 3,892</span>
         </div>
       </div>
 
@@ -70,13 +70,13 @@ export const SurveyHero: React.FC = () => {
       >
         <defs>
           <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#7CC4C9" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#F2A93B" stopOpacity="0.8" />
+            <stop offset="0%" stopColor="#3DDC97" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#35D7FF" stopOpacity="0.8" />
           </linearGradient>
         </defs>
 
         {/* Structural coordinate ticks */}
-        <g stroke="#3A423D" strokeWidth="1">
+        <g stroke="#33333B" strokeWidth="1">
           <line x1="100" y1="30" x2="100" y2="40" />
           <line x1="300" y1="30" x2="300" y2="40" />
           <line x1="500" y1="30" x2="500" y2="40" />
@@ -85,7 +85,7 @@ export const SurveyHero: React.FC = () => {
         </g>
 
         {/* Dependency arcs and call graph lines */}
-        <g stroke="#262B28" strokeWidth="1.5">
+        <g stroke="#222228" strokeWidth="1.5">
           <path d="M 120 180 Q 250 80 420 160" />
           <path d="M 420 160 Q 600 240 750 140" />
           <path d="M 750 140 Q 860 90 920 220" />
@@ -110,33 +110,33 @@ export const SurveyHero: React.FC = () => {
         {/* Graph Vertices */}
         <g>
           {/* Node 1 */}
-          <circle cx="120" cy="180" r="4" fill="#0D0F0E" stroke="#7CC4C9" strokeWidth="2" />
-          <text x="120" y="202" fill="#8A928B" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">api.auth</text>
+          <circle cx="120" cy="180" r="4" fill="#000000" stroke="#3DDC97" strokeWidth="2" />
+          <text x="120" y="202" fill="#9A9AA3" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">api.auth</text>
 
           {/* Node 2 - Central hub */}
-          <circle cx="420" cy="160" r="6" fill="#151816" stroke="#F2A93B" strokeWidth="2" />
-          <text x="420" y="142" fill="#E9ECE6" fontSize="11" fontWeight="600" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">ScannerEngine</text>
+          <circle cx="420" cy="160" r="6" fill="#0D0D10" stroke="#35D7FF" strokeWidth="2" />
+          <text x="420" y="142" fill="#F4F4F5" fontSize="11" fontWeight="600" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">ScannerEngine</text>
 
           {/* Node 3 */}
-          <circle cx="750" cy="140" r="4" fill="#0D0F0E" stroke="#7CC4C9" strokeWidth="2" />
-          <text x="750" y="125" fill="#8A928B" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">ast.parser</text>
+          <circle cx="750" cy="140" r="4" fill="#000000" stroke="#3DDC97" strokeWidth="2" />
+          <text x="750" y="125" fill="#9A9AA3" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">ast.parser</text>
 
           {/* Node 4 */}
-          <circle cx="220" cy="310" r="4" fill="#0D0F0E" stroke="#5E645F" strokeWidth="1.5" />
-          <text x="220" y="330" fill="#5E645F" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">models.py</text>
+          <circle cx="220" cy="310" r="4" fill="#000000" stroke="#6B6B75" strokeWidth="1.5" />
+          <text x="220" y="330" fill="#6B6B75" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">models.py</text>
 
           {/* Node 5 */}
-          <circle cx="680" cy="280" r="4" fill="#0D0F0E" stroke="#7CC4C9" strokeWidth="2" />
-          <text x="680" y="302" fill="#8A928B" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">graph.retrieval</text>
+          <circle cx="680" cy="280" r="4" fill="#000000" stroke="#3DDC97" strokeWidth="2" />
+          <text x="680" y="302" fill="#9A9AA3" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">graph.retrieval</text>
 
           {/* Node 6 */}
-          <circle cx="920" cy="220" r="4" fill="#0D0F0E" stroke="#5E645F" strokeWidth="1.5" />
-          <text x="920" y="242" fill="#5E645F" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">vector_store</text>
+          <circle cx="920" cy="220" r="4" fill="#000000" stroke="#6B6B75" strokeWidth="1.5" />
+          <text x="920" y="242" fill="#6B6B75" fontSize="10" fontFamily="'JetBrains Mono', monospace" textAnchor="middle">vector_store</text>
         </g>
       </svg>
 
       {/* Coordinate inspection badge in corner */}
-      <div className="absolute bottom-2 right-3 font-mono text-[10px] text-[#5E645F] tabular-nums pointer-events-none">
+      <div className="absolute bottom-2 right-3 text-[12px] text-[#6B6B75] tabular-nums pointer-events-none">
         LOC: 34.208, -118.441 | SCALE 1:100
       </div>
 

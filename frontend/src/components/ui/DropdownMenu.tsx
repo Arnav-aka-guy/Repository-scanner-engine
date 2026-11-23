@@ -23,7 +23,7 @@ export const DropdownMenuContent = React.forwardRef<
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -4, scale: 0.98 }}
         transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
-        className={`z-50 min-w-[180px] overflow-hidden rounded-[6px] border border-[#262B28] bg-[#151816] p-1 text-[#E9ECE6] shadow-xl ${className}`}
+        className={`z-50 min-w-[180px] overflow-hidden rounded-[10px] border border-line-strong bg-surface p-1 text-fg shadow-[0_16px_40px_rgba(0,0,0,0.7)] ${className}`}
       >
         {children}
       </motion.div>
@@ -38,7 +38,7 @@ export const DropdownMenuItem = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
-    className={`relative flex cursor-pointer select-none items-center gap-2 rounded-[4px] px-2.5 py-1.5 text-[12px] font-sans text-[#E9ECE6] outline-none transition-colors hover:bg-[#1C201D] hover:text-[#E9ECE6] focus:bg-[#1C201D] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 ${className}`}
+    className={`relative flex cursor-pointer select-none items-center gap-2 rounded-md px-2.5 py-2 text-[13px] text-fg outline-none transition-colors hover:bg-surface-2 focus:bg-surface-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-40 ${className}`}
     {...props}
   />
 ));
@@ -50,7 +50,7 @@ export const DropdownMenuSeparator = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={`-mx-1 my-1 h-[1px] bg-[#262B28] ${className}`}
+    className={`-mx-1 my-1 h-px bg-line ${className}`}
     {...props}
   />
 ));

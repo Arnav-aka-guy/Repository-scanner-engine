@@ -13,7 +13,6 @@ import {
   FolderOpen,
   Compass,
   Trash2,
-  Sparkles,
   Boxes,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -235,85 +234,66 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[560px] p-0 overflow-hidden top-[25%] translate-y-[-25%]">
-        {/* Search Input Bar */}
-        <div className="flex items-center gap-2.5 border-b border-[#262B28] bg-[#1C201D] px-4 py-3">
-          <Search size={15} className="text-[#F2A93B] shrink-0" />
+      <DialogContent className="!top-[10%] !max-w-[600px] !translate-y-0 overflow-hidden !p-0 sm:!top-[16%]">
+        <div className="flex items-center gap-3 border-b border-line py-3.5 pl-4 pr-12">
+          <Search size={17} className="shrink-0 text-fg-3" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a command or jump to feature..."
-            className="w-full bg-transparent text-[13px] text-[#E9ECE6] outline-none font-sans placeholder:text-[#5E645F]"
+            placeholder="Jump to a page or run an action"
+            aria-label="Search commands"
+            className="w-full bg-transparent text-[15px] text-fg outline-none placeholder:text-fg-4"
           />
-          <kbd className="rounded-[3px] border border-[#262B28] bg-[#262B28] px-1.5 py-0.5 font-mono text-[10px] text-[#8A928B]">
-            ESC
-          </kbd>
         </div>
 
-        {/* Command List */}
-        <div className="max-h-[320px] overflow-y-auto py-1">
+        <div className="max-h-[min(380px,60vh)] overflow-y-auto p-1.5" role="listbox">
           {filtered.length === 0 ? (
-            <div className="py-8 text-center text-[12px] font-mono text-[#8A928B]">
-              No matching commands found.
-            </div>
+            <div className="px-4 py-10 text-center text-[13px] text-fg-3">No command matches "{query}".</div>
           ) : (
             filtered.map((item, idx) => {
               const isSelected = idx === selectedIndex;
+              const showCategory = idx === 0 || filtered[idx - 1].category !== item.category;
               return (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    item.run();
-                    onClose();
-                  }}
-                  onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`flex items-center justify-between px-4 py-2 text-[12px] cursor-pointer transition-colors ${
-                    isSelected
-                      ? 'border-l-2 border-[#F2A93B] bg-[#1C201D]'
-                      : 'border-l-2 border-transparent hover:bg-[#1C201D]'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className={isSelected ? 'text-[#F2A93B]' : 'text-[#8A928B]'}>
-                      {item.icon}
-                    </span>
-                    <div className="flex flex-col min-w-0">
-                      <span className={`font-medium truncate ${isSelected ? 'text-[#E9ECE6]' : 'text-[#8A928B]'}`}>
-                        {item.title}
+                <React.Fragment key={item.id}>
+                  {showCategory && <div className="px-3 pb-1 pt-2.5 text-[12px] font-medium text-fg-4">{item.category}</div>}
+                  <div
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      item.run();
+                      onClose();
+                    }}
+                    onMouseEnter={() => setSelectedIndex(idx)}
+                    className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+                      isSelected ? 'bg-surface-2' : ''
+                    }`}
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-md border ${isSelected ? 'border-ion/40 text-ion' : 'border-line text-fg-3'}`}>
+                        {item.icon}
                       </span>
-                      {item.subtitle && (
-                        <span className="font-mono text-[10px] text-[#5E645F] truncate">
-                          {item.subtitle}
-                        </span>
-                      )}
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate text-[14px] font-medium text-fg">{item.title}</span>
+                        {item.subtitle && <span className="truncate text-[12.5px] text-fg-3">{item.subtitle}</span>}
+                      </div>
                     </div>
+                    {item.shortcut && (
+                      <kbd className="ml-3 hidden shrink-0 rounded border border-line bg-surface px-1.5 text-[11px] text-fg-3 sm:inline">{item.shortcut}</kbd>
+                    )}
                   </div>
-
-                  {item.shortcut && (
-                    <kbd className="shrink-0 ml-3 rounded-[2px] border border-[#262B28] bg-[#262B28] px-1.5 py-0.5 font-mono text-[10px] text-[#8A928B]">
-                      {item.shortcut}
-                    </kbd>
-                  )}
-                </div>
+                </React.Fragment>
               );
             })
           )}
         </div>
 
-        {/* Footer shortcuts hint */}
-        <div className="flex items-center justify-between border-t border-[#262B28] bg-[#0D0F0E] px-4 py-2 font-mono text-[10px] text-[#5E645F]">
-          <div className="flex gap-3">
-            <span>↑↓ navigate</span>
-            <span>↵ select</span>
-            <span>esc close</span>
-          </div>
-          <div className="flex items-center gap-1 text-[#8A928B]">
-            <Sparkles size={10} className="text-[#F2A93B]" />
-            <span>Antigravity Engine</span>
-          </div>
+        <div className="hidden items-center gap-4 border-t border-line px-4 py-2.5 text-[12px] text-fg-4 sm:flex">
+          <span><kbd className="font-sans text-fg-3">↑ ↓</kbd> to move</span>
+          <span><kbd className="font-sans text-fg-3">Enter</kbd> to run</span>
+          <span><kbd className="font-sans text-fg-3">Esc</kbd> to close</span>
         </div>
       </DialogContent>
     </Dialog>

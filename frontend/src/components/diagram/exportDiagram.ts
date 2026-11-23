@@ -14,7 +14,7 @@ import {
 
 const PAD = 40;
 const TITLE_H = 64;
-const FONT = "Inter, 'Segoe UI', Arial, sans-serif";
+const FONT = "'Hanken Grotesk Variable', 'Hanken Grotesk', 'Segoe UI', Arial, sans-serif";
 
 function esc(text: string): string {
   return text

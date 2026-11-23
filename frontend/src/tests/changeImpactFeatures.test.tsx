@@ -79,7 +79,7 @@ describe('Change Impact and Review Features', () => {
     });
 
     expect(container.textContent).toContain('Change Impact Analysis');
-    expect(container.textContent).toContain('V2.1 ENGINE');
+    expect(container.textContent).toContain('Engine v2.1');
 
     const input = container.querySelector('input[type="text"]') as HTMLInputElement;
     expect(input).not.toBeNull();
@@ -157,7 +157,7 @@ describe('Change Impact and Review Features', () => {
     });
 
     expect(container.textContent).toContain('Automated Code Review');
-    expect(container.textContent).toContain('V2.1 ENGINE');
+    expect(container.textContent).toContain('Engine v2.1');
 
     const buttons = Array.from(container.querySelectorAll('button'));
     const reviewBtn = buttons.find((b) => b.textContent?.includes('Run Code Review'));

@@ -45,16 +45,16 @@ export const TreemapHotspots: React.FC<TreemapHotspotsProps> = ({
 
   // Determine color based on cognitive complexity
   const getColor = (comp: number) => {
-    if (comp > 25) return { bg: 'rgba(201, 90, 90, 0.25)', border: 'rgba(201, 90, 90, 0.6)', text: colors.status.danger };
-    if (comp > 15) return { bg: 'rgba(201, 148, 58, 0.25)', border: 'rgba(201, 148, 58, 0.6)', text: colors.status.warning };
-    if (comp > 5) return { bg: 'rgba(91, 141, 239, 0.2)', border: 'rgba(91, 141, 239, 0.5)', text: colors.accent.blue };
-    return { bg: 'rgba(76, 175, 121, 0.15)', border: 'rgba(76, 175, 121, 0.4)', text: colors.status.success };
+    if (comp > 25) return { bg: 'rgba(255, 92, 122, 0.25)', border: 'rgba(255, 92, 122, 0.6)', text: colors.status.danger };
+    if (comp > 15) return { bg: 'rgba(255, 176, 32, 0.25)', border: 'rgba(255, 176, 32, 0.6)', text: colors.status.warning };
+    if (comp > 5) return { bg: 'rgba(157, 140, 255, 0.2)', border: 'rgba(157, 140, 255, 0.5)', text: colors.accent.blue };
+    return { bg: 'rgba(61, 220, 151, 0.15)', border: 'rgba(61, 220, 151, 0.4)', text: colors.status.success };
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
           Codebase Hotspot Map (LOC × Cognitive Complexity)
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '10px', color: colors.text.muted }}>

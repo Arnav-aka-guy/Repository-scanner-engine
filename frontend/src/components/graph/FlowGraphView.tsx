@@ -22,22 +22,22 @@ import { layoutGraphView, type LayoutType } from './graphLayout';
 /* visual constants */
 
 const TYPE_COLOR: Record<string, string> = {
-  file: '#5B8DEF',
-  module: '#5B8DEF',
-  class: '#9580CA',
-  function: '#4CAF79',
-  method: '#C9943A',
-  variable: '#7CC4C9',
-  cluster: '#F2A93B',
+  file: '#9D8CFF',
+  module: '#9D8CFF',
+  class: '#9D8CFF',
+  function: '#3DDC97',
+  method: '#FFB020',
+  variable: '#3DDC97',
+  cluster: '#35D7FF',
 };
 const EDGE_COLOR: Record<string, string> = {
-  imports: '#5B8DEF',
-  calls: '#4CAF79',
-  inherits: '#9580CA',
-  defines: '#6F7887',
-  uses: '#7CC4C9',
+  imports: '#9D8CFF',
+  calls: '#3DDC97',
+  inherits: '#9D8CFF',
+  defines: '#6B6B75',
+  uses: '#3DDC97',
 };
-const DEFAULT_EDGE = '#6F7887';
+const DEFAULT_EDGE = '#6B6B75';
 const MAX_VISIBLE = 400;
 
 type NodeState = 'normal' | 'active' | 'related' | 'dimmed';
@@ -60,8 +60,8 @@ const hiddenHandle: React.CSSProperties = { opacity: 0, width: 4, height: 4, bor
 function stateStyle(state: NodeState, accent: string, match: boolean): React.CSSProperties {
   return {
     opacity: state === 'dimmed' ? 0.22 : 1,
-    borderColor: state === 'active' ? accent : match ? '#F2A93B' : colors.border.default,
-    boxShadow: state === 'active' ? `0 0 0 3px ${accent}40` : match ? '0 0 0 2px rgba(242,169,59,0.35)' : 'none',
+    borderColor: state === 'active' ? accent : match ? '#35D7FF' : colors.border.default,
+    boxShadow: state === 'active' ? `0 0 0 3px ${accent}40` : match ? '0 0 0 2px rgba(53,215,255,0.35)' : 'none',
   };
 }
 
@@ -76,7 +76,7 @@ function Handles({ vertical }: { vertical: boolean }) {
 
 const ItemNode = memo(function ItemNode({ data }: NodeProps) {
   const d = data as unknown as ItemData & { vertical: boolean };
-  const accent = TYPE_COLOR[d.nodeType] ?? '#8A928B';
+  const accent = TYPE_COLOR[d.nodeType] ?? '#9A9AA3';
   return (
     <div
       style={{
@@ -106,7 +106,7 @@ const ItemNode = memo(function ItemNode({ data }: NodeProps) {
         style={{ fontSize: 9.5, color: colors.text.secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}
         title={d.sublabel}
       >
-        <span style={{ color: accent, textTransform: 'uppercase', fontWeight: 700, marginRight: 6 }}>{d.nodeType}</span>
+        <span style={{ color: accent, fontWeight: 700, marginRight: 6 }}>{d.nodeType}</span>
         {d.sublabel}
       </div>
     </div>
@@ -122,14 +122,14 @@ const ClusterNode = memo(function ClusterNode({ data }: NodeProps) {
         width: '100%',
         height: '100%',
         boxSizing: 'border-box',
-        background: 'rgba(242, 169, 59, 0.06)',
+        background: 'rgba(53, 215, 255, 0.06)',
         border: '1px dashed',
         borderRadius: radius.lg,
         padding: '7px 12px',
         fontFamily: font.sans,
         cursor: 'pointer',
         ...stateStyle(d.state, accent, d.match),
-        borderColor: d.state === 'active' ? accent : 'rgba(242, 169, 59, 0.45)',
+        borderColor: d.state === 'active' ? accent : 'rgba(53, 215, 255, 0.45)',
       }}
       title="Click to open this folder"
     >
@@ -142,7 +142,7 @@ const ClusterNode = memo(function ClusterNode({ data }: NodeProps) {
             marginLeft: 'auto',
             fontSize: 10.5,
             fontWeight: 700,
-            color: '#151816',
+            color: '#0D0D10',
             background: accent,
             borderRadius: 8,
             padding: '0 6px',
@@ -391,15 +391,15 @@ const FlowGraphInner: React.FC<FlowGraphViewProps> = ({
         proOptions={{ hideAttribution: true }}
         style={{ background: 'transparent' }}
       >
-        <Background color="rgba(111, 120, 135, 0.08)" gap={24} size={1} />
+        <Background color="rgba(107, 107, 117, 0.08)" gap={24} size={1} />
         <Controls position="bottom-right" showInteractive={false} />
         <MiniMap
           position="top-right"
           pannable
           zoomable
           style={{ backgroundColor: colors.bg.surface, border: `1px solid ${colors.border.default}`, width: 150, height: 96 }}
-          maskColor="rgba(15, 17, 21, 0.7)"
-          nodeColor={(n) => TYPE_COLOR[(n.data as ItemData)?.nodeType] ?? '#8A928B'}
+          maskColor="rgba(0, 0, 0, 0.7)"
+          nodeColor={(n) => TYPE_COLOR[(n.data as ItemData)?.nodeType] ?? '#9A9AA3'}
         />
       </ReactFlow>
     </div>
@@ -421,8 +421,8 @@ const toolbarButton: React.CSSProperties = {
 
 const CONTROLS_CSS = `
 .graph-canvas .react-flow__controls { box-shadow: 0 4px 16px rgba(0,0,0,0.35); border-radius: 6px; overflow: hidden; }
-.graph-canvas .react-flow__controls-button { background: #151922; border-bottom: 1px solid #292F38; fill: #E6EAF0; color: #E6EAF0; }
-.graph-canvas .react-flow__controls-button:hover { background: #1B2028; }
+.graph-canvas .react-flow__controls-button { background: #0D0D10; border-bottom: 1px solid #222228; fill: #F4F4F5; color: #F4F4F5; }
+.graph-canvas .react-flow__controls-button:hover { background: #141418; }
 `;
 
 export const FlowGraphView: React.FC<FlowGraphViewProps> = (props) => (

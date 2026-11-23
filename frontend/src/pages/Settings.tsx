@@ -132,11 +132,13 @@ export const Settings: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          rowGap: '10px',
           flexShrink: 0,
         }}
       >
         <div>
-          <h1 style={{ fontSize: font.size.lg, fontWeight: font.weight.semibold, margin: 0 }}>
+          <h1 style={{ fontSize: '18px', letterSpacing: '-0.01em', fontWeight: font.weight.semibold, margin: 0 }}>
             System Settings
           </h1>
           <p style={{ fontSize: font.size.xs, color: colors.text.muted, margin: '2px 0 0 0' }}>
@@ -173,19 +175,9 @@ export const Settings: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Settings Navigation Tabs */}
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         <div
-          style={{
-            width: '210px',
-            minWidth: '210px',
-            backgroundColor: colors.bg.surface,
-            borderRight: `1px solid ${colors.border.default}`,
-            padding: '16px 8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '2px',
-          }}
+          className="flex shrink-0 flex-row gap-0.5 overflow-x-auto border-b border-line bg-surface p-2 md:w-[210px] md:flex-col md:border-b-0 md:border-r md:px-2 md:py-4"
         >
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -197,7 +189,7 @@ export const Settings: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
-                  padding: '9px 12px',
+                  padding: '9px 12px', whiteSpace: 'nowrap', flexShrink: 0,
                   borderRadius: radius.md,
                   border: 'none',
                   backgroundColor: isActive ? colors.accent.blueSubtle : 'transparent',
@@ -357,8 +349,7 @@ export const Settings: React.FC = () => {
                   style={{
                     fontSize: font.size.xs,
                     fontWeight: font.weight.semibold,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0',
                     color: colors.text.muted,
                   }}
                 >
@@ -575,8 +566,7 @@ export const Settings: React.FC = () => {
                   style={{
                     fontSize: font.size.xs,
                     fontWeight: font.weight.semibold,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0',
                     color: colors.text.muted,
                   }}
                 >
@@ -768,7 +758,7 @@ export const Settings: React.FC = () => {
                 <div>
                   <div style={{ fontSize: font.size.sm, fontWeight: font.weight.medium }}>Theme Mode</div>
                   <div style={{ fontSize: font.size.xs, color: colors.text.muted }}>
-                    Restrained IDE Dark Theme (#0F1115 canvas, #151922 panels, #292F38 borders)
+                    Restrained IDE Dark Theme (#000000 canvas, #0D0D10 panels, #222228 borders)
                   </div>
                 </div>
                 <span
@@ -900,8 +890,7 @@ export const Settings: React.FC = () => {
                   style={{
                     fontSize: font.size.xs,
                     fontWeight: font.weight.semibold,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0',
                     color: colors.text.muted,
                   }}
                 >
@@ -1074,8 +1063,7 @@ export const Settings: React.FC = () => {
                   style={{
                     fontSize: font.size.xs,
                     fontWeight: font.weight.semibold,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0',
                     color: colors.text.muted,
                   }}
                 >

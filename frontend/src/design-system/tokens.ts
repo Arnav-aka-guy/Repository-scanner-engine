@@ -1,59 +1,63 @@
-// Design tokens — single source of truth for all visual values
-// Follows .agents/skills/design-direction/SKILL.md ("survey map for code")
-// and preserves token assertions.
+// Design tokens: the single source of truth for colours, sizes and type.
+// Keep in sync with the CSS variables in index.css.
 
 export const colors = {
   bg: {
-    primary: '#0F1115',
-    surface: '#151922',
-    surfaceSecondary: '#1B2028',
-    elevated: '#262B28',
-    ground: '#0D0F0E',
+    primary: '#000000',
+    surface: '#0D0D10',
+    surfaceSecondary: '#141418',
+    elevated: '#1B1B20',
+    ground: '#000000',
   },
   border: {
-    default: '#292F38',
-    subtle: '#1C201D',
-    strong: '#3A423D',
+    default: '#222228',
+    subtle: '#18181C',
+    strong: '#33333B',
   },
   text: {
-    primary: '#E6EAF0',
-    secondary: '#8A928B',
-    muted: '#5E645F',
-    disabled: '#3A423D',
+    primary: '#F4F4F5',
+    secondary: '#9A9AA3',
+    muted: '#6B6B75',
+    disabled: '#45454D',
   },
   accent: {
-    signal: '#F2A93B',
-    signalSubtle: 'rgba(242, 169, 59, 0.12)',
-    signalMuted: 'rgba(242, 169, 59, 0.08)',
-    edge: '#7CC4C9',
-    edgeSubtle: 'rgba(124, 196, 201, 0.12)',
-    blue: '#5B8DEF',
-    blueSubtle: 'rgba(91, 141, 239, 0.12)',
-    blueMuted: 'rgba(91, 141, 239, 0.08)',
-    purple: '#9580CA',
-    purpleSubtle: 'rgba(149, 128, 202, 0.1)',
+    signal: '#35D7FF',
+    signalSubtle: 'rgba(53, 215, 255, 0.12)',
+    signalMuted: 'rgba(53, 215, 255, 0.07)',
+    edge: '#3DDC97',
+    edgeSubtle: 'rgba(61, 220, 151, 0.12)',
+    blue: '#35D7FF',
+    blueSubtle: 'rgba(53, 215, 255, 0.12)',
+    blueMuted: 'rgba(53, 215, 255, 0.07)',
+    purple: '#9D8CFF',
+    purpleSubtle: 'rgba(157, 140, 255, 0.12)',
   },
   status: {
-    success: '#4CAF79',
-    successSubtle: 'rgba(76, 175, 121, 0.1)',
-    successBorder: 'rgba(76, 175, 121, 0.2)',
-    warning: '#C9943A',
-    warningSubtle: 'rgba(201, 148, 58, 0.1)',
-    warningBorder: 'rgba(201, 148, 58, 0.2)',
-    danger: '#C95A5A',
-    dangerSubtle: 'rgba(201, 90, 90, 0.1)',
-    dangerBorder: 'rgba(201, 90, 90, 0.2)',
-    info: '#5B8DEF',
-    infoSubtle: 'rgba(91, 141, 239, 0.1)',
-    infoBorder: 'rgba(91, 141, 239, 0.2)',
+    success: '#3DDC97',
+    successSubtle: 'rgba(61, 220, 151, 0.1)',
+    successBorder: 'rgba(61, 220, 151, 0.28)',
+    warning: '#FFB020',
+    warningSubtle: 'rgba(255, 176, 32, 0.1)',
+    warningBorder: 'rgba(255, 176, 32, 0.28)',
+    danger: '#FF5C7A',
+    dangerSubtle: 'rgba(255, 92, 122, 0.1)',
+    dangerBorder: 'rgba(255, 92, 122, 0.28)',
+    info: '#9D8CFF',
+    infoSubtle: 'rgba(157, 140, 255, 0.1)',
+    infoBorder: 'rgba(157, 140, 255, 0.28)',
   },
 } as const;
 
+/** Vibrant palette for charts, languages and graph categories. */
+export const dataColors = ['#35D7FF', '#9D8CFF', '#3DDC97', '#FFB020', '#FF5C7A', '#FF9F43', '#FFD23F', '#8FE7FF'] as const;
+
+export const spectrum = 'linear-gradient(90deg, #35D7FF 0%, #9D8CFF 38%, #FF5C7A 70%, #FFB020 100%)';
+
 export const radius = {
-  sm: '4px',
-  md: '6px',
-  lg: '8px',
-  xl: '10px',
+  sm: '5px',
+  md: '7px',
+  lg: '12px',
+  xl: '16px',
 } as const;
 
 export const spacing = {
@@ -65,24 +69,24 @@ export const spacing = {
 } as const;
 
 export const heights = {
-  header: '36px',
-  statusBar: '26px',
-  sidebarWidth: '56px',
-  buttonSm: '26px',
-  buttonMd: '32px',
-  buttonLg: '38px',
-  inputSm: '28px',
-  inputMd: '34px',
+  header: '52px',
+  statusBar: '28px',
+  sidebarWidth: '240px',
+  buttonSm: '28px',
+  buttonMd: '34px',
+  buttonLg: '40px',
+  inputSm: '30px',
+  inputMd: '36px',
 } as const;
 
 export const font = {
-  sans: "Inter, 'IBM Plex Sans', system-ui, -apple-system, sans-serif",
-  display: "'Bricolage Grotesque', system-ui, sans-serif",
-  mono: "'JetBrains Mono', 'Fira Code', monospace",
+  sans: "'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif",
+  display: "'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, sans-serif",
+  mono: "'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace",
   size: {
-    xs: '11px',
-    sm: '12px',
-    md: '13px',
+    xs: '12px',
+    sm: '13px',
+    md: '14px',
     base: '14px',
     lg: '16px',
     xl: '20px',
@@ -106,6 +110,6 @@ export const transition = {
 
 export const shadow = {
   sm: 'none',
-  md: 'none',
-  lg: '0 4px 16px rgba(0, 0, 0, 0.4)',
+  md: '0 1px 0 rgba(255, 255, 255, 0.03) inset',
+  lg: '0 16px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06)',
 } as const;

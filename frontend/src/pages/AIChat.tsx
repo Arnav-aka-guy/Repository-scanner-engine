@@ -48,7 +48,7 @@ export const AIChat: React.FC = () => {
   const files = useWorkspaceStore((s) => s.files);
   const graphData = useWorkspaceStore((s) => s.graphData);
 
-  const [showContextPane, setShowContextPane] = useState(true);
+  const [showContextPane, setShowContextPane] = useState(() => typeof window === 'undefined' || window.innerWidth >= 1024);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load persistent chat history or consume queued message on mount
@@ -151,17 +151,19 @@ export const AIChat: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          rowGap: '10px',
           flexShrink: 0,
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <span style={{ color: colors.accent.blue, display: 'flex', alignItems: 'center' }}>
               <Bot size={17} />
             </span>
             <h1
               style={{
-                fontSize: font.size.base,
+                fontSize: '18px', letterSpacing: '-0.01em',
                 fontWeight: 600,
                 color: colors.text.primary,
                 fontFamily: font.sans,
@@ -280,7 +282,7 @@ export const AIChat: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                     Starter Questions
                   </span>
 
@@ -359,9 +361,10 @@ export const AIChat: React.FC = () => {
         {/* ── Right Pane: Context & Sources Panel ── */}
         {showContextPane && (
           <aside
+            className="absolute inset-y-0 right-0 z-20 shadow-[-20px_0_40px_rgba(0,0,0,0.6)] lg:static lg:shadow-none"
             style={{
-              width: '280px',
-              minWidth: '280px',
+              width: 'min(300px, 88vw)',
+              minWidth: 'min(280px, 88vw)',
               height: '100%',
               backgroundColor: colors.bg.surface,
               borderLeft: `1px solid ${colors.border.default}`,
@@ -384,7 +387,7 @@ export const AIChat: React.FC = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Database size={13} style={{ color: colors.accent.blue }} />
-                <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.text.muted }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Context Used
                 </span>
               </div>
@@ -422,7 +425,7 @@ export const AIChat: React.FC = () => {
 
               {/* Files Used */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                   Files Used ({contextUsed.files.length})
                 </span>
                 {contextUsed.files.length > 0 ? (
@@ -459,7 +462,7 @@ export const AIChat: React.FC = () => {
               {/* Symbols Used */}
               {contextUsed.symbols.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                     Symbols Used ({contextUsed.symbols.length})
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -485,7 +488,7 @@ export const AIChat: React.FC = () => {
 
               {/* Graph Relationships Used */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                   Graph Relationships
                 </span>
                 <span style={{ fontSize: '11px', color: colors.text.muted }}>

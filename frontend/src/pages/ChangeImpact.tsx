@@ -137,7 +137,7 @@ export const ChangeImpact: React.FC = () => {
     >
       {/* Header Bar */}
       <div
-        className="px-6 py-4 flex items-center justify-between border-b"
+        className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b"
         style={{
           borderColor: colors.border.default,
           backgroundColor: colors.bg.surface,
@@ -151,17 +151,10 @@ export const ChangeImpact: React.FC = () => {
             <GitBranch size={18} style={{ color: colors.accent.signal }} />
           </div>
           <div>
-            <h1 className="text-base font-semibold leading-tight flex items-center gap-2">
+            <h1 className="text-[18px] font-semibold leading-tight tracking-[-0.01em] flex items-center gap-2">
               Change Impact Analysis
-              <span
-                className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
-                style={{
-                  backgroundColor: colors.accent.signalMuted,
-                  borderColor: colors.accent.signal,
-                  color: colors.accent.signal,
-                }}
-              >
-                V2.1 ENGINE
+              <span className="rounded-full border border-line px-2 py-px text-[12px] font-medium text-fg-3">
+                Engine v2.1
               </span>
             </h1>
             <p className="text-xs" style={{ color: colors.text.secondary }}>
@@ -208,7 +201,7 @@ export const ChangeImpact: React.FC = () => {
         >
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 flex flex-col gap-1.5 w-full">
-              <label className="text-xs font-mono uppercase tracking-wider" style={{ color: colors.text.secondary }}>
+              <label className="text-xs font-mono" style={{ color: colors.text.secondary }}>
                 Target Modified File
               </label>
               <div className="relative">
@@ -247,7 +240,7 @@ export const ChangeImpact: React.FC = () => {
                       className="text-left text-xs font-mono px-3 py-1.5 hover:bg-slate-800/80 transition-colors flex items-center justify-between"
                     >
                       <span className="truncate">{f.path}</span>
-                      <span className="text-[10px] text-slate-500">{f.language}</span>
+                      <span className="text-[11.5px] text-slate-500">{f.language}</span>
                     </button>
                   ))}
                 </div>
@@ -255,7 +248,7 @@ export const ChangeImpact: React.FC = () => {
             </div>
 
             <div className="w-full md:w-72 flex flex-col gap-1.5">
-              <label className="text-xs font-mono uppercase tracking-wider" style={{ color: colors.text.secondary }}>
+              <label className="text-xs font-mono" style={{ color: colors.text.secondary }}>
                 Optional Changed Symbols
               </label>
               <input
@@ -322,7 +315,7 @@ export const ChangeImpact: React.FC = () => {
                   padding: '16px',
                 }}
               >
-                <div className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                <div className="text-xs font-mono text-slate-400 mb-1">
                   Regression Risk Score
                 </div>
                 <div className="flex items-baseline gap-2">
@@ -334,7 +327,7 @@ export const ChangeImpact: React.FC = () => {
                   </span>
                   <span className="text-xs font-mono text-slate-500">/ 100</span>
                   <span
-                    className="ml-auto text-xs font-mono font-semibold px-2 py-0.5 rounded border uppercase"
+                    className="ml-auto text-xs font-mono font-semibold px-2 py-0.5 rounded border"
                     style={{
                       borderColor: getRiskColor(report.risk_level),
                       color: getRiskColor(report.risk_level),
@@ -364,7 +357,7 @@ export const ChangeImpact: React.FC = () => {
                   padding: '16px',
                 }}
               >
-                <div className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                <div className="text-xs font-mono text-slate-400 mb-1">
                   Total Blast Radius
                 </div>
                 <div className="text-3xl font-mono font-bold tabular-nums text-slate-200">
@@ -390,7 +383,7 @@ export const ChangeImpact: React.FC = () => {
                   padding: '16px',
                 }}
               >
-                <div className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                <div className="text-xs font-mono text-slate-400 mb-1">
                   API Consumers Touched
                 </div>
                 <div className="text-3xl font-mono font-bold tabular-nums text-slate-200">
@@ -413,7 +406,7 @@ export const ChangeImpact: React.FC = () => {
                   padding: '16px',
                 }}
               >
-                <div className="text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                <div className="text-xs font-mono text-slate-400 mb-1">
                   Recommended Test Suites
                 </div>
                 <div className="text-3xl font-mono font-bold tabular-nums text-slate-200">
@@ -444,7 +437,7 @@ export const ChangeImpact: React.FC = () => {
                   borderColor: colors.border.default,
                 }}
               >
-                <span className="font-mono uppercase tracking-wider font-semibold text-slate-300">
+                <span className="font-mono font-semibold text-slate-300">
                   Risk Factors & Drivers
                 </span>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -533,11 +526,11 @@ export const ChangeImpact: React.FC = () => {
                           <p className="text-xs text-slate-400">{mod.reason}</p>
                           {mod.imported_symbols.length > 0 && (
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                              <span className="text-[10px] font-mono text-slate-500">Imports:</span>
+                              <span className="text-[12px] text-slate-500">Imports:</span>
                               {mod.imported_symbols.map((sym, sIdx) => (
                                 <span
                                   key={sIdx}
-                                  className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700"
+                                  className="text-[12px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700"
                                 >
                                   {sym}
                                 </span>
@@ -598,7 +591,7 @@ export const ChangeImpact: React.FC = () => {
                           <span className="text-rose-400 font-mono text-xs font-bold">[API]</span>
                           <span className="text-xs font-mono text-slate-200">{consumer}</span>
                         </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/40 text-rose-300 border border-rose-900/50">
+                        <span className="text-[12px] px-2 py-0.5 rounded bg-rose-950/40 text-rose-300 border border-rose-900/50">
                           Route Vulnerable
                         </span>
                       </div>
