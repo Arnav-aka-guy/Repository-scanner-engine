@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import {
   Folder,
   RefreshCw,
@@ -70,6 +71,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 
 export const Overview: React.FC = () => {
   const navigate = useNavigate();
+  const { goTo } = useRepoNavigate();
 
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
   const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
@@ -117,12 +119,12 @@ export const Overview: React.FC = () => {
 
   const handleOpenFile = (path: string) => {
     setSelectedFile(path);
-    navigate('/explorer');
+    goTo('explorer');
   };
 
   const handleAskAIAboutWalkthrough = () => {
     queueChatMessage('Explain the overall purpose, architecture structure, and data flow of this codebase.');
-    navigate(activeRepositoryId ? `/app/repositories/${activeRepositoryId}/chat` : '/app');
+    goTo('chat');
   };
 
   const isScanning = scanStatus === 'scanning';
@@ -371,7 +373,7 @@ export const Overview: React.FC = () => {
         title: `${complexitySmells} high-complexity function${complexitySmells > 1 ? 's' : ''}`,
         description: 'Exceeds function length or indentation nesting depth thresholds; harder to test and maintain.',
         severity: 'warning',
-        action: () => navigate('/health-dashboard'),
+        action: () => goTo('health-dashboard'),
       });
     }
 
@@ -381,7 +383,7 @@ export const Overview: React.FC = () => {
         title: `${docSmells} undocumented symbol${docSmells > 1 ? 's' : ''}`,
         description: 'Missing docstrings in exported functions and classes.',
         severity: 'info',
-        action: () => navigate('/health-dashboard'),
+        action: () => goTo('health-dashboard'),
       });
     }
   }
@@ -393,14 +395,14 @@ export const Overview: React.FC = () => {
         title: `${highRiskDeps} high-risk dependenc${highRiskDeps > 1 ? 'ies' : 'y'}`,
         description: 'Vulnerable or unpinned packages detected in manifests.',
         severity: 'danger',
-        action: () => navigate('/health-dashboard'),
+        action: () => goTo('health-dashboard'),
       });
     } else if (depRisk.suggestions && depRisk.suggestions.length > 0) {
       attentionItems.push({
         title: `${depRisk.suggestions.length} dependency recommendation${depRisk.suggestions.length > 1 ? 's' : ''}`,
         description: depRisk.suggestions[0],
         severity: 'info',
-        action: () => navigate('/health-dashboard'),
+        action: () => goTo('health-dashboard'),
       });
     }
   }
@@ -439,10 +441,10 @@ export const Overview: React.FC = () => {
             >
               Rescan
             </Button>
-            <Button variant="secondary" icon={<FolderTree size={15} />} onClick={() => navigate('/explorer')}>
+            <Button variant="secondary" icon={<FolderTree size={15} />} onClick={() => goTo('explorer')}>
               Open Explorer
             </Button>
-            <Button variant="primary" icon={<MessageSquare size={15} />} onClick={() => navigate('/chat')}>
+            <Button variant="primary" icon={<MessageSquare size={15} />} onClick={() => goTo('chat')}>
               Ask Assistant
             </Button>
           </>
@@ -872,7 +874,7 @@ export const Overview: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/health-dashboard')}
+            onClick={() => goTo('health-dashboard')}
             icon={<ArrowRight size={13} />}
           >
             View Details
@@ -1171,7 +1173,7 @@ export const Overview: React.FC = () => {
               ].map((action, idx) => (
                 <div
                   key={idx}
-                  onClick={() => navigate(action.path)}
+                  onClick={() => goTo(action.path)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

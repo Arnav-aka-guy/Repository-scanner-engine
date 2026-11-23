@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { SearchBar } from '../components/SearchBar';
 import { semanticSearch, SearchResponse } from '../services/search';
@@ -152,6 +153,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 
 export const SemanticSearch: React.FC = () => {
   const navigate = useNavigate();
+  const { goTo } = useRepoNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
   const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
   const searchResultsFromStore = useWorkspaceStore((s) => s.searchResults);
@@ -239,17 +241,17 @@ export const SemanticSearch: React.FC = () => {
   // Action: Open in Repository Explorer
   const handleOpenFile = (path: string) => {
     setSelectedFile(path);
-    navigate('/explorer');
+    goTo('explorer');
   };
 
   // Action: Show in Dependency Graph
   const handleShowDependencies = (path: string) => {
-    navigate('/graph');
+    goTo('graph');
   };
 
   // Action: Ask AI about this result
   const handleAskAI = (entityName: string, path: string, snippet: string) => {
-    navigate('/chat');
+    goTo('chat');
     setTimeout(() => {
       const store = useWorkspaceStore.getState();
       const relative = getRelativePath(path, repoPath);

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useWorkspaceStore } from '../stores/workspaceStore';
@@ -48,6 +49,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 
 export const DocumentationGenerator: React.FC = () => {
   const navigate = useNavigate();
+  const { goTo } = useRepoNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
   const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
   const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
@@ -103,11 +105,11 @@ export const DocumentationGenerator: React.FC = () => {
 
   const handleOpenFile = (path: string) => {
     setSelectedFile(path);
-    navigate('/explorer');
+    goTo('explorer');
   };
 
   const handleOpenGraph = () => {
-    navigate('/graph');
+    goTo('graph');
   };
 
   // Extract structured API endpoints from codebase / doc content
@@ -609,7 +611,7 @@ export const DocumentationGenerator: React.FC = () => {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => navigate('/architecture')}
+                        onClick={() => goTo('architecture')}
                         icon={<ExternalLink size={11} />}
                       >
                         Open Architecture Viewer

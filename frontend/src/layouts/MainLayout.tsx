@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, Suspense } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Outlet, useLocation, Link, useNavigate } from 'react-router-dom';
 import { Menu, Search, RefreshCw, FolderOpen } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
@@ -27,12 +27,6 @@ function getPageTitle(pathname: string): string {
   return 'Workspace';
 }
 
-const pageVariants = {
-  initial: { opacity: 0, y: 4 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] as const } },
-  exit: { opacity: 0, transition: { duration: 0.12 } },
-};
-
 const PageFallback: React.FC = () => (
   <div className="flex-1 flex items-center justify-center min-h-[200px]">
     <div className="flex items-center gap-2.5 text-[13px] text-fg-3">
@@ -44,6 +38,7 @@ const PageFallback: React.FC = () => (
 
 export const MainLayout: React.FC = () => {
   const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
   const pageTitle = getPageTitle(location.pathname);
 
   const activeRepository = useWorkspaceStore((s) => s.activeRepository);
@@ -219,15 +214,15 @@ export const MainLayout: React.FC = () => {
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             <ErrorBoundary resetKey={location.pathname}>
               <Suspense fallback={<PageFallback />}>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={location.pathname}
-                    className="flex-1 flex flex-col overflow-hidden"
-                    {...pageVariants}
-                  >
-              <Outlet />
-                  </motion.div>
-                </AnimatePresence>
+                <motion.div
+                  key={location.pathname}
+                  className="flex-1 flex flex-col overflow-hidden"
+                  initial={shouldReduceMotion ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: shouldReduceMotion ? 0 : 0.15 }}
+                >
+                  <Outlet />
+                </motion.div>
               </Suspense>
             </ErrorBoundary>
           </div>

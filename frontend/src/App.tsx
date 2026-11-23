@@ -56,7 +56,7 @@ const LegacyRouteRedirect: React.FC<{ targetPage: string }> = ({ targetPage }) =
   return <Navigate to="/app" replace />;
 };
 
-function AnimatedRoutes() {
+export function AnimatedRoutes() {
   const location = useLocation();
 
   return (

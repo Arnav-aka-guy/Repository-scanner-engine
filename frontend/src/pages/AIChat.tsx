@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { ChatMessage } from '../components/ChatMessage';
 import { ChatInput } from '../components/ChatInput';
@@ -35,6 +36,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 
 export const AIChat: React.FC = () => {
   const navigate = useNavigate();
+  const { goTo } = useRepoNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
   const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
   const messages = useWorkspaceStore((s) => s.chatMessages);
@@ -84,16 +86,16 @@ export const AIChat: React.FC = () => {
 
   const handleOpenSource = (path: string) => {
     setSelectedFile(path);
-    navigate('/explorer');
+    goTo('explorer');
   };
 
   const handleRunAction = (actionText: string) => {
     if (actionText.includes('Explorer')) {
-      navigate('/explorer');
+      goTo('explorer');
     } else if (actionText.includes('Graph')) {
-      navigate('/graph');
+      goTo('graph');
     } else if (actionText.includes('security') || actionText.includes('Health')) {
-      navigate('/health-dashboard');
+      goTo('health-dashboard');
     }
   };
 

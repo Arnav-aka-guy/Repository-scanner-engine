@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { AnimatedRoutes } from '../App';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,6 +9,7 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Sidebar } from '../components/Sidebar';
 import { StatusBar } from '../components/StatusBar';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { useAuthStore } from '../stores/authStore';
 import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import * as repoService from '../services/repository';
 import { SavedRepository } from '../types/repository';
@@ -205,6 +207,61 @@ describe('Phase 1 Navigation & Shell Structure', () => {
 
     expect(getUserRepoSpy).toHaveBeenCalledTimes(1);
     expect(getUserRepoSpy).toHaveBeenCalledWith(42);
+
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  });
+
+  it('renders layout, navigates through a legacy route, and asserts page content is visible', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const mockRepo: SavedRepository = {
+      id: 42,
+      name: 'legacy-nav-repo',
+      source_path: '/repos/legacy-nav-repo',
+      source_type: 'local',
+      status: 'READY',
+      file_count: 5,
+      total_files: 5,
+      total_lines: 100,
+      language: 'TypeScript',
+      languages: { TypeScript: 5 },
+      created_at: '2026-01-01',
+    };
+
+    vi.spyOn(repoService, 'getUserRepository').mockResolvedValue(mockRepo);
+
+    useAuthStore.setState({
+      authEnabled: false,
+      token: null,
+      isCheckingAuth: false,
+    });
+
+    useWorkspaceStore.setState({
+      activeRepository: '/repos/legacy-nav-repo',
+      activeRepositoryId: 42,
+    });
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/explorer']}>
+          <AnimatedRoutes />
+        </MemoryRouter>
+      );
+    });
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // Content inside page is present in DOM and not hidden/unmounted
+    expect(container.textContent).toContain('Workspace');
+    expect(container.querySelector('aside')).not.toBeNull();
 
     act(() => {
       root.unmount();

@@ -1,6 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 
+export interface RepoNavigateOptions {
+  replace?: boolean;
+  state?: unknown;
+}
+
 export function useRepoNavigate() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,13 +23,18 @@ export function useRepoNavigate() {
     return '/app';
   };
 
-  const navigateRepo = (page: string, options?: { replace?: boolean }) => {
+  const goTo = (page: string, options?: RepoNavigateOptions) => {
     navigate(buildRepoUrl(page), options);
+  };
+
+  const navigateRepo = (page: string, options?: RepoNavigateOptions) => {
+    goTo(page, options);
   };
 
   return {
     repoId,
     buildRepoUrl,
     navigateRepo,
+    goTo,
   };
 }

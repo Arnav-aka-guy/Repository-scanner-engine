@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { FlowGraphView } from '../components/graph/FlowGraphView';
 import { getChangeImpact } from '../services/graph';
@@ -59,6 +60,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 
 export const DependencyGraph: React.FC = () => {
   const navigate = useNavigate();
+  const { goTo } = useRepoNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
   const loading = useWorkspaceStore((s) => s.graphLoading);
   const error = useWorkspaceStore((s) => s.graphError);
@@ -168,11 +170,11 @@ export const DependencyGraph: React.FC = () => {
   // Actions
   const handleOpenFile = (path: string) => {
     setSelectedFile(path);
-    navigate('/explorer');
+    goTo('explorer');
   };
 
   const handleAskAI = (nodeLabel: string, filePath: string) => {
-    navigate('/chat');
+    goTo('chat');
     setTimeout(() => {
       const store = useWorkspaceStore.getState();
       const rel = getRelativePath(filePath || nodeLabel, repoPath);

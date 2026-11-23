@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { apiGet } from '../services/api';
 import {
@@ -55,6 +56,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 
 export const HealthDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { goTo } = useRepoNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
 
@@ -168,11 +170,11 @@ export const HealthDashboard: React.FC = () => {
 
   const handleOpenFile = (path: string) => {
     setSelectedFile(path);
-    navigate('/explorer');
+    goTo('explorer');
   };
 
   const handleAskAI = (issueMessage: string, file: string) => {
-    navigate('/chat');
+    goTo('chat');
     setTimeout(() => {
       const rel = getRelativePath(file, repoPath || '');
       useWorkspaceStore.getState().sendChatMessage(`How can I resolve this code health issue in ${rel}: "${issueMessage}"?`);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { FileTree } from '../components/FileTree';
 import { CodeBlock } from '../components/CodeBlock';
@@ -95,6 +96,7 @@ function extractImportsFromCode(code: string): string[] {
 
 export const RepositoryExplorer: React.FC = () => {
   const navigate = useNavigate();
+  const { goTo } = useRepoNavigate();
 
   const activeRepository = useWorkspaceStore((s) => s.activeRepository) || '';
   const fileTree = useWorkspaceStore((s) => s.fileTree);
@@ -219,7 +221,7 @@ export const RepositoryExplorer: React.FC = () => {
 
   // Ask AI about this file / symbol
   const handleAskAI = (context: string) => {
-    navigate('/chat');
+    goTo('chat');
     // Pre-seed question in chat
     setTimeout(() => {
       const store = useWorkspaceStore.getState();
@@ -229,7 +231,7 @@ export const RepositoryExplorer: React.FC = () => {
 
   // Search references to this symbol
   const handleSearchReferences = (symbolName: string) => {
-    navigate('/search');
+    goTo('search');
     setTimeout(() => {
       useWorkspaceStore.getState().searchCode(symbolName);
     }, 100);
@@ -285,7 +287,7 @@ export const RepositoryExplorer: React.FC = () => {
           <Button
             variant="primary"
             size="md"
-            onClick={() => navigate('/')}
+            onClick={() => goTo('overview')}
             style={{ marginTop: '8px' }}
           >
             Open Overview
@@ -1007,7 +1009,7 @@ export const RepositoryExplorer: React.FC = () => {
 
                 {/* View In Graph Shortcut */}
                 <button
-                  onClick={() => navigate('/graph')}
+                  onClick={() => goTo('graph')}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

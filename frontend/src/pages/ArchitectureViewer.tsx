@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRepoNavigate } from '../hooks/useRepoNavigate';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { apiPost } from '../services/api';
 import {
@@ -59,6 +60,7 @@ function getRelativePath(fullPath: string, rootPath: string): string {
 
 export const ArchitectureViewer: React.FC = () => {
   const navigate = useNavigate();
+  const { goTo } = useRepoNavigate();
   const repoPath = useWorkspaceStore((s) => s.activeRepository) || '';
   const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
   const setSelectedFile = useWorkspaceStore((s) => s.setSelectedFile);
@@ -123,11 +125,11 @@ export const ArchitectureViewer: React.FC = () => {
 
   const handleOpenFile = (path: string) => {
     setSelectedFile(path);
-    navigate('/explorer');
+    goTo('explorer');
   };
 
   const handleAskAI = (context: string) => {
-    navigate('/chat');
+    goTo('chat');
     setTimeout(() => {
       useWorkspaceStore.getState().sendChatMessage(`Explain architecture issue: ${context}`);
     }, 100);
