@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ChevronDown,
   Check,
@@ -23,6 +23,7 @@ import {
 
 export const RepositorySwitcher: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeRepository, activeRepositoryId, scanRepo, openRepository } = useWorkspaceStore();
   const [repositories, setRepositories] = useState<SavedRepository[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,9 +61,33 @@ export const RepositorySwitcher: React.FC = () => {
     (activeRepository ? activeRepository.split(/[\\/]/).pop() : 'Select Repository');
   const count = repositories.length;
 
+  const getTargetPage = () => {
+    const parts = location.pathname.split('/').filter(Boolean);
+    const lastPart = parts[parts.length - 1];
+    const knownPages = [
+      'overview',
+      'explorer',
+      'graph',
+      'architecture',
+      'system-design',
+      'health-dashboard',
+      'impact',
+      'review',
+      'documentation',
+      'settings',
+      'search',
+      'chat',
+    ];
+    if (lastPart && knownPages.includes(lastPart)) {
+      return lastPart;
+    }
+    return 'overview';
+  };
+
   const handleSelect = (repo: SavedRepository) => {
     openRepository(repo);
-    navigate(`/app/repositories/${repo.id}/explorer`);
+    const page = getTargetPage();
+    navigate(`/app/repositories/${repo.id}/${page}`);
   };
 
   const handleCreated = (repo: SavedRepository) => {
