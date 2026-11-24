@@ -99,9 +99,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def ensure_local_user() -> None:
     """Ensure the default local workspace user (id=1, email=local@localhost) exists in DB."""
     try:
-        from sqlalchemy import select
+        from sqlalchemy import select, update
 
-        from backend.db.models import User
+        from backend.db.models import Repository, User
         from backend.security.auth import hash_password
 
         factory = _get_session_factory()
@@ -124,8 +124,71 @@ async def ensure_local_user() -> None:
                 db.add(local_user)
                 await db.commit()
                 logger.info("Created default local user: id=1, email=local@localhost")
+
+            settings = get_settings()
+            if not settings.auth_enabled:
+                # In local mode, reassign orphaned or legacy non-test repositories to the local user (user_id=1)
+                # so workspace projects aren't hidden or blocked by old user accounts.
+                stmt_adopt = (
+                    update(Repository)
+                    .where(
+                        Repository.user_id != 1,
+                        ~Repository.path.like("%pytest%"),
+                    )
+                    .values(user_id=1)
+                )
+                await db.execute(stmt_adopt)
+                await db.commit()
     except Exception as exc:
         logger.debug("Failed or skipped creating default local user: %s", exc)
+
+
+def _migrate_sqlite_schema(sync_conn) -> None:
+    """Migrate legacy SQLite schema if needed (e.g. drop outdated UNIQUE(path) on repositories)."""
+    try:
+        res = sync_conn.exec_driver_sql(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='repositories'"
+        ).fetchone()
+        if not res or not res[0]:
+            return
+        sql = res[0]
+        if "UNIQUE (path)" in sql or "UNIQUE(path)" in sql:
+            logger.info("Migrating legacy SQLite repositories table to remove stale UNIQUE(path) constraint...")
+            sync_conn.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            sync_conn.exec_driver_sql("""
+                CREATE TABLE repositories_temp_migration (
+                    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                    path VARCHAR(500) NOT NULL,
+                    name VARCHAR(200) NOT NULL,
+                    total_files INTEGER DEFAULT '0',
+                    total_lines INTEGER DEFAULT '0',
+                    languages_json TEXT DEFAULT '{}',
+                    last_scanned_at DATETIME,
+                    created_at DATETIME,
+                    user_id INTEGER,
+                    description TEXT,
+                    source_type VARCHAR(50) DEFAULT 'local' NOT NULL,
+                    source_path VARCHAR(500),
+                    status VARCHAR(50) DEFAULT 'CREATED' NOT NULL,
+                    language VARCHAR(50),
+                    file_count INTEGER DEFAULT '0' NOT NULL,
+                    updated_at DATETIME,
+                    CONSTRAINT fk_repositories_user_id_users FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
+                )
+            """)
+            sync_conn.exec_driver_sql("""
+                INSERT INTO repositories_temp_migration 
+                SELECT id, path, name, total_files, total_lines, languages_json, last_scanned_at, created_at, user_id, description, source_type, source_path, status, language, file_count, updated_at 
+                FROM repositories
+            """)
+            sync_conn.exec_driver_sql("DROP TABLE repositories")
+            sync_conn.exec_driver_sql("ALTER TABLE repositories_temp_migration RENAME TO repositories")
+            sync_conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_repositories_path ON repositories (path)")
+            sync_conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_repositories_user_id ON repositories (user_id)")
+            sync_conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+            logger.info("SQLite repositories table migration completed successfully.")
+    except Exception as exc:
+        logger.warning("SQLite schema migration skipped or failed: %s", exc)
 
 
 async def init_db() -> None:
@@ -142,6 +205,8 @@ async def init_db() -> None:
     engine = _get_engine()
     try:
         async with engine.begin() as conn:
+            if "sqlite" in settings.database_url:
+                await conn.run_sync(_migrate_sqlite_schema)
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables created/verified")
         await ensure_local_user()

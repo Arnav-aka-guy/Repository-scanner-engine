@@ -13,6 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_embeddings, get_parser
@@ -188,6 +189,22 @@ async def create_repository(
                 detail="Repository is already registered under your account.",
             )
 
+        # In local mode (auth disabled), if the repository was previously registered
+        # under another/legacy user, adopt it for the local user.
+        if not settings.auth_enabled:
+            existing_stmt = select(Repository).where(
+                (Repository.source_path == normalized_url) | (Repository.source_path == body.source_path),
+            )
+            existing_res = await db.execute(existing_stmt)
+            existing_repo = existing_res.scalar_one_or_none()
+            if existing_repo is not None:
+                existing_repo.user_id = user_id
+                existing_repo.name = repo_name
+                if body.description:
+                    existing_repo.description = body.description.strip()
+                await db.flush()
+                return _to_item(existing_repo)
+
         # Clone into isolated per-user directory
         user_cloned_dir = (Path(settings.data_dir) / "cloned_repos" / f"user_{user_id}").resolve()
         user_cloned_dir.mkdir(parents=True, exist_ok=True)
@@ -224,6 +241,24 @@ async def create_repository(
                 detail="Repository is already registered under your account.",
             )
 
+        # In local mode (auth disabled), if the repository was previously registered
+        # under another/legacy user (e.g. from an earlier auth session or migration),
+        # adopt it for the local user so it's accessible and avoids unique conflicts.
+        if not settings.auth_enabled:
+            existing_stmt = select(Repository).where(
+                (Repository.path == norm_str) | (Repository.source_path == norm_str),
+            )
+            existing_res = await db.execute(existing_stmt)
+            existing_repo = existing_res.scalar_one_or_none()
+            if existing_repo is not None:
+                existing_repo.user_id = user_id
+                existing_repo.name = repo_name
+                if body.description:
+                    existing_repo.description = body.description.strip()
+                await db.flush()
+                register_scanned_repo(validated_path)
+                return _to_item(existing_repo)
+
         stored_source_path = norm_str
         stored_path = norm_str
 
@@ -240,7 +275,15 @@ async def create_repository(
         status="CREATED",
     )
     db.add(repo)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        logger.warning("Repository insertion IntegrityError: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A repository with this path or name is already registered.",
+        ) from exc
 
     # Register in registry so security validator allows reading files
     register_scanned_repo(validated_path)
