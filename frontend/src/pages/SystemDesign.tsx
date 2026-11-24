@@ -383,8 +383,8 @@ const SystemDesignView: React.FC<ViewProps> = ({ repoId, repoPath, detail, setDe
       )}
 
       {/* body */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
+        <div className="relative flex-1 min-w-0 min-h-[60vh] lg:min-h-0">
           {diagram ? (
             <SystemDesignCanvas
               diagram={diagram}
@@ -445,12 +445,9 @@ const SystemDesignView: React.FC<ViewProps> = ({ repoId, repoPath, detail, setDe
 
         {diagram && (
           <aside
+            className="w-full lg:w-[320px] shrink-0 border-t lg:border-t-0 lg:border-l border-line overflow-y-auto"
             style={{
-              width: 320,
-              flexShrink: 0,
-              borderLeft: `1px solid ${colors.border.default}`,
               background: colors.bg.surface,
-              overflowY: 'auto',
             }}
           >
             {selectedNode ? (

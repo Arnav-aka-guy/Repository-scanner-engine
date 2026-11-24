@@ -283,48 +283,27 @@ export const DocumentationGenerator: React.FC = () => {
       </div>
 
       {/* ── 2. Main Content Layout ── */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', width: '100%', height: '100%' }}>
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden w-full h-full">
         {/* Left Navigation Sidebar */}
         <aside
+          className="w-full md:w-[240px] md:min-w-[240px] md:h-full flex flex-col shrink-0 border-b md:border-b-0 md:border-r border-line"
           style={{
-            width: '240px',
-            minWidth: '240px',
-            height: '100%',
             backgroundColor: colors.bg.surface,
-            borderRight: `1px solid ${colors.border.default}`,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            flexShrink: 0,
           }}
         >
           {/* Section Navigation Items */}
-          <div style={{ padding: '12px 8px', borderBottom: `1px solid ${colors.border.default}`, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div className="flex md:flex-col overflow-x-auto md:overflow-x-visible p-2 md:p-3 gap-1 border-b md:border-b-0 border-line">
             {sectionsList.map((sec) => {
               const isActive = activeSection === sec.key;
               return (
                 <button
                   key={sec.key}
                   onClick={() => setActiveSection(sec.key)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: radius.md,
-                    fontSize: '12px',
-                    fontFamily: font.sans,
-                    fontWeight: isActive ? 600 : 400,
-                    backgroundColor: isActive ? colors.bg.surfaceSecondary : 'transparent',
-                    color: isActive ? colors.text.primary : colors.text.secondary,
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'background-color 0.12s ease',
-                  }}
+                  className={`flex items-center gap-2 shrink-0 px-3 py-2 rounded-md text-xs font-sans whitespace-nowrap transition-colors ${
+                    isActive ? 'bg-surface-2 text-fg font-semibold' : 'text-fg-3 hover:text-fg'
+                  }`}
                 >
-                  <span style={{ color: isActive ? colors.accent.blue : colors.text.muted }}>{sec.icon}</span>
+                  <span className={isActive ? 'text-ion' : 'text-fg-4'}>{sec.icon}</span>
                   <span>{sec.label}</span>
                 </button>
               );
@@ -333,7 +312,7 @@ export const DocumentationGenerator: React.FC = () => {
 
           {/* Module List (when in Modules tab or as quick access) */}
           {docsData && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: '12px 8px' }}>
+            <div className="hidden md:flex flex-1 flex-col overflow-hidden" style={{ padding: '12px 8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px' }}>
                 <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Module References ({filteredModules.length})
@@ -788,6 +767,37 @@ export const DocumentationGenerator: React.FC = () => {
                 {/* 5. Modules Catalog Section Specialized Content */}
                 {activeSection === 'modules' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Mobile Module Selector */}
+                    <div className="md:hidden flex flex-col gap-2 p-3 rounded-lg border border-line bg-surface">
+                      <div className="flex items-center justify-between text-xs text-fg-3 font-medium">
+                        <span>Module References ({filteredModules.length})</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-ink border border-line">
+                        <Search size={12} className="text-fg-4 shrink-0" />
+                        <input
+                          type="text"
+                          value={moduleSearch}
+                          onChange={(e) => setModuleSearch(e.target.value)}
+                          placeholder="Search module..."
+                          className="w-full bg-transparent border-none text-xs text-fg outline-none"
+                        />
+                      </div>
+                      <select
+                        value={activeModulePath}
+                        onChange={(e) => setActiveModulePath(e.target.value)}
+                        className="w-full bg-surface-2 border border-line rounded px-2.5 py-1.5 text-xs text-fg font-mono outline-none"
+                      >
+                        {filteredModules.map((m) => {
+                          const rel = getRelativePath(m, repoPath);
+                          return (
+                            <option key={m} value={m}>
+                              {rel}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
                     <div
                       style={{
                         backgroundColor: colors.bg.surface,

@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Layers,
   ChevronRight,
+  ChevronLeft,
   Filter,
   Copy,
   Check,
@@ -304,16 +305,10 @@ export const RepositoryExplorer: React.FC = () => {
     >
       {showLeftPane && (
         <aside
+          className={`${selectedFilePath ? 'hidden md:flex' : 'flex'} w-full md:w-[260px] md:min-w-[260px] h-full flex-col overflow-hidden shrink-0`}
           style={{
-            width: '260px',
-            minWidth: '260px',
-            height: '100%',
             backgroundColor: colors.bg.surface,
             borderRight: `1px solid ${colors.border.default}`,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            flexShrink: 0,
           }}
         >
           {/* File Tree Header */}
@@ -514,13 +509,8 @@ export const RepositoryExplorer: React.FC = () => {
       )}
 
       <main
+        className={`${!selectedFilePath ? 'hidden md:flex' : 'flex'} flex-1 flex-col min-w-0 h-full overflow-hidden`}
         style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
-          height: '100%',
-          overflow: 'hidden',
           backgroundColor: colors.bg.primary,
         }}
       >
@@ -540,6 +530,18 @@ export const RepositoryExplorer: React.FC = () => {
         >
           {/* Left: Expand Left Pane Button + Relative File Path */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            {selectedFilePath && (
+              <button
+                type="button"
+                onClick={() => setSelectedFile(null)}
+                className="md:hidden flex items-center gap-1 px-2 py-1 rounded text-[11px] font-sans font-medium text-fg-3 hover:text-fg hover:bg-surface-2 border border-line shrink-0"
+                title="Back to file list"
+              >
+                <ChevronLeft size={13} />
+                <span>Back to files</span>
+              </button>
+            )}
+
             {!showLeftPane && (
               <button
                 onClick={() => setShowLeftPane(true)}
@@ -729,16 +731,10 @@ export const RepositoryExplorer: React.FC = () => {
 
       {showRightPane && selectedFilePath && (
         <aside
+          className="hidden lg:flex w-[310px] min-w-[310px] h-full flex-col overflow-hidden shrink-0"
           style={{
-            width: '310px',
-            minWidth: '310px',
-            height: '100%',
             backgroundColor: colors.bg.surface,
             borderLeft: `1px solid ${colors.border.default}`,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            flexShrink: 0,
           }}
         >
           {/* Header Tabs: Symbols vs Relationships */}
