@@ -217,6 +217,17 @@ class RepositoryScanner:
                 if self._is_ignored(rel, patterns):
                     continue
 
+                # A symlinked file can point anywhere on the machine (for example a cloned
+                # repo containing `notes.py -> /srv/app/.env`). Never read outside the repo.
+                if os.path.islink(full):
+                    try:
+                        target = Path(full).resolve(strict=True)
+                    except (OSError, RuntimeError):
+                        continue
+                    if target != repo and repo not in target.parents:
+                        logger.warning("Skipping symlink that points outside the repository: %s", rel)
+                        continue
+
                 lang = self.detect_language(full)
                 if lang == "Unknown":
                     continue

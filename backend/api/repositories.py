@@ -352,6 +352,11 @@ async def delete_repository(
 
     repo_path = repo_disk_path(repo)
 
+    # Stop a running scan first so it does not write into data we are about to delete
+    from backend.services.scan_worker import get_scan_job_manager
+
+    await get_scan_job_manager().cancel_jobs_for_path(repo_path)
+
     # Invalidate parser, embeddings, and analysis cache
     from backend.storage.persistence import invalidate_analysis_cache
 
@@ -418,25 +423,19 @@ async def scan_user_repository(
 
     repo_path = repo_disk_path(repo)
     path = validate_repository_path(repo_path)
-    register_scanned_repo(path)
 
-    repo.status = "SCANNING"
-    await db.commit()
+    from backend.api.repository import start_scan_job
 
-    from backend.api.repository import queue_scan_job
-
-    job_id = queue_scan_job(
-        path=str(path),
-        background_tasks=background_tasks,
-        parser=parser,
-        embeddings=embeddings,
-        user_id=user_id,
-        repo_id=repository_id,
+    github_url = repo.source_path if (repo.source_type or "").lower() == "github" else None
+    job = await start_scan_job(
+        str(path), parser, embeddings, user_id=user_id, repo_id=repository_id, github_url=github_url
     )
+    # ScanJobManager already marked the repository as SCANNING (and will move it
+    # to READY/FAILED/CANCELLED); writing the status here could overwrite a fast result.
 
     return ScanJobTriggerResponse(
-        job_id=job_id,
-        status="pending",
-        message="Scan job queued.",
+        job_id=job["job_id"],
+        status=job.get("status", "pending"),
+        message=job.get("message", "Scan queued."),
         repository_id=repository_id,
     )

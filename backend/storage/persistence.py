@@ -122,10 +122,10 @@ def load_scan_jobs(recover_interrupted: bool = True) -> dict[str, dict[str, Any]
                     if not isinstance(job, dict):
                         continue
                     # Recover abandoned or interrupted jobs
-                    if recover_interrupted and job.get("status") in ("pending", "running"):
+                    if recover_interrupted and job.get("status") in ("pending", "running", "scanning", "indexing"):
                         job["status"] = "failed"
-                        job["error"] = "Scan job interrupted by server restart."
-                        job["message"] = "Scan job interrupted."
+                        job["error"] = "Scan was interrupted because the server restarted."
+                        job["message"] = "Scan interrupted by a server restart. Please scan again."
                         changed = True
 
                 if changed:

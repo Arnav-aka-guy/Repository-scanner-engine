@@ -131,37 +131,24 @@ class TestRepositoryEndpoints:
         assert data["path"] == str(tmp_path)
 
     def test_scan_jobs_capped_and_expired_cleaned_up(self):
-        """Async scan jobs are capped at 100 and expired jobs older than 1hr are purged."""
+        """Finished scan jobs older than 1 hour are purged and the store is capped at 100."""
         import time
 
-        from backend.api.repository import _cleanup_scan_jobs, _scan_jobs
+        from backend.services.scan_worker import ScanJobManager
 
-        _scan_jobs.clear()
+        manager = ScanJobManager()
+        manager._jobs.clear()
         now = time.time()
+        manager._jobs["old_done"] = {"status": "completed", "created_at": now - 3700}
+        manager._jobs["recent_done"] = {"status": "completed", "created_at": now - 10}
+        manager._cleanup_old_jobs()
+        assert "old_done" not in manager._jobs
+        assert "recent_done" in manager._jobs
 
-        # Add an expired finished job (> 1 hour old)
-        _scan_jobs["old_done"] = {
-            "status": "completed",
-            "created_at": now - 3700,
-        }
-        # Add a recent finished job
-        _scan_jobs["recent_done"] = {
-            "status": "completed",
-            "created_at": now - 10,
-        }
-        _cleanup_scan_jobs()
-
-        assert "old_done" not in _scan_jobs
-        assert "recent_done" in _scan_jobs
-
-        # Test capping at 100
         for i in range(120):
-            _scan_jobs[f"job_{i}"] = {
-                "status": "pending",
-                "created_at": now + i,
-            }
-        _cleanup_scan_jobs()
-        assert len(_scan_jobs) <= 100
+            manager._jobs[f"job_{i}"] = {"status": "completed", "created_at": now + i}
+        manager._cleanup_old_jobs()
+        assert len(manager._jobs) <= 100
 
     def test_async_scan_job_clear_failure_message(self, client: TestClient):
         """Async scan job returns clear error message when path is invalid."""

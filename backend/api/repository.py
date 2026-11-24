@@ -5,8 +5,6 @@ import json
 import logging
 import subprocess
 import sys
-import time
-import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
@@ -22,39 +20,14 @@ from backend.parser.scanner import ScanLimitError
 from backend.parser.service import ParserService
 from backend.security.auth import get_current_user
 from backend.security.input_sanitizer import SanitizedRepoPath
-from backend.security.path_validator import validate_file_path, validate_repository_path
+from backend.security.path_validator import validate_file_path
 from backend.security.rate_limiter import FILE_RATE, SCAN_RATE, limiter
 from backend.security.repo_registry import is_repo_scanned, register_scanned_repo
-from backend.storage.persistence import load_scan_jobs, save_scan_job
+from backend.services.scan_worker import FINISHED_STATUSES, get_scan_job_manager
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/repository", tags=["repository"])
-
-# Persistent file-backed store for async scan jobs with in-memory cache.
-_MAX_SCAN_JOBS: int = 100
-_JOB_TTL_SECONDS: float = 3600.0  # 1 hour
-_scan_jobs: dict[str, dict] = load_scan_jobs()
-
-
-def _cleanup_scan_jobs() -> None:
-    """Drop finished jobs older than 1 hour and cap total stored jobs at 100."""
-    now = time.time()
-    # Drop finished jobs older than 1 hour
-    expired = [
-        jid
-        for jid, job in _scan_jobs.items()
-        if job.get("status") in ("completed", "failed") and now - job.get("created_at", now) > _JOB_TTL_SECONDS
-    ]
-    for jid in expired:
-        _scan_jobs.pop(jid, None)
-
-    # Cap total jobs to 100 by dropping oldest finished or completed jobs
-    if len(_scan_jobs) > _MAX_SCAN_JOBS:
-        sorted_jobs = sorted(_scan_jobs.items(), key=lambda kv: kv[1].get("created_at", 0))
-        excess = len(_scan_jobs) - _MAX_SCAN_JOBS
-        for jid, _ in sorted_jobs[:excess]:
-            _scan_jobs.pop(jid, None)
 
 
 class ScanRequest(BaseModel):
@@ -74,11 +47,31 @@ class ScanJobResponse(BaseModel):
     """Status of an asynchronous scan job."""
 
     job_id: str
-    status: str  # "pending", "scanning", "completed", "failed"
+    status: str  # "pending", "scanning", "indexing", "completed", "failed", "cancelled"
     progress: float = 0.0
     message: str = ""
     result: RepositoryInfo | None = None
     error: str | None = None
+    warning: str | None = None
+
+
+def _job_response(job: dict) -> "ScanJobResponse":
+    return ScanJobResponse(
+        job_id=job["job_id"],
+        status=job.get("status", "pending"),
+        progress=float(job.get("progress", 0.0)),
+        message=job.get("message", ""),
+        result=job.get("result"),
+        error=job.get("error"),
+        warning=job.get("warning"),
+    )
+
+
+def _check_job_owner(job: dict, current_user: dict) -> None:
+    if current_user.get("auth") and current_user.get("user_id"):
+        owner = job.get("user_id")
+        if owner is not None and owner != int(current_user["user_id"]):
+            raise HTTPException(status_code=404, detail="Scan job not found.")
 
 
 class FileDetail(BaseModel):
@@ -111,14 +104,19 @@ async def scan_repository(
     background_tasks: BackgroundTasks,
     parser: ParserService = Depends(get_parser),
     embeddings: EmbeddingsService = Depends(get_embeddings),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> RepositoryInfo:
-    """Scan a repository: discover files, parse them and index embeddings.
+    """Scan a repository synchronously and return its metadata (used by scripts and tests).
 
-    Returns aggregate repository metadata once complete.
+    The app itself uses the background job endpoints. Ownership is enforced the same way.
     """
-    # Sanitize then validate the path
+    from backend.security.repo_auth import authorize_repository_access
+
     sanitized = SanitizedRepoPath(path=body.path)
-    path = validate_repository_path(sanitized.path)
+    _, path = await authorize_repository_access(db, current_user, sanitized.path, allow_unscanned=True)
+    if get_scan_job_manager().get_active_job_for_path(str(path)) is not None:
+        raise HTTPException(status_code=409, detail="A scan is already running for this repository.")
 
     if body.force:
         from backend.storage.persistence import invalidate_analysis_cache
@@ -162,52 +160,23 @@ async def scan_repository(
     return repo_info
 
 
-@router.post("/scan-github", response_model=RepositoryInfo)
-@limiter.limit(SCAN_RATE)
-async def scan_github_repository(
-    request: Request,
-    body: GitHubScanRequest,
-    background_tasks: BackgroundTasks,
-    parser: ParserService = Depends(get_parser),
-    embeddings: EmbeddingsService = Depends(get_embeddings),
-) -> RepositoryInfo:
-    """Clone a public GitHub repository and scan it."""
-    from backend.services.github_scanner import clone_github_repo
+def folder_picker_available() -> bool:
+    """The native folder dialog opens on the machine running the server, so only allow it
+    for the single-user local app, never for a hosted or multi-user server."""
+    from backend.core.config import get_settings
 
-    target_dir = await asyncio.to_thread(clone_github_repo, body.url)
-
-    try:
-        repo_info: RepositoryInfo = await parser.scan_repository(str(target_dir))
-        register_scanned_repo(target_dir)
-    except ScanLimitError as exc:
-        logger.warning("Cloned repository %s exceeded limits: %s", target_dir.name, exc)
-        raise HTTPException(
-            status_code=400,
-            detail=f"Repository limit exceeded: {exc.code}",
-        ) from exc
-    except Exception as exc:
-        logger.error("Scan failed for cloned repo %s: %s", target_dir.name, exc, exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Repository scan failed.",
-        ) from exc
-
-    try:
-        parsed_files: dict[str, ParsedFile] = await parser.parse_repository(str(target_dir))
-        background_tasks.add_task(_index_embeddings, embeddings, parsed_files, repo_path=str(target_dir))
-    except Exception as exc:
-        logger.error("Indexing failed for cloned repo %s: %s", target_dir.name, exc, exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Repository indexing failed.",
-        ) from exc
-
-    return repo_info
+    settings = get_settings()
+    return settings.app_mode.lower() == "local" and not settings.auth_enabled
 
 
 @router.post("/browse-folder")
 async def browse_folder() -> dict[str, str]:
     """Open a native OS directory selection dialog and return the selected path."""
+    if not folder_picker_available():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The folder picker is only available in the local single-user app. Paste the folder path instead.",
+        )
 
     def _open_dialog() -> str:
         try:
@@ -222,167 +191,25 @@ async def browse_folder() -> dict[str, str]:
     return {"path": folder}
 
 
-async def _update_repo_status_in_db(
-    repo_id: int | None,
-    path_str: str,
-    status: str,
-    repo_info: RepositoryInfo | None = None,
-) -> None:
-    """Helper to update a Repository row status, stats, and last_scanned_at with real DB commit."""
-    try:
-        from sqlalchemy import select
-
-        from backend.db.database import get_async_session
-        from backend.db.models import Repository
-        from backend.db.repositories import update_repository_stats
-
-        factory = get_async_session()
-        async with factory() as db:
-            target_repo: Repository | None = None
-            if repo_id:
-                target_repo = await db.get(Repository, repo_id)
-            if target_repo is None:
-                norm = path_str.replace("\\", "/").rstrip("/")
-                stmt = select(Repository).where(
-                    (Repository.path == norm) | (Repository.source_path == norm) | (Repository.path == path_str)
-                )
-                res = await db.execute(stmt)
-                target_repo = res.scalars().first()
-
-            if target_repo:
-                target_repo.status = status
-                if status == "READY" and repo_info is not None:
-                    await update_repository_stats(
-                        db,
-                        target_repo,
-                        total_files=repo_info.total_files,
-                        total_lines=repo_info.total_lines,
-                        languages=repo_info.languages,
-                    )
-                await db.commit()
-    except Exception as exc:
-        logger.debug("Database update for scan job skipped/failed: %s", exc)
-
-
-async def _run_scan_job(
-    job_id: str,
-    path_str: str,
-    parser: ParserService,
-    embeddings: EmbeddingsService,
-    repo_id: int | None = None,
-) -> None:
-    """Background worker for asynchronous repository scan jobs."""
-    try:
-        _scan_jobs[job_id]["status"] = "scanning"
-        _scan_jobs[job_id]["message"] = "Discovering and analyzing repository files..."
-        _scan_jobs[job_id]["progress"] = 0.3
-        save_scan_job(job_id, _scan_jobs[job_id])
-
-        await _update_repo_status_in_db(repo_id, path_str, status="SCANNING")
-
-        repo_info = await parser.scan_repository(path_str)
-        register_scanned_repo(path_str)
-        _scan_jobs[job_id]["progress"] = 0.6
-        _scan_jobs[job_id]["message"] = f"Parsing {repo_info.total_files} files..."
-        save_scan_job(job_id, _scan_jobs[job_id])
-
-        parsed_files = await parser.parse_repository(path_str)
-        _scan_jobs[job_id]["progress"] = 0.8
-        _scan_jobs[job_id]["message"] = "Building semantic search embeddings..."
-        save_scan_job(job_id, _scan_jobs[job_id])
-
-        await _index_embeddings(embeddings, parsed_files, repo_path=path_str)
-
-        _scan_jobs[job_id]["status"] = "completed"
-        _scan_jobs[job_id]["progress"] = 1.0
-        _scan_jobs[job_id]["message"] = "Scan completed successfully."
-        _scan_jobs[job_id]["result"] = repo_info
-        save_scan_job(job_id, _scan_jobs[job_id])
-
-        await _update_repo_status_in_db(repo_id, path_str, status="READY", repo_info=repo_info)
-
-    except ScanLimitError as exc:
-        _scan_jobs[job_id]["status"] = "failed"
-        _scan_jobs[job_id]["error"] = f"Repository limit exceeded: {exc.code}"
-        if exc.code in ("max_files", "repository_too_large"):
-            if exc.limit is not None:
-                _scan_jobs[job_id]["message"] = f"Scan stopped: file count exceeded maximum limit ({exc.limit} files)."
-            else:
-                _scan_jobs[job_id]["message"] = "Scan stopped: file count exceeded maximum limit."
-        elif exc.code == "max_depth":
-            if exc.limit is not None:
-                _scan_jobs[job_id]["message"] = (
-                    f"Scan stopped: directory depth exceeded maximum limit ({exc.limit} levels)."
-                )
-            else:
-                _scan_jobs[job_id]["message"] = "Scan stopped: directory depth exceeded maximum limit."
-        elif exc.code == "max_size":
-            _scan_jobs[job_id]["message"] = "Scan stopped: individual file size limit exceeded."
-        else:
-            _scan_jobs[job_id]["message"] = f"Scan stopped: repository limits exceeded ({exc.code})."
-        save_scan_job(job_id, _scan_jobs[job_id])
-        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
-    except HTTPException as exc:
-        logger.warning("Async scan job %s HTTP error: %s", job_id, exc.detail)
-        _scan_jobs[job_id]["status"] = "failed"
-        _scan_jobs[job_id]["error"] = str(exc.detail)
-        _scan_jobs[job_id]["message"] = f"Scan failed: {exc.detail}"
-        save_scan_job(job_id, _scan_jobs[job_id])
-        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
-    except Exception as exc:
-        logger.error("Async scan job %s failed: %s", job_id, exc, exc_info=True)
-        _scan_jobs[job_id]["status"] = "failed"
-        err_msg = str(exc)
-        if "not allowed" in err_msg.lower() or "forbidden" in err_msg.lower():
-            user_msg = "Scan failed: repository path is not permitted by security policy."
-        elif "clone" in err_msg.lower():
-            user_msg = "Scan failed: git clone failed. Please verify repository URL and access rights."
-        elif "too many" in err_msg.lower() or "limit" in err_msg.lower():
-            user_msg = "Scan failed: repository exceeds resource limits."
-        else:
-            user_msg = f"Repository scan failed: {err_msg}" if err_msg else "Repository scan failed."
-        _scan_jobs[job_id]["error"] = err_msg or "Repository scan failed."
-        _scan_jobs[job_id]["message"] = user_msg
-        save_scan_job(job_id, _scan_jobs[job_id])
-        await _update_repo_status_in_db(repo_id, path_str, status="FAILED")
-
-
-def queue_scan_job(
+async def start_scan_job(
     path: str,
-    background_tasks: BackgroundTasks,
     parser: ParserService,
     embeddings: EmbeddingsService,
     user_id: int | None = None,
     repo_id: int | None = None,
-) -> str:
-    """Unified entry point to register, initialize, and queue a background repository scan job."""
-    _cleanup_scan_jobs()
+    github_url: str | None = None,
+) -> dict:
+    """Queue a full rescan through the shared ScanJobManager and return the job."""
     register_scanned_repo(path)
-    job_id = str(uuid.uuid4())
-
-    _scan_jobs[job_id] = {
-        "job_id": job_id,
-        "repo_path": str(path),
-        "status": "pending",
-        "progress": 0.0,
-        "message": "Scan job queued.",
-        "result": None,
-        "error": None,
-        "created_at": time.time(),
-        "user_id": user_id,
-        "repo_id": repo_id,
-    }
-    save_scan_job(job_id, _scan_jobs[job_id])
-
-    # Invalidate cache for fresh scan
-    from backend.storage.persistence import invalidate_analysis_cache
-
-    parser.invalidate_cache(str(path), clear_manifest=True)
-    embeddings.invalidate_repo(str(path), clear_cache=True)
-    invalidate_analysis_cache(str(path))
-
-    background_tasks.add_task(_run_scan_job, job_id, str(path), parser, embeddings, repo_id)
-    return job_id
+    return await get_scan_job_manager().create_scan_job(
+        repo_path=str(path),
+        parser=parser,
+        embeddings=embeddings,
+        user_id=user_id,
+        force_reindex=True,
+        repo_id=repo_id,
+        github_url=github_url,
+    )
 
 
 @router.post("/scan/async", response_model=ScanJobResponse)
@@ -407,16 +234,9 @@ async def scan_repository_async(
     user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
     repo_id = repo.id if repo else None
 
-    job_id = queue_scan_job(
-        path=str(path),
-        background_tasks=background_tasks,
-        parser=parser,
-        embeddings=embeddings,
-        user_id=user_id,
-        repo_id=repo_id,
-    )
-
-    return ScanJobResponse(**_scan_jobs[job_id])
+    github_url = repo.source_path if repo is not None and (repo.source_type or "").lower() == "github" else None
+    job = await start_scan_job(str(path), parser, embeddings, user_id=user_id, repo_id=repo_id, github_url=github_url)
+    return _job_response(job)
 
 
 @router.get("/scan/jobs", response_model=list[ScanJobResponse])
@@ -424,22 +244,9 @@ async def list_scan_jobs(
     repo_path: str | None = None,
     current_user: dict = Depends(get_current_user),
 ) -> list[ScanJobResponse]:
-    """List persistent scan jobs, sorted newest first, optionally filtered by repository."""
-    _cleanup_scan_jobs()
-    # Re-sync in-memory cache from persistent disk store
-    disk_jobs = load_scan_jobs()
-    _scan_jobs.update(disk_jobs)
-
-    jobs = list(_scan_jobs.values())
-    if current_user.get("auth") and current_user.get("user_id"):
-        user_id = int(current_user["user_id"])
-        jobs = [j for j in jobs if j.get("user_id") is None or j.get("user_id") == user_id]
-
-    if repo_path:
-        norm = repo_path.replace("\\", "/").rstrip("/")
-        jobs = [j for j in jobs if (j.get("repo_path") or "").replace("\\", "/").rstrip("/") == norm]
-    jobs.sort(key=lambda j: j.get("created_at", 0), reverse=True)
-    return [ScanJobResponse(**j) for j in jobs]
+    """List scan jobs, newest first, optionally filtered by repository."""
+    user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
+    return [_job_response(j) for j in get_scan_job_manager().list_jobs(repo_path=repo_path, user_id=user_id)]
 
 
 @router.get("/scan/jobs/{job_id}", response_model=ScanJobResponse)
@@ -447,22 +254,12 @@ async def get_scan_job_status(
     job_id: str,
     current_user: dict = Depends(get_current_user),
 ) -> ScanJobResponse:
-    """Poll progress and result of an asynchronous repository scan job."""
-    if job_id not in _scan_jobs:
-        # Check disk directly in case another worker updated it
-        disk_jobs = load_scan_jobs()
-        if job_id in disk_jobs:
-            _scan_jobs[job_id] = disk_jobs[job_id]
-        else:
-            raise HTTPException(status_code=404, detail="Scan job not found.")
-
-    job = _scan_jobs[job_id]
-    if current_user.get("auth") and current_user.get("user_id"):
-        user_id = int(current_user["user_id"])
-        if job.get("user_id") is not None and job.get("user_id") != user_id:
-            raise HTTPException(status_code=404, detail="Scan job not found.")
-
-    return ScanJobResponse(**job)
+    """Poll progress and result of a scan job."""
+    job = get_scan_job_manager().get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Scan job not found.")
+    _check_job_owner(job, current_user)
+    return _job_response(job)
 
 
 @router.post("/scan/jobs/{job_id}/cancel", response_model=ScanJobResponse)
@@ -470,91 +267,51 @@ async def cancel_scan_job(
     job_id: str,
     current_user: dict = Depends(get_current_user),
 ) -> ScanJobResponse:
-    """Cancel a running scan job."""
-    from backend.services.scan_worker import get_scan_job_manager
-
-    manager = get_scan_job_manager()
+    """Cancel a running scan job. The running task is stopped, not just relabelled."""
     user_id = int(current_user["user_id"]) if current_user.get("auth") and current_user.get("user_id") else None
     try:
-        updated = await manager.cancel_job(job_id, user_id=user_id)
-        _scan_jobs[job_id] = updated
-        return ScanJobResponse(**updated)
+        return _job_response(await get_scan_job_manager().cancel_job(job_id, user_id=user_id))
     except KeyError:
         raise HTTPException(status_code=404, detail="Scan job not found.") from None
     except PermissionError:
-        raise HTTPException(status_code=403, detail="Permission denied to cancel this job.") from None
+        raise HTTPException(status_code=404, detail="Scan job not found.") from None
 
 
 @router.get("/scan/jobs/{job_id}/events")
 async def stream_scan_job_events(
+    request: Request,
     job_id: str,
     current_user: dict = Depends(get_current_user),
 ) -> StreamingResponse:
-    """Stream real-time Server-Sent Events (SSE) for scan job progress and status."""
-    user_dict = current_user if isinstance(current_user, dict) else {}
-    if job_id in _scan_jobs:
-        job_user_id = _scan_jobs[job_id].get("user_id")
-        if (
-            user_dict.get("auth")
-            and user_dict.get("user_id")
-            and job_user_id is not None
-            and job_user_id != int(user_dict["user_id"])
-        ):
-            raise HTTPException(status_code=404, detail="Scan job not found.")
+    """Stream scan progress as Server-Sent Events until the job finishes."""
+    manager = get_scan_job_manager()
+    first = manager.get_job(job_id)
+    if first is not None:
+        _check_job_owner(first, current_user)
 
     async def event_generator():
-        last_progress = -1.0
-        last_status = ""
-        last_message = ""
+        last: tuple = ()
         while True:
-            job = _scan_jobs.get(job_id)
-            if not job:
-                disk_jobs = load_scan_jobs()
-                if job_id in disk_jobs:
-                    job = disk_jobs[job_id]
-                    _scan_jobs[job_id] = job
-
-            if not job:
-                payload = json.dumps({"error": "Job not found", "job_id": job_id})
-                yield f"event: error\ndata: {payload}\n\n"
+            if await request.is_disconnected():
                 break
-
-            current_progress = float(job.get("progress", 0.0))
-            current_status = str(job.get("status", "pending"))
-            current_message = str(job.get("message", ""))
-
-            # Emit event when progress, status, or message changes
-            if current_progress != last_progress or current_status != last_status or current_message != last_message:
-                last_progress = current_progress
-                last_status = current_status
-                last_message = current_message
-
-                # Serialize safely with JSON-compatible primitives (e.g. ISO datetimes)
-                job_resp = ScanJobResponse(
-                    job_id=job["job_id"],
-                    status=job["status"],
-                    progress=current_progress,
-                    message=current_message,
-                    result=job.get("result"),
-                    error=job.get("error"),
-                )
-                payload = json.dumps(job_resp.model_dump(mode="json"))
+            job = manager.get_job(job_id)
+            if not job:
+                yield f"event: error\ndata: {json.dumps({'error': 'Job not found', 'job_id': job_id})}\n\n"
+                break
+            snapshot = (job.get("status"), job.get("progress"), job.get("message"))
+            if snapshot != last:
+                last = snapshot
+                payload = json.dumps(_job_response(job).model_dump(mode="json"))
                 yield f"event: progress\ndata: {payload}\n\n"
-
-            if current_status in ("completed", "failed"):
-                yield f"event: done\ndata: {json.dumps({'status': current_status})}\n\n"
+            if job.get("status") in FINISHED_STATUSES:
+                yield f"event: done\ndata: {json.dumps({'status': job.get('status')})}\n\n"
                 break
-
             await asyncio.sleep(0.4)
 
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
 
 

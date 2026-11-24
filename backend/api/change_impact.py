@@ -73,7 +73,7 @@ def validate_target_files_exist(repo_path_str: str, target_files: list[str], par
 
         norm_target = target_str.replace("\\", "/").rstrip("/").lower()
         matched = False
-        for k in parsed_files.keys():
+        for k in parsed_files:
             norm_k = k.replace("\\", "/").rstrip("/").lower()
             if norm_k == norm_target or norm_k.endswith("/" + norm_target):
                 matched = True

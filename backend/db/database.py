@@ -177,8 +177,8 @@ def _migrate_sqlite_schema(sync_conn) -> None:
                 )
             """)
             sync_conn.exec_driver_sql("""
-                INSERT INTO repositories_temp_migration 
-                SELECT id, path, name, total_files, total_lines, languages_json, last_scanned_at, created_at, user_id, description, source_type, source_path, status, language, file_count, updated_at 
+                INSERT INTO repositories_temp_migration
+                SELECT id, path, name, total_files, total_lines, languages_json, last_scanned_at, created_at, user_id, description, source_type, source_path, status, language, file_count, updated_at
                 FROM repositories
             """)
             sync_conn.exec_driver_sql("DROP TABLE repositories")

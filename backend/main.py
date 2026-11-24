@@ -58,7 +58,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             raise RuntimeError(f"Database initialization failed: {exc}") from exc
         logger.warning("Database init skipped (filesystem-only mode): %s", exc)
 
-    # 4. Pre-warm the dependency container so services are available
+    # 4. Repositories left in SCANNING by a crash or restart can never finish now;
+    #    mark them FAILED so users can rescan instead of seeing "Scanning…" forever.
+    from backend.services.scan_worker import get_scan_job_manager, reset_interrupted_repositories
+
+    await reset_interrupted_repositories()
+    get_scan_job_manager()  # loads saved jobs and marks interrupted ones as failed
+
+    # 5. Pre-warm the dependency container so services are available
     container = get_container()
     _ = container.parser_service
     _ = container.graph_service
@@ -238,6 +245,10 @@ app.include_router(compare_router, dependencies=_auth_deps)
 from backend.api.system_design import router as system_design_router  # noqa: E402
 
 app.include_router(system_design_router, dependencies=_auth_deps)
+
+from backend.api.report import router as report_router  # noqa: E402
+
+app.include_router(report_router, dependencies=_auth_deps)
 
 
 # Static SPA fallback

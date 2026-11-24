@@ -65,13 +65,18 @@ class TestGitHubUrlValidation:
 
 
 class TestGitHubScanEndpoint:
-    """Test GitHub scan endpoint validation."""
+    """GitHub repositories are added through the saved-repository API."""
 
     def test_invalid_url_rejected_by_api(self):
         with TestClient(app) as client:
             resp = client.post(
-                "/api/repository/scan-github",
-                json={"url": "not-a-url"},
+                "/api/repositories",
+                json={"name": "bad", "source_path": "not-a-url", "source_type": "github"},
             )
             assert resp.status_code == 400
             assert "Invalid GitHub URL" in resp.json()["detail"]
+
+    def test_old_scan_github_endpoint_removed(self):
+        with TestClient(app) as client:
+            resp = client.post("/api/repository/scan-github", json={"url": "https://github.com/a/b"})
+            assert resp.status_code in (404, 405)

@@ -210,8 +210,8 @@ class TestScanLimits:
     async def test_async_scan_job_reports_file_limit(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         from unittest.mock import AsyncMock, MagicMock
 
-        from backend.api.repository import _run_scan_job, _scan_jobs
         from backend.core.config import get_settings
+        from backend.services.scan_worker import ScanJobManager
 
         # Create 3 python files
         for i in range(3):
@@ -226,11 +226,10 @@ class TestScanLimits:
         mock_embeddings = MagicMock()
         mock_embeddings.embed_code = AsyncMock()
 
-        job_id = "test_limit_job"
-        _scan_jobs[job_id] = {"status": "pending", "message": "Queued"}
+        manager = ScanJobManager()
+        job = await manager.create_scan_job(str(tmp_path), parser, mock_embeddings)
+        await manager._running_tasks[job["job_id"]]
 
-        await _run_scan_job(job_id, str(tmp_path), parser, mock_embeddings)
-
-        job = _scan_jobs[job_id]
+        job = manager.get_job(job["job_id"])
         assert job["status"] == "failed"
-        assert "file count exceeded maximum limit (2 files)" in job["message"]
+        assert "more than 2 files" in job["message"]
