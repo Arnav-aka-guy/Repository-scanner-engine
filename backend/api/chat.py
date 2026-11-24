@@ -96,6 +96,10 @@ async def chat(
     Retrieves relevant context via the retrieval service, then streams the
     LLM response back as Server-Sent Events (``text/event-stream``).
     """
+    from backend.security.ai_quota import consume_ai_request
+
+    consume_ai_request(current_user)
+
     # Sanitize inputs before processing
     ident = body.repository_id if body.repository_id is not None else body.repo_path
     if not ident:

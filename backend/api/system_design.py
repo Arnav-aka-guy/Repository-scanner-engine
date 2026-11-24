@@ -54,10 +54,18 @@ async def generate_system_design(
 ) -> dict[str, Any]:
     """Generate a layered system design diagram for the repository."""
     path = await _authorize(db, current_user, body.repository_id, body.repo_path)
+    use_ai = body.use_ai
+    service = get_system_design_service()
+    if use_ai and (body.refresh or service.get_cached(path, body.detail) is None):
+        from backend.security.ai_quota import consume_ai_request
+
+        try:
+            consume_ai_request(current_user)
+        except HTTPException:
+            # Out of AI requests for today: still draw the diagram from code analysis.
+            use_ai = False
     try:
-        return await get_system_design_service().generate(
-            path, detail=body.detail, use_ai=body.use_ai, refresh=body.refresh
-        )
+        return await service.generate(path, detail=body.detail, use_ai=use_ai, refresh=body.refresh)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Repository folder was not found on disk.") from exc
     except Exception as exc:

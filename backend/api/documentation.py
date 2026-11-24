@@ -1,22 +1,18 @@
 """Documentation generation and export endpoints."""
 
-from __future__ import annotations
-
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.dependencies import get_docs, get_owned_repository
 from backend.core.config import get_settings
 from backend.db.database import get_db
+from backend.documentation.service import DocumentationService
 from backend.security.auth import get_current_user
-
-if TYPE_CHECKING:
-    from backend.documentation.service import DocumentationService
+from backend.security.rate_limiter import AI_RATE, limiter
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +44,9 @@ class GenerateResponse(BaseModel):
 
 
 @router.post("/generate", response_model=GenerateResponse)
+@limiter.limit(AI_RATE)
 async def generate_docs(
+    request: Request,
     body: GenerateRequest,
     docs_svc: DocumentationService = Depends(get_docs),
     current_user: dict = Depends(get_current_user),
@@ -72,6 +70,10 @@ async def generate_docs(
 
     _, path = await authorize_repository_access(db, current_user, ident)
     settings = get_settings()
+
+    from backend.security.ai_quota import consume_ai_request
+
+    consume_ai_request(current_user)
 
     try:
         docs: dict = await docs_svc.generate_full_docs(str(path))

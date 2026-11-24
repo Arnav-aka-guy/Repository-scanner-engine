@@ -81,4 +81,7 @@ FILE_RATE: str = "60/minute"
 """File reading / listing endpoints."""
 
 DEFAULT_RATE: str = "100/minute"
+
+# AI-backed generation that is not covered by CHAT_RATE (docs, AI code review)
+AI_RATE: str = "10/minute"
 """Fallback rate for miscellaneous endpoints."""

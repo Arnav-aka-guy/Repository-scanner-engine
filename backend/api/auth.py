@@ -1,5 +1,6 @@
 """Authentication endpoints for multi-user registration, login, profile, and status."""
 
+import asyncio
 import hashlib
 import logging
 import secrets
@@ -97,9 +98,12 @@ class AdminLoginRequest(BaseModel):
 
 
 class AuthStatusResponse(BaseModel):
-    """Current authentication enforcement status."""
+    """Authentication mode and server capabilities the UI adapts to."""
 
     auth_enabled: bool
+    password_reset_email: bool = False
+    folder_picker: bool = False
+    ai_daily_limit: int = 0
 
 
 class MessageResponse(BaseModel):
@@ -558,10 +562,24 @@ async def forgot_password(
             expires_delta=timedelta(minutes=30),
         )
         settings = get_settings()
-        if getattr(settings, "local_mode", False) or settings.log_level.upper() == "DEBUG":
-            logger.debug("Password reset link generated for %s: /reset-password?token=%s", clean_email, reset_token)
+        from backend.services.mailer import email_enabled, send_password_reset
+
+        link = f"{settings.public_app_url.rstrip('/')}/reset-password?token={reset_token}"
+        if email_enabled():
+            try:
+                await asyncio.to_thread(send_password_reset, user.email, link)
+                logger.info("Password reset email sent to %s", clean_email)
+            except Exception as exc:
+                # Same response either way so the endpoint cannot be used to probe for accounts.
+                logger.error("Could not send password reset email to %s: %s", clean_email, exc)
+        elif getattr(settings, "local_mode", False) or settings.log_level.upper() == "DEBUG":
+            logger.debug("Password reset link for %s: %s", clean_email, link)
         else:
-            logger.info("Password reset requested for %s", clean_email)
+            logger.warning(
+                "Password reset requested for %s but email is not configured (set SMTP_HOST). "
+                "Reset it with: python -m backend.scripts.manage_users",
+                clean_email,
+            )
 
     return MessageResponse(message="If an account exists with this email, password reset instructions have been sent.")
 
@@ -630,6 +648,14 @@ async def reset_password(
 
 @router.get("/status", response_model=AuthStatusResponse)
 async def get_auth_status() -> AuthStatusResponse:
-    """Return whether authentication is currently enabled on the server."""
+    """Return server capabilities the login and workspace screens need to know about."""
+    from backend.api.repository import folder_picker_available
+    from backend.services.mailer import email_enabled
+
     settings = get_settings()
-    return AuthStatusResponse(auth_enabled=settings.auth_enabled)
+    return AuthStatusResponse(
+        auth_enabled=settings.auth_enabled,
+        password_reset_email=email_enabled(),
+        folder_picker=folder_picker_available(),
+        ai_daily_limit=int(settings.ai_daily_limit_per_user or 0),
+    )

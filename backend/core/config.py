@@ -101,6 +101,18 @@ class Settings(BaseSettings):
     system_design_model: str = "openai/gpt-oss-120b"  # Groq model used only by the System Design feature
     system_design_fallback_model: str = "openai/gpt-oss-120b:free"  # OpenRouter model used if Groq fails
 
+    # Hosting safety: cap AI requests per user per UTC day (0 = no cap, the local default)
+    ai_daily_limit_per_user: int = 0
+
+    # Optional email for password reset links (leave SMTP_HOST empty to disable)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_use_tls: bool = True
+    public_app_url: str = "http://localhost:8000"
+
     # Database
     database_url: str = "sqlite+aiosqlite:///data/antigravity.db"
     # When False the application works without a relational database (indexes
