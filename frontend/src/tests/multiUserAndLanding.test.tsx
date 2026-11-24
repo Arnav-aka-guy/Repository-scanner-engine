@@ -91,6 +91,77 @@ describe('Phase 2 Add Repository Modal & Quota Check', () => {
     expect(html).toContain('You have reached the maximum limit of 5 saved repositories');
   });
 
+  it('resets form state to local directory with empty fields when opened', async () => {
+    (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <AddRepositoryModal
+          isOpen={true}
+          onClose={() => {}}
+          onCreated={() => {}}
+          currentCount={1}
+          maxLimit={5}
+        />
+      );
+    });
+
+    // Switch to GitHub by clicking button
+    const buttons = Array.from(container.querySelectorAll('button'));
+    const githubBtn = buttons.find((b) => b.textContent?.includes('Public GitHub'));
+    expect(githubBtn).toBeDefined();
+
+    await act(async () => {
+      githubBtn?.click();
+    });
+
+    const nameInput = container.querySelector('input[placeholder="e.g. My Backend Engine"]') as HTMLInputElement;
+    expect(nameInput).toBeDefined();
+    await act(async () => {
+      nameInput.value = 'Temp GitHub Repo';
+      nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+      nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Close modal
+    await act(async () => {
+      root.render(
+        <AddRepositoryModal
+          isOpen={false}
+          onClose={() => {}}
+          onCreated={() => {}}
+          currentCount={1}
+          maxLimit={5}
+        />
+      );
+    });
+
+    // Re-open modal: form should be reset to default local directory with blank fields
+    await act(async () => {
+      root.render(
+        <AddRepositoryModal
+          isOpen={true}
+          onClose={() => {}}
+          onCreated={() => {}}
+          currentCount={1}
+          maxLimit={5}
+        />
+      );
+    });
+
+    const reloadedNameInput = container.querySelector('input[placeholder="e.g. My Backend Engine"]') as HTMLInputElement;
+    expect(reloadedNameInput.value).toBe('');
+    expect(container.textContent).toContain('Local Directory Path');
+
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  });
+
   it('loads repositories in local mode when authEnabled is false and token is null', async () => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     useAuthStore.setState({ authEnabled: false, token: null });

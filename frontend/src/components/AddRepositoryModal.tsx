@@ -33,6 +33,18 @@ export const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({
   const [isBrowsing, setIsBrowsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setSourceType('local');
+      setSourcePath('');
+      setDescription('');
+      setError(null);
+      setIsLoading(false);
+      setIsBrowsing(false);
+    }
+  }, [isOpen]);
+
   const isLimitReached = currentCount >= maxLimit;
 
   const handleBrowse = async () => {
@@ -123,7 +135,7 @@ export const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <label className="block text-[11px] font-mono text-[#9A9AA3] mb-1.5">
+            <label className="block text-[12px] font-sans font-medium text-[#9A9AA3] mb-1.5">
               Source Type
             </label>
             <div className="flex gap-2">
@@ -155,7 +167,7 @@ export const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono text-[#9A9AA3] mb-1.5">
+            <label className="block text-[12px] font-sans font-medium text-[#9A9AA3] mb-1.5">
               Repository Name
             </label>
             <input
@@ -169,7 +181,7 @@ export const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono text-[#9A9AA3] mb-1.5">
+            <label className="block text-[12px] font-sans font-medium text-[#9A9AA3] mb-1.5">
               {sourceType === 'local' ? 'Local Directory Path' : 'GitHub Repository URL'}
             </label>
             <div className="flex gap-2">
@@ -200,7 +212,7 @@ export const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-[11px] font-mono text-[#9A9AA3] mb-1.5">
+            <label className="block text-[12px] font-sans font-medium text-[#9A9AA3] mb-1.5">
               Description (optional)
             </label>
             <input
