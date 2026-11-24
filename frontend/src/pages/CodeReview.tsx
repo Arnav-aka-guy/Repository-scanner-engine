@@ -190,7 +190,7 @@ export const CodeReview: React.FC = () => {
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               {/* Input mode selection */}
-              <div className="flex items-center gap-2 text-xs font-mono">
+              <div className="flex items-center gap-2 text-[12px] font-sans">
                 <button
                   onClick={() => setInputMode('working_tree')}
                   className={`px-3 py-1.5 rounded transition-colors ${
@@ -215,7 +215,7 @@ export const CodeReview: React.FC = () => {
 
               {/* Mode toggle: Deterministic vs AI Assisted */}
               <div className="flex items-center gap-2">
-                <label className="text-xs font-mono text-slate-300 flex items-center gap-1.5 cursor-pointer">
+                <label className="text-[12px] font-sans text-slate-300 flex items-center gap-1.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={useLlm}
@@ -230,7 +230,7 @@ export const CodeReview: React.FC = () => {
 
             {inputMode === 'custom_diff' && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-mono text-slate-400">
+                <label className="text-[12px] font-sans text-slate-400">
                   Raw Git Diff or Patch
                 </label>
                 <textarea
@@ -333,7 +333,7 @@ export const CodeReview: React.FC = () => {
             </div>
 
             {/* Filter Pills */}
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-[12px] font-sans">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-slate-500 mr-1 flex items-center gap-1">
                   <Filter size={12} /> Category:

@@ -27,6 +27,13 @@ import {
 } from '../services/repository';
 import { SavedRepository } from '../types/repository';
 import { AddRepositoryModal } from '../components/AddRepositoryModal';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../components/ui/Dialog';
 import { parseServerDate } from '../utils/date';
 import { LogoMark } from '../components/brand/Logo';
 
@@ -51,6 +58,8 @@ export const MyRepositories: React.FC = () => {
   const [activeScans, setActiveScans] = useState<Record<number, ActiveScan>>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [maxLimit, setMaxLimit] = useState(5);
+  const [repoToDelete, setRepoToDelete] = useState<SavedRepository | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const activeSubsRef = React.useRef<Map<number, () => void>>(new Map());
 
@@ -92,7 +101,7 @@ export const MyRepositories: React.FC = () => {
 
   const handleOpen = (repo: SavedRepository) => {
     openRepository(repo);
-    navigate(`/app/repositories/${repo.id}/explorer`);
+    navigate(`/app/repositories/${repo.id}/overview`);
   };
 
   const handleScan = async (repo: SavedRepository) => {
@@ -227,16 +236,22 @@ export const MyRepositories: React.FC = () => {
     }
   };
 
-  const handleDelete = async (repo: SavedRepository) => {
-    const confirmed = window.confirm(`Are you sure you want to delete repository '${repo.name}'? This will remove its indexed data.`);
-    if (!confirmed) return;
+  const handleDelete = (repo: SavedRepository) => {
+    setRepoToDelete(repo);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!repoToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteUserRepository(repo.id);
-      setRepositories((prev) => prev.filter((r) => r.id !== repo.id));
+      await deleteUserRepository(repoToDelete.id);
+      setRepositories((prev) => prev.filter((r) => r.id !== repoToDelete.id));
+      setRepoToDelete(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to delete repository.';
       setError(msg);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -475,6 +490,35 @@ export const MyRepositories: React.FC = () => {
         currentCount={count}
         maxLimit={maxLimit}
       />
+
+      <Dialog open={!!repoToDelete} onOpenChange={(open) => !open && setRepoToDelete(null)}>
+        <DialogContent className="max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Delete {repoToDelete?.name}?</DialogTitle>
+            <DialogDescription>
+              This removes its scan and search index.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-5 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setRepoToDelete(null)}
+              disabled={isDeleting}
+              className="btn-secondary h-9 px-4"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="btn-primary h-9 bg-rose px-4 text-white hover:bg-rose/90"
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

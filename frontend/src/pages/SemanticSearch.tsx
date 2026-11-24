@@ -111,6 +111,14 @@ function evaluateMatch(
 }
 
 /** Determines category type of a search result */
+function formatEntityTitle(entityName: string | undefined, filePath: string): string {
+  const fileName = filePath.split(/[\\/]/).pop() || '';
+  if (entityName && entityName.endsWith(':imports')) {
+    return `Imports in ${fileName}`;
+  }
+  return entityName || fileName || 'Module Overview';
+}
+
 function detectCategory(result: any): FilterType {
   const type = (result.entity_type || '').toLowerCase();
   const name = (result.entity_name || '').toLowerCase();
@@ -521,7 +529,7 @@ export const SemanticSearch: React.FC = () => {
                               color: colors.text.primary,
                             }}
                           >
-                            {res.entity_name || relPath.split('/').pop() || 'Module Overview'}
+                            {formatEntityTitle(res.entity_name, res.file_path || relPath)}
                           </span>
                           {res.entity_type && res.entity_type !== 'file' && (
                             <Badge variant="default">{res.entity_type}</Badge>
@@ -531,7 +539,7 @@ export const SemanticSearch: React.FC = () => {
                         {/* Relative Path */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                           <Terminal size={11} style={{ color: colors.text.muted }} />
-                          <FilePath path={relPath} />
+                          <FilePath path={relPath} showFull />
                         </div>
                       </div>
 
@@ -563,38 +571,32 @@ export const SemanticSearch: React.FC = () => {
                     {/* Why It Matched Section */}
                     <div
                       style={{
-                        padding: '8px 10px',
+                        padding: '6px 10px',
                         borderRadius: radius.md,
                         backgroundColor: colors.bg.surfaceSecondary,
                         border: `1px solid ${colors.border.subtle}`,
                         display: 'flex',
-                        flexDirection: 'column',
+                        alignItems: 'center',
                         gap: '4px',
+                        flexWrap: 'wrap',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                        <span style={{ fontSize: '11px', color: colors.text.secondary, fontStyle: 'italic' }}>
-                          "{evaluation.summary}"
+                      {evaluation.reasons.map((r, rIdx) => (
+                        <span
+                          key={rIdx}
+                          style={{
+                            fontSize: '10px',
+                            padding: '1px 5px',
+                            borderRadius: radius.sm,
+                            backgroundColor: colors.bg.primary,
+                            border: `1px solid ${colors.border.default}`,
+                            color: colors.text.muted,
+                            fontFamily: font.sans,
+                          }}
+                        >
+                          • {r}
                         </span>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                          {evaluation.reasons.map((r, rIdx) => (
-                            <span
-                              key={rIdx}
-                              style={{
-                                fontSize: '10px',
-                                padding: '1px 5px',
-                                borderRadius: radius.sm,
-                                backgroundColor: colors.bg.primary,
-                                border: `1px solid ${colors.border.default}`,
-                                color: colors.text.muted,
-                                fontFamily: font.sans,
-                              }}
-                            >
-                              • {r}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                      ))}
                     </div>
 
                     {/* Code Snippet */}

@@ -494,9 +494,9 @@ export const RepositoryExplorer: React.FC = () => {
             style={{
               padding: '6px 12px',
               borderTop: `1px solid ${colors.border.subtle}`,
-              fontSize: '10px',
-              color: colors.text.muted,
-              fontFamily: font.mono,
+              fontSize: '12px',
+              color: colors.text.secondary,
+              fontFamily: font.sans,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',

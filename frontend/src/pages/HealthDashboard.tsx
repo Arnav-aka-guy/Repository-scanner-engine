@@ -76,6 +76,7 @@ export const HealthDashboard: React.FC = () => {
   const [showMethodology, setShowMethodology] = useState<boolean>(false);
   const [showTelemetry, setShowTelemetry] = useState<boolean>(false);
   const [selectedFinding, setSelectedFinding] = useState<Finding | null>(null);
+  const [findingsLimit, setFindingsLimit] = useState<number>(50);
 
   useEffect(() => {
     if (!repoPath) {
@@ -452,9 +453,9 @@ export const HealthDashboard: React.FC = () => {
                 {healthScore.scoring_formula && (
                   <div
                     style={{
-                      fontFamily: font.mono,
-                      fontSize: '11px',
-                      color: colors.text.muted,
+                      fontFamily: font.sans,
+                      fontSize: '12px',
+                      color: colors.text.secondary,
                       backgroundColor: colors.bg.surfaceSecondary,
                       padding: '6px 10px',
                       borderRadius: radius.md,
@@ -1148,7 +1149,7 @@ export const HealthDashboard: React.FC = () => {
               /* View Mode: All Findings Flat List */
               filteredIssues.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {filteredIssues.map((issue, idx) => {
+                  {filteredIssues.slice(0, findingsLimit).map((issue, idx) => {
                     const rel = getRelativePath(issue.file, repoPath);
                     const sevBadge =
                       issue.severity === 'Critical' || issue.severity === 'High'
@@ -1254,6 +1255,16 @@ export const HealthDashboard: React.FC = () => {
                       </div>
                     );
                   })}
+                  {filteredIssues.length > findingsLimit && (
+                    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '10px' }}>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setFindingsLimit((p) => p + 50)}
+                      >
+                        Show more
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div

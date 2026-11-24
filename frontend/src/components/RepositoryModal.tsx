@@ -231,7 +231,7 @@ export const RepositoryModal: React.FC = () => {
           <TabsContent value="local">
             <form onSubmit={handleLocalSubmit} className="flex flex-col gap-3.5 pt-2">
               <div>
-                <label className="block text-[11px] font-mono text-[#9A9AA3] mb-1.5">
+                <label className="block text-[12px] font-sans font-medium text-[#9A9AA3] mb-1.5">
                   Local Repository Directory
                 </label>
                 <div className="flex gap-2">
@@ -309,7 +309,7 @@ export const RepositoryModal: React.FC = () => {
           <TabsContent value="github">
             <form onSubmit={handleGitHubSubmit} className="flex flex-col gap-3.5 pt-2">
               <div>
-                <label className="block text-[11px] font-mono text-[#9A9AA3] mb-1.5">
+                <label className="block text-[12px] font-sans font-medium text-[#9A9AA3] mb-1.5">
                   Public GitHub Repository URL
                 </label>
                 <input
