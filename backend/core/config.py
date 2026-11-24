@@ -138,13 +138,6 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password_hash: str = ""
 
-    # SMTP (Optional for password reset)
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-    smtp_from: str = "noreply@antigravity.local"
-
     # CORS
     cors_origins: list[str] = [
         "http://localhost:5173",
