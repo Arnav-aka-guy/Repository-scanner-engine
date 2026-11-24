@@ -119,7 +119,7 @@ async def reset_interrupted_repositories() -> int:
         async with factory() as db:
             result = await db.execute(update(Repository).where(Repository.status == "SCANNING").values(status="FAILED"))
             await db.commit()
-            changed = int(result.rowcount or 0)
+            changed = int(getattr(result, "rowcount", 0) or 0)
             if changed:
                 logger.warning("Marked %d repositories interrupted by a restart as FAILED", changed)
             return changed
