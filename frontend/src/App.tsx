@@ -1,7 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { MainLayout } from './layouts/MainLayout';
-import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuthStore, onAuthReset } from './stores/authStore';
@@ -267,7 +266,6 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AnimatedBackground />
       <AnimatedRoutes />
       <ToastContainer />
     </BrowserRouter>

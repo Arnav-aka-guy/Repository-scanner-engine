@@ -418,14 +418,14 @@ export const HealthDashboard: React.FC = () => {
                   minWidth: '150px',
                 }}
               >
-                <span style={{ fontSize: '11px', color: colors.text.muted, letterSpacing: '0', marginBottom: '4px' }}>
+                <span style={{ fontSize: '12.5px', color: colors.text.muted, letterSpacing: '0', marginBottom: '4px' }}>
                   Overall Health
                 </span>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                  <span style={{ fontSize: '38px', fontWeight: 700, fontFamily: font.mono, color: healthStatus.color, lineHeight: 1 }}>
+                  <span style={{ fontSize: '38px', fontWeight: 700, fontFamily: font.sans, color: healthStatus.color, lineHeight: 1 }}>
                     {Math.round(healthScore.total_score)}
                   </span>
-                  <span style={{ fontSize: '13px', color: colors.text.muted, fontFamily: font.mono }}>
+                  <span style={{ fontSize: '13px', color: colors.text.muted, fontFamily: font.sans }}>
                     / 100
                   </span>
                 </div>
@@ -490,12 +490,12 @@ export const HealthDashboard: React.FC = () => {
                     gap: '2px',
                   }}
                 >
-                  <span style={{ fontSize: '11px', color: colors.text.muted }}>Raw Code Signals</span>
+                  <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Raw Code Signals</span>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                    <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: font.mono, color: colors.text.primary }}>
+                    <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: font.sans, color: colors.text.primary }}>
                       {issueCounts.raw_signals}
                     </span>
-                    <span style={{ fontSize: '10px', color: colors.text.muted }}>smells detected</span>
+                    <span style={{ fontSize: '11.5px', color: colors.text.muted }}>smells detected</span>
                   </div>
                 </div>
 
@@ -510,12 +510,12 @@ export const HealthDashboard: React.FC = () => {
                     gap: '2px',
                   }}
                 >
-                  <span style={{ fontSize: '11px', color: colors.text.muted }}>Scoring Rules Triggered</span>
+                  <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Scoring Rules Triggered</span>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                    <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: font.mono, color: colors.accent.blue }}>
+                    <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: font.sans, color: colors.accent.blue }}>
                       {issueCounts.scoring_rules_triggered}
                     </span>
-                    <span style={{ fontSize: '10px', color: colors.text.muted }}>dimension deductions</span>
+                    <span style={{ fontSize: '11.5px', color: colors.text.muted }}>dimension deductions</span>
                   </div>
                 </div>
 
@@ -530,19 +530,19 @@ export const HealthDashboard: React.FC = () => {
                     gap: '2px',
                   }}
                 >
-                  <span style={{ fontSize: '11px', color: colors.text.muted }}>Prioritized Actionable</span>
+                  <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Prioritized Actionable</span>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                    <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: font.mono, color: colors.status.warning }}>
+                    <span style={{ fontSize: '18px', fontWeight: 700, fontFamily: font.sans, color: colors.status.warning }}>
                       {issueCounts.prioritized_actionable}
                     </span>
-                    <span style={{ fontSize: '10px', color: colors.text.muted }}>critical / high priority</span>
+                    <span style={{ fontSize: '11.5px', color: colors.text.muted }}>critical / high priority</span>
                   </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Info size={12} style={{ color: colors.text.muted, flexShrink: 0 }} />
-                <span style={{ fontSize: '11px', color: colors.text.muted, lineHeight: 1.4 }}>
+                <span style={{ fontSize: '12.5px', color: colors.text.muted, lineHeight: 1.4 }}>
                   {issueCounts.explanation}
                 </span>
               </div>
@@ -576,10 +576,10 @@ export const HealthDashboard: React.FC = () => {
           {/* ── Section B: Dimensions (5 Pillars with Drilldown) ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+              <span style={{ fontSize: '12.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                 Scoring Dimensions (5 Pillars — 20 pts each)
               </span>
-              <span style={{ fontSize: '11px', color: colors.text.muted }}>
+              <span style={{ fontSize: '12.5px', color: colors.text.muted }}>
                 Click any card to inspect what was measured, rules evaluated, and contributing files
               </span>
             </div>
@@ -640,11 +640,11 @@ export const HealthDashboard: React.FC = () => {
                             <Badge variant={statusLabel === 'Healthy' ? 'green' : statusLabel === 'Needs Review' ? 'yellow' : 'red'}>
                               {statusLabel}
                             </Badge>
-                            <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: font.mono }}>
+                            <span style={{ fontSize: '12.5px', color: colors.text.muted, fontFamily: font.mono }}>
                               (Weight: 20%)
                             </span>
                           </div>
-                          <span style={{ fontSize: '11px', color: colors.text.secondary }}>
+                          <span style={{ fontSize: '12.5px', color: colors.text.secondary }}>
                             {dimensionDescriptions[dim.name] || 'Evaluates codebase health standard.'}
                           </span>
                         </div>
@@ -653,19 +653,19 @@ export const HealthDashboard: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
-                            <span style={{ fontSize: '20px', fontWeight: 700, fontFamily: font.mono, color: statusColor }}>
+                            <span style={{ fontSize: '20px', fontWeight: 700, fontFamily: font.sans, color: statusColor }}>
                               {dim.score}
                             </span>
-                            <span style={{ fontSize: '12px', color: colors.text.muted, fontFamily: font.mono }}>
+                            <span style={{ fontSize: '12px', color: colors.text.muted, fontFamily: font.sans }}>
                               / {dim.max_score}
                             </span>
                           </div>
                           {deductionPoints > 0 ? (
-                            <span style={{ fontSize: '10px', color: colors.status.danger, fontFamily: font.mono }}>
+                            <span style={{ fontSize: '11.5px', color: colors.status.danger, fontFamily: font.sans }}>
                               -{deductionPoints.toFixed(1)} pts ({penaltyCount} deduction{penaltyCount === 1 ? '' : 's'})
                             </span>
                           ) : (
-                            <span style={{ fontSize: '10px', color: colors.status.success, fontFamily: font.mono }}>
+                            <span style={{ fontSize: '11.5px', color: colors.status.success, fontFamily: font.sans }}>
                               No deductions
                             </span>
                           )}
@@ -697,8 +697,8 @@ export const HealthDashboard: React.FC = () => {
                               borderRadius: radius.md,
                               backgroundColor: colors.bg.surface,
                               border: `1px solid ${colors.border.subtle}`,
-                              fontFamily: font.mono,
-                              fontSize: '11px',
+                              fontFamily: font.sans,
+                              fontSize: '12.5px',
                               color: colors.accent.blue,
                             }}
                           >
@@ -709,7 +709,7 @@ export const HealthDashboard: React.FC = () => {
                         {/* What was measured */}
                         {dim.metrics && dim.metrics.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                            <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                               What was measured &amp; Observed Metrics
                             </span>
                             <div
@@ -741,10 +741,10 @@ export const HealthDashboard: React.FC = () => {
                                       <td style={{ padding: '8px 12px', fontWeight: 600, color: colors.text.primary }}>
                                         {m.name}
                                       </td>
-                                      <td style={{ padding: '8px 12px', fontFamily: font.mono, color: m.status === 'at_risk' ? colors.status.danger : colors.text.primary }}>
+                                      <td style={{ padding: '8px 12px', fontFamily: font.sans, color: m.status === 'at_risk' ? colors.status.danger : colors.text.primary }}>
                                         {m.display_value}
                                       </td>
-                                      <td style={{ padding: '8px 12px', fontFamily: font.mono, color: colors.text.muted }}>
+                                      <td style={{ padding: '8px 12px', fontFamily: font.sans, color: colors.text.muted }}>
                                         {m.threshold_display}
                                       </td>
                                       <td style={{ padding: '8px 12px' }}>
@@ -752,7 +752,7 @@ export const HealthDashboard: React.FC = () => {
                                           {m.status === 'good' ? 'Healthy' : m.status === 'review' ? 'Review' : 'Exceeds threshold'}
                                         </Badge>
                                       </td>
-                                      <td style={{ padding: '8px 12px', color: colors.text.secondary, fontSize: '11px' }}>
+                                      <td style={{ padding: '8px 12px', color: colors.text.secondary, fontSize: '12.5px' }}>
                                         {m.description}
                                       </td>
                                     </tr>
@@ -766,7 +766,7 @@ export const HealthDashboard: React.FC = () => {
                         {/* Exact Penalties Applied */}
                         {dim.penalties && dim.penalties.length > 0 ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                            <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                               Deduction Rules Triggered ({dim.penalties.length})
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -818,16 +818,16 @@ export const HealthDashboard: React.FC = () => {
                                         </span>
                                         <Badge variant="default">Confidence: {pen.confidence}</Badge>
                                       </div>
-                                      <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: font.mono }}>
+                                      <span style={{ fontSize: '12.5px', color: colors.text.muted, fontFamily: font.sans }}>
                                         Observed: {pen.observed} (Threshold: {pen.threshold})
                                       </span>
                                     </div>
-                                    <span style={{ fontSize: '11px', color: colors.text.secondary }}>
+                                    <span style={{ fontSize: '12.5px', color: colors.text.secondary }}>
                                       {pen.reason}
                                     </span>
                                     {pen.affected_files && pen.affected_files.length > 0 && (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
-                                        <span style={{ fontSize: '10px', color: colors.text.muted }}>Affected files:</span>
+                                        <span style={{ fontSize: '11.5px', color: colors.text.muted }}>Affected files:</span>
                                         {pen.affected_files.map((af, afIdx) => (
                                           <button
                                             key={afIdx}
@@ -836,7 +836,7 @@ export const HealthDashboard: React.FC = () => {
                                               handleOpenFile(af);
                                             }}
                                             style={{
-                                              fontSize: '10px',
+                                              fontSize: '11.5px',
                                               fontFamily: font.mono,
                                               color: colors.accent.blue,
                                               backgroundColor: colors.bg.elevated,
@@ -866,7 +866,7 @@ export const HealthDashboard: React.FC = () => {
                         {/* Top Contributors */}
                         {dim.top_contributors && dim.top_contributors.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                            <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                               Top Contributing Files
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -881,7 +881,7 @@ export const HealthDashboard: React.FC = () => {
                                     borderRadius: radius.sm,
                                     backgroundColor: colors.bg.surfaceSecondary,
                                     border: `1px solid ${colors.border.subtle}`,
-                                    fontSize: '11px',
+                                    fontSize: '12.5px',
                                   }}
                                 >
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -903,7 +903,7 @@ export const HealthDashboard: React.FC = () => {
                                         border: 'none',
                                         cursor: 'pointer',
                                         padding: 0,
-                                        fontSize: '11px',
+                                        fontSize: '12.5px',
                                       }}
                                     >
                                       Open
@@ -926,7 +926,7 @@ export const HealthDashboard: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Prioritized Code Quality Issues ({filteredIssues.length})
                 </span>
 
@@ -943,7 +943,7 @@ export const HealthDashboard: React.FC = () => {
                   <button
                     onClick={() => setViewMode('grouped')}
                     style={{
-                      fontSize: '11px',
+                      fontSize: '12.5px',
                       fontWeight: viewMode === 'grouped' ? 600 : 400,
                       padding: '3px 8px',
                       borderRadius: radius.sm,
@@ -958,7 +958,7 @@ export const HealthDashboard: React.FC = () => {
                   <button
                     onClick={() => setViewMode('list')}
                     style={{
-                      fontSize: '11px',
+                      fontSize: '12.5px',
                       fontWeight: viewMode === 'list' ? 600 : 400,
                       padding: '3px 8px',
                       borderRadius: radius.sm,
@@ -982,7 +982,7 @@ export const HealthDashboard: React.FC = () => {
                       key={sev}
                       onClick={() => setSeverityFilter(sev)}
                       style={{
-                        fontSize: '11px',
+                        fontSize: '12.5px',
                         fontWeight: isActive ? 600 : 400,
                         textTransform: 'capitalize',
                         padding: '3px 8px',
@@ -1041,11 +1041,11 @@ export const HealthDashboard: React.FC = () => {
                               {rel}
                             </span>
                             {group.line && (
-                              <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: font.mono }}>
+                              <span style={{ fontSize: '12.5px', color: colors.text.muted, fontFamily: font.sans }}>
                                 Line {group.line}
                               </span>
                             )}
-                            <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                            <span style={{ fontSize: '12.5px', color: colors.text.muted }}>
                               ({group.smell_count} finding{group.smell_count === 1 ? '' : 's'} on this symbol)
                             </span>
                           </div>
@@ -1082,20 +1082,20 @@ export const HealthDashboard: React.FC = () => {
                                   {smell.message}
                                 </span>
                                 {smell.threshold && (
-                                  <span style={{ fontSize: '11px', fontFamily: font.mono, color: colors.text.muted }}>
+                                  <span style={{ fontSize: '12.5px', fontFamily: font.mono, color: colors.text.muted }}>
                                     Threshold: {smell.threshold} (Observed: {smell.observed})
                                   </span>
                                 )}
                               </div>
 
-                              <div style={{ display: 'flex', gap: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', gap: '6px', fontSize: '12.5px' }}>
                                 <span style={{ color: colors.text.muted, flexShrink: 0, fontWeight: 500 }}>Why it matters:</span>
                                 <span style={{ color: colors.text.secondary }}>
                                   {smell.why_it_matters || 'Violates clean code maintainability.'}
                                 </span>
                               </div>
 
-                              <div style={{ display: 'flex', gap: '6px', fontSize: '11px', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', gap: '6px', fontSize: '12.5px', alignItems: 'center' }}>
                                 <span style={{ color: colors.accent.blue, flexShrink: 0, fontWeight: 500 }}>Suggested action:</span>
                                 <span style={{ color: colors.text.primary }}>
                                   {smell.suggestion || 'Refactor function into smaller units.'}
@@ -1176,7 +1176,7 @@ export const HealthDashboard: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <Badge variant={sevBadge as any}>{issue.severity}</Badge>
-                            <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                            <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                               {issue.confidence}
                             </span>
                             <span style={{ color: colors.border.default }}>•</span>
@@ -1203,7 +1203,7 @@ export const HealthDashboard: React.FC = () => {
                           <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
                             {issue.problem}
                           </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', color: colors.text.muted, fontFamily: font.mono }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12.5px', color: colors.text.muted, fontFamily: font.sans }}>
                             <span>Evidence: {issue.evidence}</span>
                             {issue.threshold && (
                               <span>Threshold: {issue.threshold} (Observed: {issue.observed})</span>
@@ -1224,18 +1224,18 @@ export const HealthDashboard: React.FC = () => {
                           }}
                         >
                           <div style={{ display: 'flex', gap: '6px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, flexShrink: 0 }}>
+                            <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, flexShrink: 0 }}>
                               Why it matters:
                             </span>
-                            <span style={{ fontSize: '11px', color: colors.text.secondary, lineHeight: 1.4 }}>
+                            <span style={{ fontSize: '12.5px', color: colors.text.secondary, lineHeight: 1.4 }}>
                               {issue.whyItMatters}
                             </span>
                           </div>
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: colors.accent.blue, flexShrink: 0 }}>
+                            <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.accent.blue, flexShrink: 0 }}>
                               Suggested action:
                             </span>
-                            <span style={{ fontSize: '11px', color: colors.text.primary }}>
+                            <span style={{ fontSize: '12.5px', color: colors.text.primary }}>
                               {issue.suggestedAction}
                             </span>
                           </div>
@@ -1334,55 +1334,55 @@ export const HealthDashboard: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: colors.bg.surfaceSecondary, padding: '10px 12px', borderRadius: radius.md, border: `1px solid ${colors.border.subtle}` }}>
-                    <span style={{ fontSize: '11px', color: colors.text.muted }}>Lines of Code</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.mono, color: colors.text.primary }}>{stats.total_lines.toLocaleString()}</span>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Lines of Code</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.sans, color: colors.text.primary }}>{stats.total_lines.toLocaleString()}</span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: colors.bg.surfaceSecondary, padding: '10px 12px', borderRadius: radius.md, border: `1px solid ${colors.border.subtle}` }}>
-                    <span style={{ fontSize: '11px', color: colors.text.muted }}>Functions / Methods</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.mono, color: colors.text.primary }}>
-                      {stats.total_functions} <span style={{ fontSize: '11px', color: colors.text.muted }}>({stats.documented_functions} documented)</span>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Functions / Methods</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.sans, color: colors.text.primary }}>
+                      {stats.total_functions} <span style={{ fontSize: '12.5px', color: colors.text.muted }}>({stats.documented_functions} documented)</span>
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: colors.bg.surfaceSecondary, padding: '10px 12px', borderRadius: radius.md, border: `1px solid ${colors.border.subtle}` }}>
-                    <span style={{ fontSize: '11px', color: colors.text.muted }}>Average Function Length</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.mono, color: colors.text.primary }}>
-                      {stats.average_function_length.toFixed(1)} <span style={{ fontSize: '11px', color: colors.text.muted }}>lines</span>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Average Function Length</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.sans, color: colors.text.primary }}>
+                      {stats.average_function_length.toFixed(1)} <span style={{ fontSize: '12.5px', color: colors.text.muted }}>lines</span>
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: colors.bg.surfaceSecondary, padding: '10px 12px', borderRadius: radius.md, border: `1px solid ${colors.border.subtle}` }}>
-                    <span style={{ fontSize: '11px', color: colors.text.muted }}>Longest Function</span>
-                    <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: font.mono, color: stats.max_function_length > 80 ? colors.status.danger : colors.text.primary }}>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Longest Function</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: font.sans, color: stats.max_function_length > 80 ? colors.status.danger : colors.text.primary }}>
                       {stats.longest_function || `${stats.max_function_length} lines`}
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: colors.bg.surfaceSecondary, padding: '10px 12px', borderRadius: radius.md, border: `1px solid ${colors.border.subtle}` }}>
-                    <span style={{ fontSize: '11px', color: colors.text.muted }}>Circular Dependency Cycles</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.mono, color: stats.circular_dependencies > 0 ? colors.status.danger : colors.status.success }}>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Circular Dependency Cycles</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.sans, color: stats.circular_dependencies > 0 ? colors.status.danger : colors.status.success }}>
                       {stats.circular_dependencies}
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: colors.bg.surfaceSecondary, padding: '10px 12px', borderRadius: radius.md, border: `1px solid ${colors.border.subtle}` }}>
-                    <span style={{ fontSize: '11px', color: colors.text.muted }}>God Classes (&gt;15 methods)</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.mono, color: stats.god_classes_count > 0 ? colors.status.warning : colors.status.success }}>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted }}>God Classes (&gt;15 methods)</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.sans, color: stats.god_classes_count > 0 ? colors.status.warning : colors.status.success }}>
                       {stats.god_classes_count}
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: colors.bg.surfaceSecondary, padding: '10px 12px', borderRadius: radius.md, border: `1px solid ${colors.border.subtle}` }}>
-                    <span style={{ fontSize: '11px', color: colors.text.muted }}>Oversized Files (&gt;500 lines)</span>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Oversized Files (&gt;500 lines)</span>
                     <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.mono, color: stats.oversized_files_count > 0 ? colors.status.warning : colors.status.success }}>
                       {stats.oversized_files_count}
                     </span>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', backgroundColor: colors.bg.surfaceSecondary, padding: '10px 12px', borderRadius: radius.md, border: `1px solid ${colors.border.subtle}` }}>
-                    <span style={{ fontSize: '11px', color: colors.text.muted }}>Hardcoded Secrets</span>
-                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.mono, color: stats.potential_secrets > 0 ? colors.status.danger : colors.status.success }}>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted }}>Hardcoded Secrets</span>
+                    <span style={{ fontSize: '16px', fontWeight: 700, fontFamily: font.sans, color: stats.potential_secrets > 0 ? colors.status.danger : colors.status.success }}>
                       {stats.potential_secrets}
                     </span>
                   </div>

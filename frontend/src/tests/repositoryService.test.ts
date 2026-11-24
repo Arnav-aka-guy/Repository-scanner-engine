@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as api from '../services/api';
-import { getFile, scanRepository, listFiles } from '../services/repository';
+import { getFile, scanUserRepository, listFiles } from '../services/repository';
 
 describe('Repository Service', () => {
   beforeEach(() => {
@@ -22,22 +22,17 @@ describe('Repository Service', () => {
     expect(result.file_path).toBe('backend/main.py');
   });
 
-  it('scanRepository calls apiPost with path and returns repo info', async () => {
-    const mockRepoInfo = {
-      path: '/mock/repo',
-      name: 'repo',
-      total_files: 10,
-      total_lines: 500,
-      languages: { Python: 10 },
-      scanned_at: '2026-10-02T00:00:00Z',
-    };
-    const apiPostSpy = vi.spyOn(api, 'apiPost').mockResolvedValue(mockRepoInfo);
-
-    const result = await scanRepository('/mock/repo');
-    expect(apiPostSpy).toHaveBeenCalledWith('/repository/scan', {
-      path: '/mock/repo',
+  it('scanUserRepository starts a background scan for a saved repository', async () => {
+    const apiPostSpy = vi.spyOn(api, 'apiPost').mockResolvedValue({
+      job_id: 'job-1',
+      status: 'pending',
+      message: 'Scan queued.',
+      repository_id: 7,
     });
-    expect(result.total_files).toBe(10);
+
+    const result = await scanUserRepository(7);
+    expect(apiPostSpy).toHaveBeenCalledWith('/repositories/7/scan', {});
+    expect(result.job_id).toBe('job-1');
   });
 
   it('listFiles queries files for specific repository', async () => {

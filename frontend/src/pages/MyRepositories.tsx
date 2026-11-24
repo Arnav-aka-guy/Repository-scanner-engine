@@ -376,6 +376,8 @@ export const MyRepositories: React.FC = () => {
                     ? { label: 'Ready', cls: 'text-mint border-mint/30', dot: 'bg-mint' }
                     : repo.status === 'FAILED'
                       ? { label: 'Scan failed', cls: 'text-rose border-rose/30', dot: 'bg-rose' }
+                      : repo.status === 'CANCELLED'
+                        ? { label: 'Scan cancelled', cls: 'text-amber border-amber/30', dot: 'bg-amber' }
                       : { label: 'Not scanned', cls: 'text-fg-3 border-line', dot: 'bg-fg-4' };
                 const pct = scanInfo?.progress ? Math.round(scanInfo.progress * 100) : 0;
 

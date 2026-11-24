@@ -45,7 +45,7 @@ export interface SavedRepository {
   source_type: 'local' | 'github';
   source_path: string;
   path?: string | null;
-  status: 'CREATED' | 'SCANNING' | 'READY' | 'FAILED' | 'ARCHIVED';
+  status: 'CREATED' | 'SCANNING' | 'READY' | 'FAILED' | 'CANCELLED' | 'ARCHIVED';
   language?: string | null;
   file_count: number;
   total_files: number;

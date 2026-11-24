@@ -114,7 +114,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
                   e.stopPropagation();
                   cancelScan();
                 }}
-                className="ml-1 rounded border border-rose/40 px-1.5 text-[11px] text-rose hover:bg-rose/10"
+                className="ml-1 rounded border border-rose/40 px-1.5 text-[12.5px] text-rose hover:bg-rose/10"
                 title="Stop the running scan"
               >
                 Cancel

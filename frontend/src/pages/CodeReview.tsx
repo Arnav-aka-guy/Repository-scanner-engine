@@ -238,7 +238,7 @@ export const CodeReview: React.FC = () => {
                   placeholder="diff --git a/src/app.py b/src/app.py&#10;--- a/src/app.py&#10;+++ b/src/app.py&#10;@@ -1,3 +1,4 @@&#10;+ query = f'SELECT * FROM users WHERE id = {token}'"
                   value={customDiff}
                   onChange={(e) => setCustomDiff(e.target.value)}
-                  className="w-full text-xs font-mono p-3 rounded border focus:outline-none"
+                  className="w-full text-xs font-sans p-3 rounded border focus:outline-none"
                   style={{
                     backgroundColor: colors.bg.surfaceSecondary,
                     borderColor: colors.border.default,
@@ -273,8 +273,8 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono text-slate-400">Total Findings</div>
-                <div className="text-2xl font-mono font-bold text-slate-200 mt-1">
+                <div className="text-[12.5px] font-sans text-slate-400">Total Findings</div>
+                <div className="text-2xl font-sans font-bold text-slate-200 mt-1">
                   {report.total_findings}
                 </div>
               </Card>
@@ -286,8 +286,8 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono text-rose-400">Critical</div>
-                <div className="text-2xl font-mono font-bold text-rose-400 mt-1">
+                <div className="text-[12.5px] font-sans text-rose-400">Critical</div>
+                <div className="text-2xl font-sans font-bold text-rose-400 mt-1">
                   {report.critical_count}
                 </div>
               </Card>
@@ -299,8 +299,8 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono text-amber-400">High</div>
-                <div className="text-2xl font-mono font-bold text-amber-400 mt-1">
+                <div className="text-[12.5px] font-sans text-amber-400">High</div>
+                <div className="text-2xl font-sans font-bold text-amber-400 mt-1">
                   {report.high_count}
                 </div>
               </Card>
@@ -312,8 +312,8 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono text-yellow-400">Medium</div>
-                <div className="text-2xl font-mono font-bold text-yellow-400 mt-1">
+                <div className="text-[12.5px] font-sans text-yellow-400">Medium</div>
+                <div className="text-2xl font-sans font-bold text-yellow-400 mt-1">
                   {report.medium_count}
                 </div>
               </Card>
@@ -325,8 +325,8 @@ export const CodeReview: React.FC = () => {
                   padding: '12px',
                 }}
               >
-                <div className="text-[11px] font-mono text-slate-400">Low</div>
-                <div className="text-2xl font-mono font-bold text-slate-300 mt-1">
+                <div className="text-[12.5px] font-sans text-slate-400">Low</div>
+                <div className="text-2xl font-sans font-bold text-slate-300 mt-1">
                   {report.low_count}
                 </div>
               </Card>
@@ -382,7 +382,7 @@ export const CodeReview: React.FC = () => {
                   }}
                 >
                   <CheckCircle size={28} className="text-emerald-400" />
-                  <span className="text-xs font-mono text-slate-300">
+                  <span className="text-xs font-sans text-slate-300">
                     No findings match the current filter criteria!
                   </span>
                 </div>
@@ -401,7 +401,7 @@ export const CodeReview: React.FC = () => {
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           {getSeverityBadge(finding.severity)}
-                          <div className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                          <div className="flex items-center gap-1 text-xs font-sans px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                             {getCategoryIcon(finding.category)}
                             <span className="capitalize">{finding.category.replace('_', ' ')}</span>
                           </div>
@@ -432,7 +432,7 @@ export const CodeReview: React.FC = () => {
                           <span className="text-[12px] text-slate-500">
                             Evidence Snippet
                           </span>
-                          <pre className="text-xs font-mono p-2.5 rounded bg-slate-950 border border-slate-800 text-rose-300 overflow-x-auto">
+                          <pre className="text-xs font-sans p-2.5 rounded bg-slate-950 border border-slate-800 text-rose-300 overflow-x-auto">
                             <code>{finding.evidence}</code>
                           </pre>
                         </div>

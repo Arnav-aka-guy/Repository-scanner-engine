@@ -236,7 +236,7 @@ export const ChangeImpact: React.FC = () => {
                     setSelectedFile(e.target.value);
                     setSearchTerm(e.target.value);
                   }}
-                  className="w-full text-xs font-mono px-3 py-2 rounded border focus:outline-none"
+                  className="w-full text-xs font-sans px-3 py-2 rounded border focus:outline-none"
                   style={{
                     backgroundColor: colors.bg.surfaceSecondary,
                     borderColor: colors.border.default,
@@ -263,7 +263,7 @@ export const ChangeImpact: React.FC = () => {
                       className="text-left text-xs font-mono px-3 py-1.5 hover:bg-slate-800/80 transition-colors flex items-center justify-between"
                     >
                       <span className="truncate">{f.relPath}</span>
-                      <span className="text-[11.5px] text-slate-500">{f.language}</span>
+                      <span className="text-[12.5px] text-slate-500">{f.language}</span>
                     </button>
                   ))}
                 </div>
@@ -279,7 +279,7 @@ export const ChangeImpact: React.FC = () => {
                 placeholder="e.g. verify_token, UserRepo"
                 value={symbolInput}
                 onChange={(e) => setSymbolInput(e.target.value)}
-                className="w-full text-xs font-mono px-3 py-2 rounded border focus:outline-none"
+                className="w-full text-xs font-sans px-3 py-2 rounded border focus:outline-none"
                 style={{
                   backgroundColor: colors.bg.surfaceSecondary,
                   borderColor: colors.border.default,
@@ -338,19 +338,19 @@ export const ChangeImpact: React.FC = () => {
                   padding: '16px',
                 }}
               >
-                <div className="text-xs font-mono text-slate-400 mb-1">
+                <div className="text-xs font-sans text-slate-400 mb-1">
                   Regression Risk Score
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span
-                    className="text-3xl font-mono font-bold tabular-nums"
+                    className="text-3xl font-sans font-bold tabular-nums"
                     style={{ color: getRiskColor(report.risk_level) }}
                   >
                     {report.risk_score}
                   </span>
-                  <span className="text-xs font-mono text-slate-500">/ 100</span>
+                  <span className="text-xs font-sans text-slate-500">/ 100</span>
                   <span
-                    className="ml-auto text-xs font-mono font-semibold px-2 py-0.5 rounded border"
+                    className="ml-auto text-xs font-sans font-semibold px-2 py-0.5 rounded border"
                     style={{
                       borderColor: getRiskColor(report.risk_level),
                       color: getRiskColor(report.risk_level),
@@ -380,18 +380,18 @@ export const ChangeImpact: React.FC = () => {
                   padding: '16px',
                 }}
               >
-                <div className="text-xs font-mono text-slate-400 mb-1">
+                <div className="text-xs font-sans text-slate-400 mb-1">
                   Total Blast Radius
                 </div>
-                <div className="text-3xl font-mono font-bold tabular-nums text-slate-200">
+                <div className="text-3xl font-sans font-bold tabular-nums text-slate-200">
                   {report.total_affected_count}
                 </div>
                 <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
-                  <span className="text-amber-400 font-mono font-semibold">
+                  <span className="text-amber-400 font-sans font-semibold">
                     {report.directly_affected_modules.length}
                   </span>{' '}
                   direct,{' '}
-                  <span className="text-blue-400 font-mono font-semibold">
+                  <span className="text-blue-400 font-sans font-semibold">
                     {report.indirectly_affected_modules.length}
                   </span>{' '}
                   indirect
@@ -406,10 +406,10 @@ export const ChangeImpact: React.FC = () => {
                   padding: '16px',
                 }}
               >
-                <div className="text-xs font-mono text-slate-400 mb-1">
+                <div className="text-xs font-sans text-slate-400 mb-1">
                   API Consumers Touched
                 </div>
-                <div className="text-3xl font-mono font-bold tabular-nums text-slate-200">
+                <div className="text-3xl font-sans font-bold tabular-nums text-slate-200">
                   {report.api_consumers.length}
                 </div>
                 <div className="text-xs text-slate-400 mt-2">
@@ -429,17 +429,17 @@ export const ChangeImpact: React.FC = () => {
                   padding: '16px',
                 }}
               >
-                <div className="text-xs font-mono text-slate-400 mb-1">
+                <div className="text-xs font-sans text-slate-400 mb-1">
                   Recommended Test Suites
                 </div>
-                <div className="text-3xl font-mono font-bold tabular-nums text-slate-200">
+                <div className="text-3xl font-sans font-bold tabular-nums text-slate-200">
                   {report.recommended_tests.length}
                 </div>
                 <div className="text-xs text-slate-400 mt-2">
                   {report.recommended_tests.length > 0 ? (
                     <button
                       onClick={copyTestCommand}
-                      className="text-xs font-mono text-amber-400 hover:underline flex items-center gap-1"
+                      className="text-xs font-sans text-amber-400 hover:underline flex items-center gap-1"
                     >
                       <Copy size={11} />
                       {copiedTestCmd ? 'Copied Command!' : 'Copy pytest command'}
@@ -460,14 +460,14 @@ export const ChangeImpact: React.FC = () => {
                   borderColor: colors.border.default,
                 }}
               >
-                <span className="font-mono font-semibold text-slate-300">
+                <span className="font-sans font-semibold text-slate-300">
                   Risk Factors & Drivers
                 </span>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {report.risk_factors.map((factor, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center gap-2 font-mono text-[11px] text-slate-400"
+                      className="flex items-center gap-2 font-sans text-[12.5px] text-slate-400"
                     >
                       <div className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
                       <span>{factor}</span>
@@ -533,7 +533,7 @@ export const ChangeImpact: React.FC = () => {
               {activeTab === 'direct' && (
                 <div className="divide-y divide-slate-800">
                   {report.directly_affected_modules.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-500 font-mono">
+                    <div className="p-8 text-center text-xs text-slate-500 font-sans">
                       No direct downstream dependents found.
                     </div>
                   ) : (
@@ -580,7 +580,7 @@ export const ChangeImpact: React.FC = () => {
               {activeTab === 'indirect' && (
                 <div className="divide-y divide-slate-800">
                   {report.indirectly_affected_modules.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-500 font-mono">
+                    <div className="p-8 text-center text-xs text-slate-500 font-sans">
                       No indirect downstream dependents found.
                     </div>
                   ) : (
@@ -604,15 +604,15 @@ export const ChangeImpact: React.FC = () => {
               {activeTab === 'consumers' && (
                 <div className="divide-y divide-slate-800">
                   {report.api_consumers.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-500 font-mono">
+                    <div className="p-8 text-center text-xs text-slate-500 font-sans">
                       No API routes or consumers directly or indirectly affected.
                     </div>
                   ) : (
                     report.api_consumers.map((consumer, idx) => (
                       <div key={idx} className="p-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-rose-400 font-mono text-xs font-bold">[API]</span>
-                          <span className="text-xs font-mono text-slate-200">{consumer}</span>
+                          <span className="text-rose-400 font-sans text-xs font-bold">[API]</span>
+                          <span className="text-xs font-sans text-slate-200">{consumer}</span>
                         </div>
                         <span className="text-[12px] px-2 py-0.5 rounded bg-rose-950/40 text-rose-300 border border-rose-900/50">
                           Route Vulnerable
@@ -626,13 +626,13 @@ export const ChangeImpact: React.FC = () => {
               {activeTab === 'tests' && (
                 <div className="p-4 flex flex-col gap-4">
                   {report.recommended_tests.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-rose-400 font-mono">
+                    <div className="p-4 text-center text-xs text-rose-400 font-sans">
                       ⚠️ Zero test files cover this module or its downstream dependents!
                     </div>
                   ) : (
                     <>
                       <div className="flex items-center justify-between bg-slate-900 p-3 rounded border border-slate-800">
-                        <span className="text-xs font-mono text-slate-300">
+                        <span className="text-xs font-sans text-slate-300">
                           pytest {report.recommended_tests.join(' ')}
                         </span>
                         <Button

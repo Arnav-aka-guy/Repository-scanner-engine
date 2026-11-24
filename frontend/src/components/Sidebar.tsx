@@ -209,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
         </nav>
 
         <div className="border-t border-line px-4 py-3 text-[12px] text-fg-4">
-          Press <kbd className="rounded border border-line bg-surface px-1.5 py-px font-sans text-[11px] text-fg-3">Ctrl K</kbd> to jump anywhere
+          Press <kbd className="rounded border border-line bg-surface px-1.5 py-px font-sans text-[12.5px] text-fg-3">Ctrl K</kbd> to jump anywhere
         </div>
       </aside>
     </TooltipProvider>

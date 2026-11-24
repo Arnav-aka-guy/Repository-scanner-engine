@@ -54,10 +54,10 @@ export const TreemapHotspots: React.FC<TreemapHotspotsProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+        <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
           Codebase Hotspot Map (LOC × Cognitive Complexity)
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '10px', color: colors.text.muted }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11.5px', color: colors.text.muted }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '2px', backgroundColor: colors.status.danger }} />
             Critical (&gt;25)
@@ -130,7 +130,7 @@ export const TreemapHotspots: React.FC<TreemapHotspotsProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
                 <span
                   style={{
-                    fontSize: '11px',
+                    fontSize: '12.5px',
                     fontWeight: 600,
                     fontFamily: font.mono,
                     color: colors.text.primary,
@@ -142,11 +142,11 @@ export const TreemapHotspots: React.FC<TreemapHotspotsProps> = ({
                 >
                   {basename}
                 </span>
-                <span style={{ fontSize: '10px', color: styling.text, fontWeight: 600, flexShrink: 0 }}>
+                <span style={{ fontSize: '11.5px', color: styling.text, fontWeight: 600, flexShrink: 0 }}>
                   {item.complexity}
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '10px', color: colors.text.muted }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11.5px', color: colors.text.muted }}>
                 <span>{item.loc} lines</span>
                 <span>fan-in: {item.fan_in}</span>
               </div>
@@ -166,7 +166,7 @@ export const TreemapHotspots: React.FC<TreemapHotspotsProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            fontSize: '11px',
+            fontSize: '12.5px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

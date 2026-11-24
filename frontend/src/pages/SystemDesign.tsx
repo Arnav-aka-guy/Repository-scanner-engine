@@ -482,7 +482,7 @@ const SystemDesignView: React.FC<ViewProps> = ({ repoId, repoPath, detail, setDe
                   <div style={{ marginBottom: 8 }}>
                     <div style={sectionTitle}>Code</div>
                     {selectedNode.paths.map((p) => (
-                      <div key={p} style={{ fontFamily: font.mono, fontSize: 11, color: colors.text.secondary }}>
+                      <div key={p} style={{ fontFamily: font.sans, fontSize: 11, color: colors.text.secondary }}>
                         {p}
                       </div>
                     ))}

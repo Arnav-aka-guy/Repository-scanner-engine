@@ -205,7 +205,7 @@ export const AIChat: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
-              fontSize: '11px',
+              fontSize: '12.5px',
             }}
             title={showContextPane ? 'Hide context panel' : 'Show context panel'}
           >
@@ -284,7 +284,7 @@ export const AIChat: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                     Starter Questions
                   </span>
 
@@ -389,7 +389,7 @@ export const AIChat: React.FC = () => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Database size={13} style={{ color: colors.accent.blue }} />
-                <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Context Used
                 </span>
               </div>
@@ -416,18 +416,18 @@ export const AIChat: React.FC = () => {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: colors.status.success }} />
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.primary }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.primary }}>
                     Repository Grounded
                   </span>
                 </div>
-                <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                <span style={{ fontSize: '12.5px', color: colors.text.muted }}>
                   {repositoryInfo?.total_files || files.length} files • {repositoryInfo?.total_lines || 0} lines indexed
                 </span>
               </div>
 
               {/* Files Used */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                   Files Used ({contextUsed.files.length})
                 </span>
                 {contextUsed.files.length > 0 ? (
@@ -449,14 +449,14 @@ export const AIChat: React.FC = () => {
                         }}
                       >
                         <FileCode size={12} style={{ color: colors.accent.blue, flexShrink: 0 }} />
-                        <span style={{ fontSize: '11px', fontFamily: font.mono, color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '12.5px', fontFamily: font.mono, color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {getRelativePath(f, repoPath)}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                  <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                     No specific files queried yet. Ask a question to load sources.
                   </span>
                 )}
@@ -465,7 +465,7 @@ export const AIChat: React.FC = () => {
               {/* Symbols Used */}
               {contextUsed.symbols.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
+                  <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                     Symbols Used ({contextUsed.symbols.length})
                   </span>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -473,8 +473,8 @@ export const AIChat: React.FC = () => {
                       <span
                         key={idx}
                         style={{
-                          fontSize: '10px',
-                          fontFamily: font.mono,
+                          fontSize: '11.5px',
+                          fontFamily: font.sans,
                           padding: '2px 6px',
                           borderRadius: radius.sm,
                           backgroundColor: colors.bg.surfaceSecondary,
@@ -491,10 +491,10 @@ export const AIChat: React.FC = () => {
 
               {/* Graph Relationships Used */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                   Graph Relationships
                 </span>
-                <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                <span style={{ fontSize: '12.5px', color: colors.text.muted }}>
                   {contextUsed.relationshipsCount > 0
                     ? `${contextUsed.relationshipsCount} topological dependency edges analyzed`
                     : 'Call hierarchy and import graph available for exploration.'}

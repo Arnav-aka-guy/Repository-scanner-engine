@@ -326,7 +326,7 @@ export const RepositoryExplorer: React.FC = () => {
               <FolderTree size={14} style={{ color: colors.accent.blue }} />
               <span
                 style={{
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   fontWeight: 600,
                   letterSpacing: '0',
                   color: colors.text.muted,
@@ -375,7 +375,7 @@ export const RepositoryExplorer: React.FC = () => {
                   background: 'transparent',
                   border: 'none',
                   outline: 'none',
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   color: colors.text.primary,
                   fontFamily: font.sans,
                 }}
@@ -388,7 +388,7 @@ export const RepositoryExplorer: React.FC = () => {
             {filteredFiles ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 {filteredFiles.length === 0 ? (
-                  <span style={{ fontSize: '11px', color: colors.text.muted, padding: '12px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '12.5px', color: colors.text.muted, padding: '12px', textAlign: 'center' }}>
                     No files match "{fileFilter}"
                   </span>
                 ) : (
@@ -422,7 +422,7 @@ export const RepositoryExplorer: React.FC = () => {
                         <FileCode size={13} style={{ color: colors.accent.blue, flexShrink: 0 }} />
                         <span
                           style={{
-                            fontSize: '11px',
+                            fontSize: '12.5px',
                             fontFamily: font.mono,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -468,7 +468,7 @@ export const RepositoryExplorer: React.FC = () => {
                       <FileCode size={13} style={{ color: colors.accent.blue, flexShrink: 0 }} />
                       <span
                         style={{
-                          fontSize: '11px',
+                          fontSize: '12.5px',
                           fontFamily: font.mono,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -534,7 +534,7 @@ export const RepositoryExplorer: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSelectedFile(null)}
-                className="md:hidden flex items-center gap-1 px-2 py-1 rounded text-[11px] font-sans font-medium text-fg-3 hover:text-fg hover:bg-surface-2 border border-line shrink-0"
+                className="md:hidden flex items-center gap-1 px-2 py-1 rounded text-[12.5px] font-sans font-medium text-fg-3 hover:text-fg hover:bg-surface-2 border border-line shrink-0"
                 title="Back to file list"
               >
                 <ChevronLeft size={13} />
@@ -603,7 +603,7 @@ export const RepositoryExplorer: React.FC = () => {
                     backgroundColor: colors.bg.surfaceSecondary,
                     border: `1px solid ${colors.border.default}`,
                     color: copiedCode ? colors.status.success : colors.text.secondary,
-                    fontSize: '11px',
+                    fontSize: '12.5px',
                     fontFamily: font.sans,
                     cursor: 'pointer',
                   }}
@@ -624,7 +624,7 @@ export const RepositoryExplorer: React.FC = () => {
                     backgroundColor: colors.bg.surfaceSecondary,
                     border: `1px solid ${colors.border.default}`,
                     color: colors.accent.blue,
-                    fontSize: '11px',
+                    fontSize: '12.5px',
                     fontFamily: font.sans,
                     cursor: 'pointer',
                   }}
@@ -673,7 +673,7 @@ export const RepositoryExplorer: React.FC = () => {
                     backgroundColor: 'rgba(157, 140, 255, 0.1)',
                     border: `1px solid ${colors.accent.blue}`,
                     color: colors.accent.blue,
-                    fontSize: '11px',
+                    fontSize: '12.5px',
                     fontFamily: font.mono,
                   }}
                 >
@@ -752,7 +752,7 @@ export const RepositoryExplorer: React.FC = () => {
               <button
                 onClick={() => setRightTab('symbols')}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   fontWeight: rightTab === 'symbols' ? 600 : 400,
                   padding: '4px 8px',
                   borderRadius: radius.sm,
@@ -768,7 +768,7 @@ export const RepositoryExplorer: React.FC = () => {
               <button
                 onClick={() => setRightTab('relationships')}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   fontWeight: rightTab === 'relationships' ? 600 : 400,
                   padding: '4px 8px',
                   borderRadius: radius.sm,
@@ -812,7 +812,7 @@ export const RepositoryExplorer: React.FC = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <span
                           style={{
-                            fontSize: '10px',
+                            fontSize: '11.5px',
                             fontWeight: 700,
                             letterSpacing: '0',
                             color: colors.text.muted,
@@ -837,7 +837,7 @@ export const RepositoryExplorer: React.FC = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <span
                           style={{
-                            fontSize: '10px',
+                            fontSize: '11.5px',
                             fontWeight: 700,
                             letterSpacing: '0',
                             color: colors.text.muted,
@@ -862,7 +862,7 @@ export const RepositoryExplorer: React.FC = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         <span
                           style={{
-                            fontSize: '10px',
+                            fontSize: '11.5px',
                             fontWeight: 700,
                             letterSpacing: '0',
                             color: colors.text.muted,
@@ -902,20 +902,20 @@ export const RepositoryExplorer: React.FC = () => {
                   }}
                 >
                   <div>
-                    <span style={{ fontSize: '10px', color: colors.text.muted, display: 'block' }}>Imports</span>
+                    <span style={{ fontSize: '11.5px', color: colors.text.muted, display: 'block' }}>Imports</span>
                     <strong style={{ fontSize: font.size.md, color: colors.text.primary, fontFamily: font.mono }}>
                       {relationships.codeImports.length || relationships.outgoing.length}
                     </strong>
                   </div>
                   <div>
-                    <span style={{ fontSize: '10px', color: colors.text.muted, display: 'block' }}>Used by</span>
-                    <strong style={{ fontSize: font.size.md, color: colors.text.primary, fontFamily: font.mono }}>
+                    <span style={{ fontSize: '11.5px', color: colors.text.muted, display: 'block' }}>Used by</span>
+                    <strong style={{ fontSize: font.size.md, color: colors.text.primary, fontFamily: font.sans }}>
                       {relationships.incoming.length}
                     </strong>
                   </div>
                   <div>
-                    <span style={{ fontSize: '10px', color: colors.text.muted, display: 'block' }}>Symbols</span>
-                    <strong style={{ fontSize: font.size.md, color: colors.text.primary, fontFamily: font.mono }}>
+                    <span style={{ fontSize: '11.5px', color: colors.text.muted, display: 'block' }}>Symbols</span>
+                    <strong style={{ fontSize: font.size.md, color: colors.text.primary, fontFamily: font.sans }}>
                       {entitiesByType.total}
                     </strong>
                   </div>
@@ -925,7 +925,7 @@ export const RepositoryExplorer: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span
                     style={{
-                      fontSize: '10px',
+                      fontSize: '11.5px',
                       fontWeight: 700,
                       letterSpacing: '0',
                       color: colors.text.muted,
@@ -935,7 +935,7 @@ export const RepositoryExplorer: React.FC = () => {
                   </span>
 
                   {relationships.incoming.length === 0 ? (
-                    <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                       No incoming file imports detected in graph analysis.
                     </span>
                   ) : (
@@ -954,8 +954,8 @@ export const RepositoryExplorer: React.FC = () => {
                               borderRadius: radius.sm,
                               backgroundColor: colors.bg.surfaceSecondary,
                               border: `1px solid ${colors.border.subtle}`,
-                              fontSize: '11px',
-                              fontFamily: font.mono,
+                              fontSize: '12.5px',
+                              fontFamily: font.sans,
                               color: colors.text.primary,
                               cursor: 'pointer',
                               display: 'flex',
@@ -979,7 +979,7 @@ export const RepositoryExplorer: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span
                     style={{
-                      fontSize: '10px',
+                      fontSize: '11.5px',
                       fontWeight: 700,
                       letterSpacing: '0',
                       color: colors.text.muted,
@@ -989,7 +989,7 @@ export const RepositoryExplorer: React.FC = () => {
                   </span>
 
                   {relationships.codeImports.length === 0 ? (
-                    <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                       No external package or module imports found in this file.
                     </span>
                   ) : (
@@ -1016,7 +1016,7 @@ export const RepositoryExplorer: React.FC = () => {
                     backgroundColor: colors.bg.surfaceSecondary,
                     border: `1px solid ${colors.border.default}`,
                     color: colors.accent.blue,
-                    fontSize: '11px',
+                    fontSize: '12.5px',
                     fontFamily: font.sans,
                     cursor: 'pointer',
                     marginTop: '8px',
@@ -1072,7 +1072,7 @@ const SymbolCard: React.FC<SymbolCardProps> = ({ symbol, onJump, onSearch, onAsk
 
         <span
           style={{
-            fontSize: '10px',
+            fontSize: '11.5px',
             color: colors.text.muted,
             fontFamily: font.mono,
             flexShrink: 0,
@@ -1085,7 +1085,7 @@ const SymbolCard: React.FC<SymbolCardProps> = ({ symbol, onJump, onSearch, onAsk
       {symbol.docstring && (
         <span
           style={{
-            fontSize: '11px',
+            fontSize: '12.5px',
             color: colors.text.secondary,
             fontStyle: 'italic',
             lineHeight: '1.4',
@@ -1117,7 +1117,7 @@ const SymbolCard: React.FC<SymbolCardProps> = ({ symbol, onJump, onSearch, onAsk
             background: 'none',
             border: 'none',
             color: colors.accent.blue,
-            fontSize: '10px',
+            fontSize: '11.5px',
             cursor: 'pointer',
             padding: '2px 4px',
             borderRadius: '3px',
@@ -1135,7 +1135,7 @@ const SymbolCard: React.FC<SymbolCardProps> = ({ symbol, onJump, onSearch, onAsk
             background: 'none',
             border: 'none',
             color: colors.text.muted,
-            fontSize: '10px',
+            fontSize: '11.5px',
             cursor: 'pointer',
             padding: '2px 4px',
             borderRadius: '3px',
@@ -1153,7 +1153,7 @@ const SymbolCard: React.FC<SymbolCardProps> = ({ symbol, onJump, onSearch, onAsk
             background: 'none',
             border: 'none',
             color: colors.text.muted,
-            fontSize: '10px',
+            fontSize: '11.5px',
             cursor: 'pointer',
             padding: '2px 4px',
             borderRadius: '3px',

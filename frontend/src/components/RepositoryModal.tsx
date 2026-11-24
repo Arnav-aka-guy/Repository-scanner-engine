@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { browseFolder } from '../services/repository';
+import { useAuthStore } from '../stores/authStore';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ export const RepositoryModal: React.FC = () => {
   const recentRepositories = useWorkspaceStore((s) => s.recentRepositories);
 
   const [activeTab, setActiveTab] = useState<'local' | 'github' | 'recents'>('local');
+  const canBrowse = useAuthStore((st) => st.capabilities.folderPicker);
   const [localPath, setLocalPath] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [isBrowsing, setIsBrowsing] = useState(false);
@@ -194,7 +196,7 @@ export const RepositoryModal: React.FC = () => {
                   {repoDisplayName}
                 </span>
                 {displayPath && displayPath !== repoDisplayName && (
-                  <span className="text-[11px] text-[#71717A] truncate font-mono" title={displayPath}>
+                  <span className="text-[12.5px] text-[#71717A] truncate font-mono" title={displayPath}>
                     {displayPath}
                   </span>
                 )}
@@ -203,7 +205,7 @@ export const RepositoryModal: React.FC = () => {
             <button
               onClick={handleUnloadWorkspace}
               title="Close current workspace"
-              className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 text-[11px] font-medium text-[#FF5C7A] hover:bg-[#FF5C7A]/10"
+              className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 text-[12.5px] font-medium text-[#FF5C7A] hover:bg-[#FF5C7A]/10"
             >
               <Trash2 size={12} />
               <span>Unload</span>
@@ -242,8 +244,9 @@ export const RepositoryModal: React.FC = () => {
                     onChange={(e) => setLocalPath(e.target.value)}
                     placeholder="e.g. D:\projects\summer-project-1 or /home/user/my-app"
                     disabled={isScanning}
-                    className="flex-1 h-[34px] rounded-[6px] border border-[#222228] bg-[#000000] px-3 font-mono text-[12px] text-[#F4F4F5] outline-none transition-colors focus:border-[#35D7FF]"
+                    className="flex-1 h-[34px] rounded-[6px] border border-[#222228] bg-[#000000] px-3 font-sans text-[12px] text-[#F4F4F5] outline-none transition-colors focus:border-[#35D7FF]"
                   />
+                  {canBrowse && (
                   <button
                     type="button"
                     onClick={handleBrowseFolder}
@@ -257,11 +260,16 @@ export const RepositoryModal: React.FC = () => {
                     )}
                     <span>Browse</span>
                   </button>
+                  )}
                 </div>
               </div>
 
-              <div className="rounded-[6px] border border-[#222228] bg-[#18181C] p-2.5 text-[11px] text-[#9A9AA3] leading-relaxed">
-                Click <strong>Browse</strong> to select any project folder, or paste its full path directly.
+              <div className="rounded-[6px] border border-[#222228] bg-[#18181C] p-2.5 text-[12px] text-[#9A9AA3] leading-relaxed">
+                {canBrowse ? (
+                  <>Click <strong>Browse</strong> to select any project folder, or paste its full path directly.</>
+                ) : (
+                  <>Paste the full path of the project folder on the server.</>
+                )}
               </div>
 
               {localError && (
@@ -318,12 +326,12 @@ export const RepositoryModal: React.FC = () => {
                   onChange={(e) => setGithubUrl(e.target.value)}
                   placeholder="https://github.com/owner/repository"
                   disabled={isScanning}
-                  className="w-full h-[34px] rounded-[6px] border border-[#222228] bg-[#000000] px-3 font-mono text-[12px] text-[#F4F4F5] outline-none transition-colors focus:border-[#35D7FF]"
+                  className="w-full h-[34px] rounded-[6px] border border-[#222228] bg-[#000000] px-3 font-sans text-[12px] text-[#F4F4F5] outline-none transition-colors focus:border-[#35D7FF]"
                 />
               </div>
 
               <div>
-                <span className="flex items-center gap-1 text-[11px] text-[#9A9AA3] mb-1.5">
+                <span className="flex items-center gap-1 text-[12.5px] text-[#9A9AA3] mb-1.5">
                   <Sparkles size={11} className="text-[#35D7FF]" /> Quick popular repositories:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
@@ -332,7 +340,7 @@ export const RepositoryModal: React.FC = () => {
                       key={sample.url}
                       type="button"
                       onClick={() => setGithubUrl(sample.url)}
-                      className="rounded-[6px] border border-[#222228] bg-[#18181C] px-2.5 py-1 text-[11px] text-[#9A9AA3] transition-colors hover:border-[#35D7FF] hover:text-[#F4F4F5]"
+                      className="rounded-[6px] border border-[#222228] bg-[#18181C] px-2.5 py-1 text-[12.5px] text-[#9A9AA3] transition-colors hover:border-[#35D7FF] hover:text-[#F4F4F5]"
                     >
                       {sample.name}
                     </button>
@@ -340,7 +348,7 @@ export const RepositoryModal: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-[6px] border border-[#222228] bg-[#18181C] p-2.5 text-[11px] text-[#9A9AA3] leading-relaxed">
+              <div className="rounded-[6px] border border-[#222228] bg-[#18181C] p-2.5 text-[12.5px] text-[#9A9AA3] leading-relaxed">
                 Clones into an isolated local cache, generates syntax & dependency trees, and prepares semantic search.
               </div>
 
@@ -382,7 +390,7 @@ export const RepositoryModal: React.FC = () => {
           <TabsContent value="recents">
             <div className="flex flex-col gap-2 pt-2">
               {recentRepositories.length === 0 ? (
-                <div className="py-8 text-center font-mono text-[12px] text-[#9A9AA3]">
+                <div className="py-8 text-center font-sans text-[12px] text-[#9A9AA3]">
                   No recent repositories found.
                 </div>
               ) : (
@@ -427,7 +435,7 @@ export const RepositoryModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleUnloadWorkspace}
-                  className="inline-flex items-center gap-1.5 text-[11px] text-[#FF5C7A] hover:underline"
+                  className="inline-flex items-center gap-1.5 text-[12.5px] text-[#FF5C7A] hover:underline"
                 >
                   <Trash2 size={12} />
                   <span>Clear All Workspace Data</span>

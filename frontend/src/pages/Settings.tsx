@@ -159,7 +159,7 @@ export const Settings: React.FC = () => {
               border: `1px solid ${colors.border.default}`,
               fontSize: font.size.xs,
               color: colors.text.secondary,
-              fontFamily: font.mono,
+              fontFamily: font.sans,
             }}
           >
             <span
@@ -430,7 +430,7 @@ export const Settings: React.FC = () => {
                                 {p.active && (
                                   <span
                                     style={{
-                                      fontSize: '10px',
+                                      fontSize: '11.5px',
                                       padding: '1px 6px',
                                       borderRadius: radius.sm,
                                       backgroundColor: colors.status.successSubtle,
@@ -447,7 +447,7 @@ export const Settings: React.FC = () => {
                                 style={{
                                   fontSize: font.size.xs,
                                   color: colors.text.muted,
-                                  fontFamily: font.mono,
+                                  fontFamily: font.sans,
                                 }}
                               >
                                 Model: {p.model}
@@ -524,7 +524,7 @@ export const Settings: React.FC = () => {
                     borderRadius: radius.md,
                     padding: '10px 12px',
                     fontSize: font.size.xs,
-                    fontFamily: font.mono,
+                    fontFamily: font.sans,
                     color: colors.text.secondary,
                     margin: 0,
                     overflowX: 'auto',
@@ -578,7 +578,7 @@ export const Settings: React.FC = () => {
                       <div
                         style={{
                           fontSize: font.size.sm,
-                          fontFamily: font.mono,
+                          fontFamily: font.sans,
                           color: colors.text.primary,
                         }}
                       >
@@ -666,7 +666,7 @@ export const Settings: React.FC = () => {
                         }}
                       >
                         <FolderOpen size={14} style={{ color: colors.accent.blue, flexShrink: 0 }} />
-                        <span style={{ fontSize: font.size.xs, fontFamily: font.mono, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: font.size.xs, fontFamily: font.sans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {repo}
                         </span>
                       </button>
@@ -769,7 +769,7 @@ export const Settings: React.FC = () => {
                     backgroundColor: colors.bg.surfaceSecondary,
                     border: `1px solid ${colors.border.default}`,
                     color: colors.text.secondary,
-                    fontFamily: font.mono,
+                    fontFamily: font.sans,
                   }}
                 >
                   IDE Dark (Default)
@@ -818,9 +818,9 @@ export const Settings: React.FC = () => {
                       <div style={{ fontSize: font.size.xs, fontWeight: font.weight.semibold }}>{f.label}</div>
                       <div
                         style={{
-                          fontSize: '11px',
+                          fontSize: '12.5px',
                           color: colors.text.muted,
-                          fontFamily: font.mono,
+                          fontFamily: font.sans,
                           marginTop: '4px',
                         }}
                       >
@@ -1005,7 +1005,7 @@ export const Settings: React.FC = () => {
                       borderRadius: radius.sm,
                       backgroundColor: colors.bg.elevated,
                       color: colors.text.primary,
-                      fontFamily: font.mono,
+                      fontFamily: font.sans,
                     }}
                   >
                     {contextBudget}
@@ -1039,7 +1039,7 @@ export const Settings: React.FC = () => {
                       borderRadius: radius.sm,
                       backgroundColor: colors.bg.elevated,
                       color: colors.text.primary,
-                      fontFamily: font.mono,
+                      fontFamily: font.sans,
                     }}
                   >
                     {rateLimit}
@@ -1079,7 +1079,7 @@ export const Settings: React.FC = () => {
                       border: `1px solid ${colors.border.subtle}`,
                     }}
                   >
-                    <div style={{ fontSize: '10px', color: colors.text.muted }}>MAX FILES</div>
+                    <div style={{ fontSize: '11.5px', color: colors.text.muted }}>MAX FILES</div>
                     <div style={{ fontSize: font.size.sm, fontWeight: font.weight.semibold, marginTop: '2px' }}>
                       10,000 files
                     </div>
@@ -1093,7 +1093,7 @@ export const Settings: React.FC = () => {
                       border: `1px solid ${colors.border.subtle}`,
                     }}
                   >
-                    <div style={{ fontSize: '10px', color: colors.text.muted }}>MAX FILE SIZE</div>
+                    <div style={{ fontSize: '11.5px', color: colors.text.muted }}>MAX FILE SIZE</div>
                     <div style={{ fontSize: font.size.sm, fontWeight: font.weight.semibold, marginTop: '2px' }}>
                       5 MB per file
                     </div>
@@ -1107,7 +1107,7 @@ export const Settings: React.FC = () => {
                       border: `1px solid ${colors.border.subtle}`,
                     }}
                   >
-                    <div style={{ fontSize: '10px', color: colors.text.muted }}>MAX DIR DEPTH</div>
+                    <div style={{ fontSize: '11.5px', color: colors.text.muted }}>MAX DIR DEPTH</div>
                     <div style={{ fontSize: font.size.sm, fontWeight: font.weight.semibold, marginTop: '2px' }}>
                       30 levels
                     </div>

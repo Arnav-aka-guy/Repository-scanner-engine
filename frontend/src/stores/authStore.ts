@@ -30,10 +30,18 @@ export interface UserProfile {
   max_repositories: number;
 }
 
+/** What this server can do; the UI hides options that would not work. */
+export interface ServerCapabilities {
+  passwordResetEmail: boolean;
+  folderPicker: boolean;
+  aiDailyLimit: number;
+}
+
 interface AuthState {
   token: string | null;
   user: UserProfile | null;
   authEnabled: boolean;
+  capabilities: ServerCapabilities;
   isCheckingAuth: boolean;
   loginError: string | null;
   isLoggingIn: boolean;
@@ -52,6 +60,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       authEnabled: true,
+      capabilities: { passwordResetEmail: false, folderPicker: false, aiDailyLimit: 0 },
       isCheckingAuth: true,
       loginError: null,
       isLoggingIn: false,
@@ -65,7 +74,16 @@ export const useAuthStore = create<AuthState>()(
           if (res.ok) {
             const data = await res.json();
             const enabled = Boolean(data.auth_enabled);
-            set({ authEnabled: enabled, isCheckingAuth: false });
+            set({
+              authEnabled: enabled,
+              isCheckingAuth: false,
+              capabilities: {
+                passwordResetEmail: Boolean(data.password_reset_email),
+                // Older servers did not report this; keep the button for them in local mode.
+                folderPicker: data.folder_picker === undefined ? !enabled : Boolean(data.folder_picker),
+                aiDailyLimit: Number(data.ai_daily_limit) || 0,
+              },
+            });
             return enabled;
           }
         } catch {

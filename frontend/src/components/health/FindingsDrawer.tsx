@@ -146,7 +146,7 @@ export const FindingsDrawer: React.FC<FindingsDrawerProps> = ({
               {finding.title}
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: font.size.xs, fontFamily: font.mono, color: colors.text.muted }}>
+              <span style={{ fontSize: font.size.xs, fontFamily: font.sans, color: colors.text.muted }}>
                 Rule: {finding.rule_id}
               </span>
               {getSeverityBadge(finding.severity)}
@@ -178,7 +178,7 @@ export const FindingsDrawer: React.FC<FindingsDrawerProps> = ({
               style={{
                 fontSize: font.size.xl,
                 fontWeight: font.weight.bold,
-                fontFamily: font.mono,
+                fontFamily: font.sans,
                 color: finding.dismissed ? colors.text.muted : colors.status.danger,
               }}
             >
@@ -206,7 +206,7 @@ export const FindingsDrawer: React.FC<FindingsDrawerProps> = ({
                 <FileCode size={16} style={{ color: colors.text.muted, flexShrink: 0 }} />
                 <FilePath path={finding.file_path} showFull />
                 {finding.line_number > 0 && (
-                  <span style={{ fontSize: font.size.xs, fontFamily: font.mono, color: colors.accent.blue, flexShrink: 0 }}>
+                  <span style={{ fontSize: font.size.xs, fontFamily: font.sans, color: colors.accent.blue, flexShrink: 0 }}>
                     :line {finding.line_number}
                   </span>
                 )}

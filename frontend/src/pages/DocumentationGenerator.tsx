@@ -314,7 +314,7 @@ export const DocumentationGenerator: React.FC = () => {
           {docsData && (
             <div className="hidden md:flex flex-1 flex-col overflow-hidden" style={{ padding: '12px 8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px 6px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+                <span style={{ fontSize: '11.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Module References ({filteredModules.length})
                 </span>
               </div>
@@ -343,7 +343,7 @@ export const DocumentationGenerator: React.FC = () => {
                       background: 'transparent',
                       border: 'none',
                       outline: 'none',
-                      fontSize: '10px',
+                      fontSize: '11.5px',
                       color: colors.text.primary,
                       fontFamily: font.sans,
                     }}
@@ -368,7 +368,7 @@ export const DocumentationGenerator: React.FC = () => {
                         textAlign: 'left',
                         padding: '5px 8px',
                         borderRadius: radius.sm,
-                        fontSize: '11px',
+                        fontSize: '12.5px',
                         fontFamily: font.mono,
                         backgroundColor: isSelected ? colors.bg.surfaceSecondary : 'transparent',
                         color: isSelected ? colors.accent.blue : colors.text.secondary,
@@ -403,7 +403,7 @@ export const DocumentationGenerator: React.FC = () => {
               height: '38px',
             }}
           >
-            <span style={{ fontSize: '11px', fontFamily: font.mono, color: colors.text.muted }}>
+            <span style={{ fontSize: '12.5px', fontFamily: font.mono, color: colors.text.muted }}>
               {activeSection === 'modules' ? getRelativePath(activeModulePath, repoPath) : activeSection.replace('_', ' ')}
             </span>
 
@@ -417,7 +417,7 @@ export const DocumentationGenerator: React.FC = () => {
                   background: 'none',
                   border: 'none',
                   color: copied ? colors.status.success : colors.text.secondary,
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   cursor: 'pointer',
                   padding: '2px 6px',
                   borderRadius: radius.sm,
@@ -532,19 +532,19 @@ export const DocumentationGenerator: React.FC = () => {
                       }}
                     >
                       <div>
-                        <span style={{ fontSize: '10px', color: colors.text.muted }}>Repository</span>
+                        <span style={{ fontSize: '11.5px', color: colors.text.muted }}>Repository</span>
                         <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary }}>
                           {repositoryInfo?.name || repoPath.split(/[\\/]+/).pop()}
                         </div>
                       </div>
                       <div>
-                        <span style={{ fontSize: '10px', color: colors.text.muted }}>Total Files</span>
+                        <span style={{ fontSize: '11.5px', color: colors.text.muted }}>Total Files</span>
                         <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary, fontFamily: font.mono }}>
                           {repositoryInfo?.total_files || files.length} files
                         </div>
                       </div>
                       <div>
-                        <span style={{ fontSize: '10px', color: colors.text.muted }}>Languages</span>
+                        <span style={{ fontSize: '11.5px', color: colors.text.muted }}>Languages</span>
                         <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text.primary }}>
                           {Object.keys(repositoryInfo?.languages || {}).join(', ') || 'TypeScript, Python'}
                         </div>
@@ -584,7 +584,7 @@ export const DocumentationGenerator: React.FC = () => {
                         <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
                           Interactive Architecture Inspector
                         </span>
-                        <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                        <span style={{ fontSize: '12.5px', color: colors.text.muted }}>
                           View layer boundary violations, dead code, and circular dependencies.
                         </span>
                       </div>
@@ -617,7 +617,7 @@ export const DocumentationGenerator: React.FC = () => {
                 {activeSection === 'api_reference' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                         Discovered API Endpoints & Routes ({apiEndpoints.length})
                       </span>
 
@@ -652,13 +652,13 @@ export const DocumentationGenerator: React.FC = () => {
                               </Button>
                             </div>
 
-                            <span style={{ fontSize: '11px', color: colors.text.secondary }}>
+                            <span style={{ fontSize: '12.5px', color: colors.text.secondary }}>
                               {ep.purpose}
                             </span>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: colors.text.muted }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', color: colors.text.muted }}>
                               <span>Implementation:</span>
-                              <span style={{ fontFamily: font.mono, color: colors.text.secondary }}>{ep.implementation}</span>
+                              <span style={{ fontFamily: font.sans, color: colors.text.secondary }}>{ep.implementation}</span>
                             </div>
                           </div>
                         ))}
@@ -700,7 +700,7 @@ export const DocumentationGenerator: React.FC = () => {
                         <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
                           Interactive Dependency Graph
                         </span>
-                        <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                        <span style={{ fontSize: '12.5px', color: colors.text.muted }}>
                           Explore interactive force-directed and hierarchical layouts on the graph canvas.
                         </span>
                       </div>
@@ -717,7 +717,7 @@ export const DocumentationGenerator: React.FC = () => {
                     {/* Most connected modules */}
                     {connectedModules.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+                        <span style={{ fontSize: '12.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                           Most Connected Modules (Hubs)
                         </span>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
@@ -736,7 +736,7 @@ export const DocumentationGenerator: React.FC = () => {
                                 cursor: 'pointer',
                               }}
                             >
-                              <span style={{ fontSize: '11px', fontFamily: font.mono, color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '12.5px', fontFamily: font.mono, color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {getRelativePath(m.path, repoPath).split('/').pop()}
                               </span>
                               <Badge variant="blue">{m.links} links</Badge>

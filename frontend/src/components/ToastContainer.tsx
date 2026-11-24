@@ -76,7 +76,7 @@ export const ToastContainer: React.FC = () => {
                   {toast.title}
                 </div>
                 {toast.message && (
-                  <div className="text-[11px] mt-0.5 leading-relaxed text-[var(--text-secondary)]">
+                  <div className="text-[12.5px] mt-0.5 leading-relaxed text-[var(--text-secondary)]">
                     {toast.message}
                   </div>
                 )}

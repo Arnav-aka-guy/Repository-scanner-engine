@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Folder, GitFork, Loader2, AlertCircle, HardDrive } from 'lucide-react';
 import { browseFolder, createUserRepository } from '../services/repository';
+import { useAuthStore } from '../stores/authStore';
 import { SavedRepository } from '../types/repository';
 import {
   Dialog,
@@ -25,6 +26,7 @@ export const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({
   currentCount,
   maxLimit,
 }) => {
+  const canBrowse = useAuthStore((st) => st.capabilities.folderPicker);
   const [name, setName] = useState('');
   const [sourceType, setSourceType] = useState<'local' | 'github'>('local');
   const [sourcePath, setSourcePath] = useState('');
@@ -191,9 +193,9 @@ export const AddRepositoryModal: React.FC<AddRepositoryModalProps> = ({
                 onChange={(e) => setSourcePath(e.target.value)}
                 placeholder={sourceType === 'local' ? 'D:/projects/my-app' : 'https://github.com/owner/repo'}
                 disabled={isLoading || isLimitReached}
-                className="flex-1 h-[34px] rounded-[6px] border border-[#222228] bg-[#000000] px-3 font-mono text-[12px] text-[#F4F4F5] outline-none transition-colors focus:border-[#35D7FF]"
+                className="flex-1 h-[34px] rounded-[6px] border border-[#222228] bg-[#000000] px-3 font-sans text-[12px] text-[#F4F4F5] outline-none transition-colors focus:border-[#35D7FF]"
               />
-              {sourceType === 'local' && (
+              {sourceType === 'local' && canBrowse && (
                 <button
                   type="button"
                   onClick={handleBrowse}

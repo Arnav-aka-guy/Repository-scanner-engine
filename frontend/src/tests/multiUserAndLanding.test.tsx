@@ -59,15 +59,19 @@ describe('Phase 1 Public Landing Page & Auth Flow', () => {
 
 describe('Phase 2 Add Repository Modal & Quota Check', () => {
   it('renders Add Repository Modal with local directory path and public GitHub options', () => {
-    const html = renderToString(
-      <AddRepositoryModal
-        isOpen={true}
-        onClose={() => {}}
-        onCreated={() => {}}
-        currentCount={2}
-        maxLimit={5}
-      />
-    );
+    // Local single-user app: the server reports that it can open a folder dialog.
+    useAuthStore.setState({ capabilities: { passwordResetEmail: false, folderPicker: true, aiDailyLimit: 0 } });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <AddRepositoryModal isOpen={true} onClose={() => {}} onCreated={() => {}} currentCount={2} maxLimit={5} />
+      );
+    });
+    const html = document.body.innerHTML;
+    act(() => root.unmount());
+    container.remove();
 
     expect(html).toContain('Add Repository');
     expect(html).toContain('Local Directory');
@@ -75,6 +79,23 @@ describe('Phase 2 Add Repository Modal & Quota Check', () => {
     expect(html).toContain('Browse');
     expect(html).toContain('Repository Name');
     expect(html).toContain('Saved to your personal workspace');
+  });
+
+  it('hides the Browse button when the server cannot open a folder dialog', () => {
+    useAuthStore.setState({ capabilities: { passwordResetEmail: false, folderPicker: false, aiDailyLimit: 0 } });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <AddRepositoryModal isOpen={true} onClose={() => {}} onCreated={() => {}} currentCount={0} maxLimit={5} />
+      );
+    });
+    const html = document.body.innerHTML;
+    act(() => root.unmount());
+    container.remove();
+    expect(html).not.toContain('Browse</');
+    expect(html).toContain('Local Directory');
   });
 
   it('indicates quota limit reached when 5 repositories are saved', () => {

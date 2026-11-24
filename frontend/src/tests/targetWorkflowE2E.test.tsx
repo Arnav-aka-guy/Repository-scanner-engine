@@ -49,12 +49,11 @@ describe('Section C End-to-End Target Workflow Verification', () => {
       total_lines: 0,
       languages: {},
     });
-    vi.spyOn(repoService, 'scanRepositoryAsync').mockResolvedValue({
+    const scanSpy = vi.spyOn(repoService, 'scanUserRepository').mockResolvedValue({
       job_id: 'job-55',
-      repo_path: '/repos/alpha-repo',
-      status: 'scanning',
-      progress: 0.1,
-      message: 'Indexing files...',
+      status: 'pending',
+      message: 'Scan queued.',
+      repository_id: 55,
     });
     vi.spyOn(repoService, 'subscribeScanEvents').mockImplementation((_jobId, onProgress) => {
       setTimeout(() => {
@@ -89,6 +88,7 @@ describe('Section C End-to-End Target Workflow Verification', () => {
     await useWorkspaceStore.getState().scanRepo('/repos/alpha-repo');
 
     const state = useWorkspaceStore.getState();
+    expect(scanSpy).toHaveBeenCalledWith(55);
     expect(state.activeRepositoryId).toBe(55);
     expect(state.activeRepository).toBe('/repos/alpha-repo');
     expect(state.scanStatus).toBe('indexed');

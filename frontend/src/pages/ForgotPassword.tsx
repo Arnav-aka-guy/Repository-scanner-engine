@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Loader2, CheckCircle2 } from 'lucide-react';
+import { Mail, Loader2, CheckCircle2, Info } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
 import { AuthShell, AuthError, AuthField } from '../components/auth/AuthShell';
 
 export const ForgotPassword: React.FC = () => {
@@ -8,6 +9,7 @@ export const ForgotPassword: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const emailEnabled = useAuthStore((st) => st.capabilities.passwordResetEmail);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,14 +54,24 @@ export const ForgotPassword: React.FC = () => {
         </>
       }
     >
-      {submitted ? (
+      {!emailEnabled ? (
+        <div className="rounded-[12px] border border-line bg-surface p-4">
+          <div className="flex items-center gap-2 text-[14.5px] font-semibold">
+            <Info size={17} className="text-ion" />
+            Email is not set up on this server
+          </div>
+          <p className="mt-1.5 text-[14px] leading-relaxed text-fg-2">
+            We can't send you a reset link. Ask the person who runs this server to reset your password for you.
+          </p>
+        </div>
+      ) : submitted ? (
         <div className="rounded-[12px] border border-mint/30 bg-mint/[0.06] p-4">
           <div className="flex items-center gap-2 text-[14.5px] font-semibold text-mint">
             <CheckCircle2 size={17} />
             Check your inbox
           </div>
           <p className="mt-1.5 text-[14px] leading-relaxed text-fg-2">
-            If an account matches <strong>{email}</strong>, instructions to reset your password have been generated.
+            If an account matches <strong>{email}</strong>, we have sent a link to reset your password. It works for 30 minutes.
           </p>
         </div>
       ) : (

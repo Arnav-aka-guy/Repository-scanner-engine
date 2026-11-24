@@ -332,7 +332,7 @@ export const SemanticSearch: React.FC = () => {
 
         {/* Category Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '4px' }}>
-          <span style={{ fontSize: '11px', color: colors.text.muted, display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
+          <span style={{ fontSize: '12.5px', color: colors.text.muted, display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
             <SlidersHorizontal size={11} />
             Filter:
           </span>
@@ -352,7 +352,7 @@ export const SemanticSearch: React.FC = () => {
                 key={tab.key}
                 onClick={() => setActiveFilter(tab.key)}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   fontWeight: isActive ? 600 : 400,
                   fontFamily: font.sans,
                   padding: '3px 9px',
@@ -548,7 +548,7 @@ export const SemanticSearch: React.FC = () => {
                         <Tooltip content={`Vector search score: ${(res.score || 0).toFixed(2)}. Represents embedding distance and keyword rank fusion.`}>
                           <span
                             style={{
-                              fontSize: '11px',
+                              fontSize: '12.5px',
                               fontWeight: 600,
                               fontFamily: font.sans,
                               padding: '2px 8px',
@@ -562,7 +562,7 @@ export const SemanticSearch: React.FC = () => {
                             {evaluation.tier}
                           </span>
                         </Tooltip>
-                        <span style={{ fontSize: '10px', color: colors.text.muted, fontFamily: font.mono }}>
+                        <span style={{ fontSize: '11.5px', color: colors.text.muted, fontFamily: font.sans }}>
                           Score: {(res.score || 0).toFixed(2)}
                         </span>
                       </div>
@@ -585,7 +585,7 @@ export const SemanticSearch: React.FC = () => {
                         <span
                           key={rIdx}
                           style={{
-                            fontSize: '10px',
+                            fontSize: '11.5px',
                             padding: '1px 5px',
                             borderRadius: radius.sm,
                             backgroundColor: colors.bg.primary,
@@ -612,7 +612,7 @@ export const SemanticSearch: React.FC = () => {
                             <button
                               onClick={() => toggleExpand(idx)}
                               style={{
-                                fontSize: '11px',
+                                fontSize: '12.5px',
                                 color: colors.accent.blue,
                                 alignSelf: 'flex-end',
                                 background: 'none',
@@ -639,7 +639,7 @@ export const SemanticSearch: React.FC = () => {
                                 backgroundColor: colors.bg.primary,
                                 border: `1px solid ${colors.border.subtle}`,
                                 color: colors.text.secondary,
-                                fontSize: '11px',
+                                fontSize: '12.5px',
                                 fontFamily: font.mono,
                                 maxHeight: '68px',
                                 overflow: 'hidden',
@@ -652,7 +652,7 @@ export const SemanticSearch: React.FC = () => {
                             <button
                               onClick={() => toggleExpand(idx)}
                               style={{
-                                fontSize: '11px',
+                                fontSize: '12.5px',
                                 color: colors.accent.blue,
                                 alignSelf: 'flex-start',
                                 background: 'none',

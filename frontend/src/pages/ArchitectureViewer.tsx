@@ -282,14 +282,14 @@ export const ArchitectureViewer: React.FC = () => {
                     style={{
                       fontSize: '36px',
                       fontWeight: 700,
-                      fontFamily: font.mono,
+                      fontFamily: font.sans,
                       color: rating.color,
                       lineHeight: 1,
                     }}
                   >
                     {report.score}
                   </span>
-                  <span style={{ fontSize: '13px', color: colors.text.muted, fontFamily: font.mono }}>
+                  <span style={{ fontSize: '13px', color: colors.text.muted, fontFamily: font.sans }}>
                     / 100
                   </span>
                 </div>
@@ -321,20 +321,20 @@ export const ArchitectureViewer: React.FC = () => {
                 {/* Dimensions pills */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginTop: '4px' }}>
                   <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: colors.text.muted }}>Layers</div>
+                    <div style={{ fontSize: '11.5px', color: colors.text.muted }}>Layers</div>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>{report.stats.total_layers || Object.keys(report.layers).length}</div>
                   </div>
                   <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: colors.text.muted }}>Cycles</div>
+                    <div style={{ fontSize: '11.5px', color: colors.text.muted }}>Cycles</div>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: (report.circular_dependencies?.length || 0) > 0 ? colors.status.danger : colors.status.success, fontFamily: font.mono }}>{report.circular_dependencies?.length || 0}</div>
                   </div>
                   <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: colors.text.muted }}>Violations</div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: (report.violations?.length || 0) > 0 ? colors.status.warning : colors.status.success, fontFamily: font.mono }}>{report.violations?.length || 0}</div>
+                    <div style={{ fontSize: '11.5px', color: colors.text.muted }}>Violations</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: (report.violations?.length || 0) > 0 ? colors.status.warning : colors.status.success, fontFamily: font.sans }}>{report.violations?.length || 0}</div>
                   </div>
                   <div style={{ padding: '8px', borderRadius: radius.md, backgroundColor: colors.bg.surfaceSecondary, border: `1px solid ${colors.border.subtle}`, textAlign: 'center' }}>
-                    <div style={{ fontSize: '10px', color: colors.text.muted }}>Unclassified</div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text.secondary, fontFamily: font.mono }}>{report.layers['Unclassified']?.length || 0}</div>
+                    <div style={{ fontSize: '11.5px', color: colors.text.muted }}>Unclassified</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text.secondary, fontFamily: font.sans }}>{report.layers['Unclassified']?.length || 0}</div>
                   </div>
                 </div>
               </div>
@@ -371,8 +371,8 @@ export const ArchitectureViewer: React.FC = () => {
                         borderRadius: radius.sm,
                         backgroundColor: colors.bg.primary,
                         border: `1px solid ${colors.border.subtle}`,
-                        fontSize: '11px',
-                        fontFamily: font.mono,
+                        fontSize: '12.5px',
+                        fontFamily: font.sans,
                         color: colors.text.primary,
                         display: 'flex',
                         alignItems: 'center',
@@ -395,7 +395,7 @@ export const ArchitectureViewer: React.FC = () => {
             {/* ── Violations & Concerns ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+                <span style={{ fontSize: '12.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                   Boundary Violations & Architectural Concerns ({report.violations?.length || 0})
                 </span>
               </div>
@@ -421,7 +421,7 @@ export const ArchitectureViewer: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Badge variant="red">{v.severity || 'High Coupling'}</Badge>
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary, fontFamily: font.mono }}>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary, fontFamily: font.sans }}>
                               {srcRel}
                             </span>
                           </div>
@@ -450,10 +450,10 @@ export const ArchitectureViewer: React.FC = () => {
                             gap: '3px',
                           }}
                         >
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted }}>
+                          <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted }}>
                             Why it matters:
                           </span>
-                          <span style={{ fontSize: '11px', color: colors.text.secondary, lineHeight: 1.4 }}>
+                          <span style={{ fontSize: '12.5px', color: colors.text.secondary, lineHeight: 1.4 }}>
                             Changes to {tgtRel.split('/').pop()} may unexpectedly break consumers in higher-level layers, violating unidirectional architectural boundaries.
                           </span>
                         </div>
@@ -483,7 +483,7 @@ export const ArchitectureViewer: React.FC = () => {
 
             {/* ── Architectural Layers ── */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
+              <span style={{ fontSize: '12.5px', fontWeight: 600, letterSpacing: '0', color: colors.text.muted }}>
                 Architectural Layers ({Object.keys(report.layers).length})
               </span>
 
@@ -516,7 +516,7 @@ export const ArchitectureViewer: React.FC = () => {
                           <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text.primary }}>
                             {layerName}
                           </span>
-                          <span style={{ fontSize: '11px', color: colors.text.muted }}>
+                          <span style={{ fontSize: '12.5px', color: colors.text.muted }}>
                             ({fileList.length} {fileList.length === 1 ? 'file' : 'files'})
                           </span>
                         </div>
@@ -546,7 +546,7 @@ export const ArchitectureViewer: React.FC = () => {
                                   borderRadius: radius.sm,
                                   backgroundColor: colors.bg.primary,
                                   border: `1px solid ${colors.border.default}`,
-                                  fontSize: '11px',
+                                  fontSize: '12.5px',
                                   fontFamily: font.mono,
                                   color: colors.text.secondary,
                                   cursor: 'pointer',

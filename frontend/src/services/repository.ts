@@ -2,14 +2,6 @@ import { apiGet, apiPost, apiPatch, apiDelete } from './api';
 import { useAuthStore } from '../stores/authStore';
 import { RepositoryInfo, FileInfo, SavedRepository, RepositoryListResponse, CodeEntity } from '../types/repository';
 
-export async function scanRepository(path: string): Promise<RepositoryInfo> {
-  return apiPost<RepositoryInfo>('/repository/scan', { path });
-}
-
-export async function scanGitHubRepository(url: string): Promise<RepositoryInfo> {
-  return apiPost<RepositoryInfo>('/repository/scan-github', { url });
-}
-
 export async function browseFolder(): Promise<{ path: string }> {
   return apiPost<{ path: string }>('/repository/browse-folder', {});
 }
@@ -29,17 +21,15 @@ export async function listFiles(
 
 export interface ScanJob {
   job_id: string;
-  status: 'pending' | 'scanning' | 'completed' | 'failed' | 'cancelled';
+  status: 'pending' | 'scanning' | 'indexing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   message: string;
   result?: RepositoryInfo | null;
   error?: string | null;
+  /** Set when the scan finished but part of it (the search index) did not. */
+  warning?: string | null;
   repo_path?: string;
   created_at?: number;
-}
-
-export async function scanRepositoryAsync(path: string): Promise<ScanJob> {
-  return apiPost<ScanJob>('/repository/scan/async', { path });
 }
 
 export async function getScanJobStatus(jobId: string): Promise<ScanJob> {
@@ -255,4 +245,31 @@ export async function scanUserRepository(id: number): Promise<ScanJobTriggerResp
 
 export async function cancelScanJob(jobId: string): Promise<ScanJob> {
   return apiPost<ScanJob>(`/repository/scan/jobs/${jobId}/cancel`, {});
+}
+
+/** Download the shareable HTML report for a saved repository. */
+export async function downloadRepositoryReport(id: number, fileName: string): Promise<void> {
+  const token = useAuthStore.getState().token;
+  const res = await fetch(`/api/report?repository_id=${encodeURIComponent(String(id))}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    let detail = `Report failed (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.detail) detail = String(body.detail);
+    } catch {
+      /* not JSON */
+    }
+    throw new Error(detail);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

@@ -253,7 +253,7 @@ export const DependencyGraph: React.FC = () => {
                   <Badge variant="default">{currentTechBadge}</Badge>
                 </span>
               </Tooltip>
-              <span style={{ fontSize: '11px', color: colors.text.muted, marginLeft: '4px' }}>
+              <span style={{ fontSize: '12.5px', color: colors.text.muted, marginLeft: '4px' }}>
                 {currentExplanation}
               </span>
             </div>
@@ -274,7 +274,7 @@ export const DependencyGraph: React.FC = () => {
                   setSelectedNode(null);
                 }}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   fontWeight: activeType === 'dependency' ? 600 : 400,
                   fontFamily: font.sans,
                   padding: '4px 10px',
@@ -294,7 +294,7 @@ export const DependencyGraph: React.FC = () => {
                   setSelectedNode(null);
                 }}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   fontWeight: activeType === 'call' ? 600 : 400,
                   fontFamily: font.sans,
                   padding: '4px 10px',
@@ -314,7 +314,7 @@ export const DependencyGraph: React.FC = () => {
                   setSelectedNode(null);
                 }}
                 style={{
-                  fontSize: '11px',
+                  fontSize: '12.5px',
                   fontWeight: activeType === 'symbol' ? 600 : 400,
                   fontFamily: font.sans,
                   padding: '4px 10px',
@@ -359,7 +359,7 @@ export const DependencyGraph: React.FC = () => {
                     background: 'transparent',
                     border: 'none',
                     outline: 'none',
-                    fontSize: '11px',
+                    fontSize: '12.5px',
                     color: colors.text.primary,
                     fontFamily: font.sans,
                   }}
@@ -382,7 +382,7 @@ export const DependencyGraph: React.FC = () => {
                     value={graphFilter}
                     onChange={(e: any) => setGraphFilter(e.target.value)}
                     style={{
-                      fontSize: '11px',
+                      fontSize: '12.5px',
                       fontFamily: font.sans,
                       padding: '4px 8px',
                       borderRadius: radius.md,
@@ -409,7 +409,7 @@ export const DependencyGraph: React.FC = () => {
                     value={layoutName}
                     onChange={(e: any) => setLayoutName(e.target.value)}
                     style={{
-                      fontSize: '11px',
+                      fontSize: '12.5px',
                       fontFamily: font.sans,
                       padding: '4px 8px',
                       borderRadius: radius.md,
@@ -435,7 +435,7 @@ export const DependencyGraph: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    fontSize: '11px',
+                    fontSize: '12.5px',
                     fontFamily: font.sans,
                     padding: '4px 8px',
                     borderRadius: radius.md,
@@ -562,7 +562,7 @@ export const DependencyGraph: React.FC = () => {
                   >
                     <span
                       style={{
-                        fontSize: '11px',
+                        fontSize: '12.5px',
                         fontWeight: 600,
                         letterSpacing: '0',
                         color: colors.text.muted,
@@ -587,7 +587,7 @@ export const DependencyGraph: React.FC = () => {
                         style={{
                           fontSize: font.size.sm,
                           fontWeight: 600,
-                          fontFamily: font.mono,
+                          fontFamily: font.sans,
                           color: colors.text.primary,
                         }}
                       >
@@ -597,7 +597,7 @@ export const DependencyGraph: React.FC = () => {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                       <Badge variant="default">{selectedNode.node_type || 'file'}</Badge>
-                      <span style={{ fontSize: '11px', color: colors.text.muted, fontFamily: font.mono }}>
+                      <span style={{ fontSize: '12.5px', color: colors.text.muted, fontFamily: font.mono }}>
                         {nodeRelationships.totalIn} callers • {nodeRelationships.totalOut} imports
                       </span>
                     </div>
@@ -622,13 +622,13 @@ export const DependencyGraph: React.FC = () => {
                         gap: '2px',
                       }}
                     >
-                      <span style={{ fontSize: '10px', color: colors.text.muted }}>
+                      <span style={{ fontSize: '11.5px', color: colors.text.muted }}>
                         Imports
                       </span>
-                      <span style={{ fontSize: font.size.lg, fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>
+                      <span style={{ fontSize: font.size.lg, fontWeight: 700, color: colors.text.primary, fontFamily: font.sans }}>
                         {nodeRelationships.totalOut}
                       </span>
-                      <span style={{ fontSize: '10px', color: colors.text.secondary }}>
+                      <span style={{ fontSize: '11.5px', color: colors.text.secondary }}>
                         outgoing deps
                       </span>
                     </div>
@@ -644,13 +644,13 @@ export const DependencyGraph: React.FC = () => {
                         gap: '2px',
                       }}
                     >
-                      <span style={{ fontSize: '10px', color: colors.text.muted }}>
+                      <span style={{ fontSize: '11.5px', color: colors.text.muted }}>
                         Imported by
                       </span>
-                      <span style={{ fontSize: font.size.lg, fontWeight: 700, color: colors.text.primary, fontFamily: font.mono }}>
+                      <span style={{ fontSize: font.size.lg, fontWeight: 700, color: colors.text.primary, fontFamily: font.sans }}>
                         {nodeRelationships.totalIn}
                       </span>
-                      <span style={{ fontSize: '10px', color: colors.text.secondary }}>
+                      <span style={{ fontSize: '11.5px', color: colors.text.secondary }}>
                         inbound callers
                       </span>
                     </div>
@@ -658,7 +658,7 @@ export const DependencyGraph: React.FC = () => {
 
                   {/* Depends on (Outgoing dependencies) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                       Depends on ({nodeRelationships.totalOut})
                     </span>
                     {nodeRelationships.dependsOn.length > 0 ? (
@@ -674,21 +674,21 @@ export const DependencyGraph: React.FC = () => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
-                              fontSize: '11px',
+                              fontSize: '12.5px',
                               fontFamily: font.mono,
                             }}
                           >
                             <span style={{ color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {getRelativePath(dep.target, repoPath)}
                             </span>
-                            <span style={{ color: colors.text.muted, fontSize: '9px' }}>
+                            <span style={{ color: colors.text.muted, fontSize: '12.5px' }}>
                               {dep.type}
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                      <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                         No outgoing dependencies.
                       </span>
                     )}
@@ -696,7 +696,7 @@ export const DependencyGraph: React.FC = () => {
 
                   {/* Used by (Inbound callers) */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.secondary, letterSpacing: '0' }}>
                       Used by ({nodeRelationships.totalIn})
                     </span>
                     {nodeRelationships.usedBy.length > 0 ? (
@@ -712,21 +712,21 @@ export const DependencyGraph: React.FC = () => {
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
-                              fontSize: '11px',
+                              fontSize: '12.5px',
                               fontFamily: font.mono,
                             }}
                           >
                             <span style={{ color: colors.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {getRelativePath(caller.source, repoPath)}
                             </span>
-                            <span style={{ color: colors.text.muted, fontSize: '9px' }}>
+                            <span style={{ color: colors.text.muted, fontSize: '12.5px' }}>
                               {caller.type}
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                      <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                         No known incoming callers.
                       </span>
                     )}
@@ -749,7 +749,7 @@ export const DependencyGraph: React.FC = () => {
                         <Layers size={13} style={{ color: colors.accent.blue }} />
                         <span
                           style={{
-                            fontSize: '11px',
+                            fontSize: '12.5px',
                             fontWeight: 600,
                             color: colors.text.secondary,
                             letterSpacing: '0',
@@ -776,7 +776,7 @@ export const DependencyGraph: React.FC = () => {
                     </div>
 
                     {impactLoading ? (
-                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                      <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                         Calculating dependency blast radius...
                       </span>
                     ) : impactResult ? (
@@ -791,12 +791,12 @@ export const DependencyGraph: React.FC = () => {
                               borderRadius: radius.sm,
                             }}
                           >
-                            <span style={{ fontSize: '10px', color: colors.text.muted }}>Direct Dependents</span>
+                            <span style={{ fontSize: '11.5px', color: colors.text.muted }}>Direct Dependents</span>
                             <span
                               style={{
                                 fontSize: '12px',
                                 fontWeight: 600,
-                                fontFamily: font.mono,
+                                fontFamily: font.sans,
                                 color: colors.text.primary,
                               }}
                             >
@@ -812,12 +812,12 @@ export const DependencyGraph: React.FC = () => {
                               borderRadius: radius.sm,
                             }}
                           >
-                            <span style={{ fontSize: '10px', color: colors.text.muted }}>Indirect Dependents</span>
+                            <span style={{ fontSize: '11.5px', color: colors.text.muted }}>Indirect Dependents</span>
                             <span
                               style={{
                                 fontSize: '12px',
                                 fontWeight: 600,
-                                fontFamily: font.mono,
+                                fontFamily: font.sans,
                                 color: colors.text.primary,
                               }}
                             >
@@ -826,7 +826,7 @@ export const DependencyGraph: React.FC = () => {
                           </div>
                         </div>
 
-                        <p style={{ fontSize: '11px', color: colors.text.secondary, margin: 0, lineHeight: 1.4 }}>
+                        <p style={{ fontSize: '12.5px', color: colors.text.secondary, margin: 0, lineHeight: 1.4 }}>
                           {impactResult.explanation}
                         </p>
 
@@ -834,7 +834,7 @@ export const DependencyGraph: React.FC = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
                             <span
                               style={{
-                                fontSize: '10px',
+                                fontSize: '11.5px',
                                 fontWeight: 600,
                                 color: colors.text.muted,
                               }}
@@ -860,8 +860,8 @@ export const DependencyGraph: React.FC = () => {
                                     padding: '3px 6px',
                                     borderRadius: radius.sm,
                                     background: colors.bg.primary,
-                                    fontSize: '11px',
-                                    fontFamily: font.mono,
+                                    fontSize: '12.5px',
+                                    fontFamily: font.sans,
                                   }}
                                 >
                                   <span
@@ -883,7 +883,7 @@ export const DependencyGraph: React.FC = () => {
                                       border: 'none',
                                       color: colors.accent.blue,
                                       cursor: 'pointer',
-                                      fontSize: '10px',
+                                      fontSize: '11.5px',
                                       padding: '1px 4px',
                                     }}
                                   >
@@ -896,7 +896,7 @@ export const DependencyGraph: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                      <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                         Select a file or symbol to analyze change impact.
                       </span>
                     )}
@@ -943,7 +943,7 @@ export const DependencyGraph: React.FC = () => {
                   >
                     <span
                       style={{
-                        fontSize: '11px',
+                        fontSize: '12.5px',
                         fontWeight: 600,
                         letterSpacing: '0',
                         color: colors.text.muted,
@@ -977,7 +977,7 @@ export const DependencyGraph: React.FC = () => {
                               backgroundColor: 'rgba(255, 92, 122, 0.08)',
                               border: `1px solid ${colors.status.dangerBorder}`,
                               color: colors.status.danger,
-                              fontSize: '11px',
+                              fontSize: '12.5px',
                               fontFamily: font.mono,
                             }}
                           >
@@ -986,7 +986,7 @@ export const DependencyGraph: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '11px', color: colors.status.success, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '12.5px', color: colors.status.success, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <CheckCircle2 size={12} /> No circular dependency loops detected.
                       </span>
                     )}
@@ -1013,18 +1013,18 @@ export const DependencyGraph: React.FC = () => {
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: '11px', fontWeight: 600, fontFamily: font.mono, color: colors.text.primary }}>
+                              <span style={{ fontSize: '12.5px', fontWeight: 600, fontFamily: font.sans, color: colors.text.primary }}>
                                 {dcItem.node?.label || dcItem.node?.id}
                               </span>
                               <Badge variant={dcItem.confidence >= 90 ? 'yellow' : 'default'}>
                                 {dcItem.confidence}% confidence
                               </Badge>
                             </div>
-                            <span style={{ fontSize: '10px', color: colors.text.muted }}>
+                            <span style={{ fontSize: '11.5px', color: colors.text.muted }}>
                               {dcItem.reason || 'No references found across indexed repository.'}
                             </span>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
-                              <span style={{ fontSize: '10px', color: colors.text.muted, fontStyle: 'italic' }}>
+                              <span style={{ fontSize: '11.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                                 {dcItem.status || 'Potentially unused'}
                               </span>
                               {dcItem.node?.file_path && (
@@ -1035,7 +1035,7 @@ export const DependencyGraph: React.FC = () => {
                                     border: 'none',
                                     color: colors.accent.blue,
                                     cursor: 'pointer',
-                                    fontSize: '10px',
+                                    fontSize: '11.5px',
                                     padding: 0,
                                   }}
                                 >
@@ -1056,8 +1056,8 @@ export const DependencyGraph: React.FC = () => {
                               borderRadius: radius.sm,
                               backgroundColor: colors.bg.surfaceSecondary,
                               color: colors.text.secondary,
-                              fontSize: '11px',
-                              fontFamily: font.mono,
+                              fontSize: '12.5px',
+                              fontFamily: font.sans,
                             }}
                           >
                             {dc.label || dc.id}
@@ -1065,7 +1065,7 @@ export const DependencyGraph: React.FC = () => {
                         ))}
                       </div>
                     ) : (
-                      <span style={{ fontSize: '11px', color: colors.status.success, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '12.5px', color: colors.status.success, display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <CheckCircle2 size={12} /> All identified symbols have active references.
                       </span>
                     )}

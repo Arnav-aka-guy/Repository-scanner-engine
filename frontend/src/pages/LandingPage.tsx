@@ -69,6 +69,13 @@ const CAPABILITIES = [
     description:
       'Writes an architecture brief, module notes and an onboarding guide from what the scan found, ready to copy as Markdown.',
   },
+  {
+    icon: Share2,
+    title: 'Shareable Reports',
+    tone: 'text-mint',
+    description:
+      'Download a one-page report with the health score, top issues and import loops. Attach it to a pull request or send it to your team.',
+  },
 ];
 
 const STEPS = [
@@ -220,7 +227,7 @@ export const LandingPage: React.FC = () => {
         <section id="features" className="border-t border-line-soft">
           <div className="mx-auto grid max-w-[1200px] gap-10 px-5 py-20 sm:px-8 lg:grid-cols-[360px_1fr] lg:gap-16 lg:py-28">
             <div className="lg:sticky lg:top-28 lg:self-start">
-              <h2 className="display text-[32px] leading-[1.1] sm:text-[40px]">One scan, seven ways to read the code.</h2>
+              <h2 className="display text-[32px] leading-[1.1] sm:text-[40px]">One scan, eight ways to read the code.</h2>
               <p className="mt-4 text-[16px] leading-relaxed text-fg-3">
                 Everything below comes from the same scan, so the map, the search, the health score and the assistant
                 always agree with each other.

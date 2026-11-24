@@ -6,8 +6,6 @@ import { AnalysisResult } from '../types/graph';
 import { parseServerDate } from '../utils/date';
 import { onAuthReset } from './authStore';
 import {
-  scanGitHubRepository,
-  scanRepositoryAsync,
   scanUserRepository,
   getScanJobStatus,
   cancelScanJob,
@@ -424,25 +422,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             normInputPath.startsWith('https://') ||
             normInputPath.includes('github.com');
 
-          let info: RepositoryInfo;
-
-          if (isGitHub && resolvedRepoId == null) {
-            info = await scanGitHubRepository(normInputPath);
-          } else {
-            // Queue async background job with SSE progress streaming and polling fallback.
-            // When repository_id is known, use the canonical /api/repositories/{id}/scan endpoint;
-            // fall back to path-based scanRepositoryAsync only when no database ID exists.
-            let job: { job_id: string };
-            try {
-              job =
-                resolvedRepoId != null
-                  ? await scanUserRepository(resolvedRepoId)
-                  : await scanRepositoryAsync(normInputPath);
-            } catch {
-              job = await scanRepositoryAsync(normInputPath);
-            }
-            set({ currentScanJobId: job.job_id });
-            info = await new Promise<RepositoryInfo>((resolve, reject) => {
+          if (resolvedRepoId == null) {
+            throw new Error('Could not find or create a saved repository for this path.');
+          }
+          // One scan path for every repository: the saved-repository endpoint.
+          // Errors (limit reached, path not allowed, rate limit) surface to the user instead
+          // of silently retrying an older endpoint.
+          const job: { job_id: string } = await scanUserRepository(resolvedRepoId);
+          set({ currentScanJobId: job.job_id });
+          let scanWarning: string | null = null;
+          const info = await new Promise<RepositoryInfo>((resolve, reject) => {
               let settled = false;
               let sseActive = true;
               let lastProgressTime = Date.now();
@@ -468,6 +457,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 });
                 if (progressJob.status === 'completed' && progressJob.result) {
                   cleanup();
+                  scanWarning = progressJob.warning || null;
                   resolve(progressJob.result);
                 } else if (progressJob.status === 'failed') {
                   cleanup();
@@ -514,6 +504,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 }
               }, 1000);
             });
+
+          if (scanWarning) {
+            useToastStore.getState().addToast({ type: 'warning', title: 'Scan finished with a problem', message: scanWarning });
           }
 
           const targetPath = (info.path || normInputPath).replace(/\\/g, '/').replace(/\/+$/, '');

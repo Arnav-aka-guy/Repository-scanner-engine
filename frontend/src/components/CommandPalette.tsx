@@ -284,7 +284,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                       </div>
                     </div>
                     {item.shortcut && (
-                      <kbd className="ml-3 hidden shrink-0 rounded border border-line bg-surface px-1.5 text-[11px] text-fg-3 sm:inline">{item.shortcut}</kbd>
+                      <kbd className="ml-3 hidden shrink-0 rounded border border-line bg-surface px-1.5 text-[12.5px] text-fg-3 sm:inline">{item.shortcut}</kbd>
                     )}
                   </div>
                 </React.Fragment>

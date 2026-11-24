@@ -17,10 +17,12 @@ import {
   Compass,
   ArrowRight,
   FolderOpen,
+  Download,
 } from 'lucide-react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import { apiGet } from '../services/api';
-import { getOnboardingGuide, type RepoOnboardingGuide } from '../services/repository';
+import { downloadRepositoryReport, getOnboardingGuide, type RepoOnboardingGuide } from '../services/repository';
+import { useToastStore } from '../stores/toastStore';
 import {
   HealthScore,
   TechDebt,
@@ -47,10 +49,10 @@ function formatLastScanned(dateString?: string): string {
     const now = new Date();
     const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffSec < 60) return 'Just now';
+    if (diffSec < 60) return 'just now';
     if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
     if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return `on ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
   } catch {
     return dateString;
   }
@@ -79,6 +81,28 @@ export const Overview: React.FC = () => {
   const activeRepositoryId = useWorkspaceStore((s) => s.activeRepositoryId);
   const queueChatMessage = useWorkspaceStore((s) => s.queueChatMessage);
   const repositoryInfo = useWorkspaceStore((s) => s.repositoryInfo);
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const handleDownloadReport = async () => {
+    if (activeRepositoryId == null) return;
+    setIsDownloadingReport(true);
+    try {
+      const base = (repositoryInfo?.name || 'repository').replace(/[^A-Za-z0-9._-]+/g, '-');
+      await downloadRepositoryReport(activeRepositoryId, `${base}-report.html`);
+      useToastStore.getState().addToast({
+        type: 'success',
+        title: 'Report downloaded',
+        message: 'Open the HTML file in any browser, or attach it to a pull request.',
+      });
+    } catch (err) {
+      useToastStore.getState().addToast({
+        type: 'error',
+        title: 'Report failed',
+        message: err instanceof Error ? err.message : 'Could not build the report.',
+      });
+    } finally {
+      setIsDownloadingReport(false);
+    }
+  };
   const scanStatus = useWorkspaceStore((s) => s.scanStatus);
   const scanRepo = useWorkspaceStore((s) => s.scanRepo);
   const selectLocalDirectory = useWorkspaceStore((s) => s.selectLocalDirectory);
@@ -260,7 +284,7 @@ export const Overview: React.FC = () => {
                     borderRadius: radius.md,
                     fontSize: font.size.sm,
                     color: colors.text.primary,
-                    fontFamily: font.mono,
+                    fontFamily: font.sans,
                     outline: 'none',
                   }}
                 />
@@ -324,7 +348,7 @@ export const Overview: React.FC = () => {
                       <span
                         style={{
                           fontSize: font.size.sm,
-                          fontFamily: font.mono,
+                          fontFamily: font.sans,
                           color: colors.text.primary,
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -416,6 +440,7 @@ export const Overview: React.FC = () => {
     <div className="flex-1 overflow-y-auto bg-ink">
       <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-8 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <PageHeader
+        stacked
         icon={<Folder size={19} />}
         title={repoDisplayName}
         meta={
@@ -446,6 +471,17 @@ export const Overview: React.FC = () => {
             >
               Rescan
             </Button>
+            {activeRepositoryId != null && (
+              <Button
+                variant="secondary"
+                icon={<Download size={15} className={isDownloadingReport ? 'animate-pulse' : ''} />}
+                onClick={handleDownloadReport}
+                disabled={isDownloadingReport || isScanning}
+                title="Download a one-page HTML report you can share or attach to a pull request"
+              >
+                {isDownloadingReport ? 'Preparing…' : 'Share report'}
+              </Button>
+            )}
             <Button variant="secondary" icon={<FolderTree size={15} />} onClick={() => goTo('explorer')}>
               Open Explorer
             </Button>
@@ -518,8 +554,8 @@ export const Overview: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>01</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.sans }}>01</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Purpose
                     </span>
                   </div>
@@ -541,8 +577,8 @@ export const Overview: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>02</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.sans }}>02</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Architecture Overview
                     </span>
                   </div>
@@ -564,8 +600,8 @@ export const Overview: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>03</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.sans }}>03</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Data Flow
                     </span>
                   </div>
@@ -587,8 +623,8 @@ export const Overview: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>04</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.sans }}>04</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Dependencies & Modules
                     </span>
                   </div>
@@ -619,8 +655,8 @@ export const Overview: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>05</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>05</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Entry Points ({onboardingGuide.entry_points.length})
                     </span>
                   </div>
@@ -636,7 +672,7 @@ export const Overview: React.FC = () => {
                             padding: '4px 8px',
                             background: colors.bg.primary,
                             borderRadius: radius.sm,
-                            fontSize: '11px',
+                            fontSize: '12.5px',
                             fontFamily: font.mono,
                           }}
                         >
@@ -645,14 +681,14 @@ export const Overview: React.FC = () => {
                           </span>
                           <button
                             onClick={() => handleOpenFile(ep)}
-                            style={{ background: 'none', border: 'none', color: colors.accent.blue, cursor: 'pointer', fontSize: '10px' }}
+                            style={{ background: 'none', border: 'none', color: colors.accent.blue, cursor: 'pointer', fontSize: '11.5px' }}
                           >
                             Open
                           </button>
                         </div>
                       ))
                     ) : (
-                      <span style={{ fontSize: '11px', color: colors.text.muted, fontStyle: 'italic' }}>
+                      <span style={{ fontSize: '12.5px', color: colors.text.muted, fontStyle: 'italic' }}>
                         No standard entry points identified.
                       </span>
                     )}
@@ -672,8 +708,8 @@ export const Overview: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>06</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>06</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Important Files ({onboardingGuide.important_files.length})
                     </span>
                   </div>
@@ -688,7 +724,7 @@ export const Overview: React.FC = () => {
                           padding: '4px 8px',
                           background: colors.bg.primary,
                           borderRadius: radius.sm,
-                          fontSize: '11px',
+                          fontSize: '12.5px',
                           fontFamily: font.mono,
                         }}
                       >
@@ -697,7 +733,7 @@ export const Overview: React.FC = () => {
                         </span>
                         <button
                           onClick={() => handleOpenFile(imp)}
-                          style={{ background: 'none', border: 'none', color: colors.accent.blue, cursor: 'pointer', fontSize: '10px' }}
+                          style={{ background: 'none', border: 'none', color: colors.accent.blue, cursor: 'pointer', fontSize: '11.5px' }}
                         >
                           Open
                         </button>
@@ -719,14 +755,14 @@ export const Overview: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>07</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.sans }}>07</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Known Issues / Debt
                     </span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {onboardingGuide.known_issues.map((issue, idx) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '11px', color: colors.text.secondary }}>
+                      <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '12.5px', color: colors.text.secondary }}>
                         <AlertTriangle size={11} style={{ color: colors.status.warning, marginTop: '2px', flexShrink: 0 }} />
                         <span>{issue}</span>
                       </div>
@@ -747,8 +783,8 @@ export const Overview: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.mono }}>08</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: colors.accent.blue, fontFamily: font.sans }}>08</span>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: colors.text.muted, letterSpacing: '0' }}>
                       Where Should I Start?
                     </span>
                   </div>
@@ -763,7 +799,7 @@ export const Overview: React.FC = () => {
                           padding: '4px 8px',
                           background: colors.bg.primary,
                           borderRadius: radius.sm,
-                          fontSize: '11px',
+                          fontSize: '12.5px',
                           fontFamily: font.mono,
                         }}
                       >
@@ -772,7 +808,7 @@ export const Overview: React.FC = () => {
                         </span>
                         <button
                           onClick={() => handleOpenFile(sp)}
-                          style={{ background: 'none', border: 'none', color: colors.accent.blue, cursor: 'pointer', fontSize: '10px' }}
+                          style={{ background: 'none', border: 'none', color: colors.accent.blue, cursor: 'pointer', fontSize: '11.5px' }}
                         >
                           Explore
                         </button>
@@ -825,7 +861,7 @@ export const Overview: React.FC = () => {
             <div className="mt-2 text-[32px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{totalLines.toLocaleString()}</div>
             <div className="mt-2 text-[12.5px] text-fg-4">Lines of code parsed</div>
           </div>
-          <div className="border-r border-line-soft p-5">
+          <div className="col-span-2 border-b border-line-soft p-5 lg:col-span-1 lg:border-b-0 lg:border-r">
             <div className="text-[13px] text-fg-3">Primary languages</div>
             {sortedLanguages.length > 0 ? (
               <div className="mt-3 flex flex-col gap-2">
@@ -846,7 +882,7 @@ export const Overview: React.FC = () => {
               <div className="mt-3 text-[13px] text-fg-4">None detected</div>
             )}
           </div>
-          <div className="p-5">
+          <div className="col-span-2 p-5 lg:col-span-1">
             <div className="text-[13px] text-fg-3">Index status</div>
             <div className="mt-2.5 flex items-center gap-2 text-[17px] font-semibold">
               <span className={`h-2 w-2 rounded-full ${scanStatus === 'indexed' ? 'bg-mint' : isScanning ? 'bg-ion live-dot' : 'bg-fg-4'}`} />
@@ -907,144 +943,60 @@ export const Overview: React.FC = () => {
             </div>
           </Panel>
         ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '12px',
-            }}
-          >
-            {/* Overall Score Highlight */}
-            <Panel
-              padding="16px"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                borderLeft: `3px solid ${healthTone.color}`,
-              }}
-            >
+          <div className="grid overflow-hidden rounded-[14px] border border-line bg-surface lg:grid-cols-[300px_1fr]">
+            <div className="relative flex flex-col justify-between gap-6 border-b border-line-soft p-6 lg:border-b-0 lg:border-r">
               <div>
-                <span
-                  style={{
-                    fontSize: font.size.xs,
-                    fontWeight: font.weight.semibold,
-                    color: colors.text.muted,
-                    letterSpacing: '0',
-                  }}
-                >
-                  Quality Score
-                </span>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '4px' }}>
+                <div className="text-[13px] text-fg-3">Quality score</div>
+                <div className="mt-3 flex items-baseline gap-2">
                   <span
-                    style={{
-                      fontSize: font.size['3xl'],
-                      fontWeight: font.weight.bold,
-                      color: colors.text.primary,
-                      fontFamily: font.mono,
-                    }}
+                    className="text-[64px] font-semibold leading-none tracking-[-0.04em] tabular-nums"
+                    style={{ color: healthTone.color }}
                   >
                     {overallScore}
                   </span>
-                  <span style={{ fontSize: font.size.md, color: colors.text.muted }}>/ 100</span>
-                  <span
-                    style={{
-                      fontSize: font.size.sm,
-                      color: healthTone.color,
-                      fontWeight: font.weight.semibold,
-                      marginLeft: '6px',
-                    }}
-                  >
-                    Grade {healthGrade}
-                  </span>
+                  <span className="text-[16px] text-fg-4">/ 100</span>
                 </div>
+                <span
+                  className="mt-3 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[12.5px] font-semibold"
+                  style={{ color: healthTone.color, borderColor: healthTone.color }}
+                >
+                  Grade {healthGrade}
+                </span>
               </div>
-              <p
-                style={{
-                  fontSize: font.size.xs,
-                  color: colors.text.secondary,
-                  marginTop: '10px',
-                  lineHeight: '1.5',
-                }}
-              >
-                {healthScore?.summary || 'Codebase adheres to standard architectural guidelines.'}
+              <p className="text-[13.5px] leading-relaxed text-fg-3">
+                {healthScore?.summary || 'Run a scan to compute the health score.'}
               </p>
-            </Panel>
+            </div>
 
-            {/* 5 Core Dimensions */}
-            {(healthScore?.dimensions || [
-              { name: 'Architecture', score: 18, max_score: 20, deductions: [] },
-              { name: 'Security', score: 20, max_score: 20, deductions: [] },
-              { name: 'Maintainability', score: 16, max_score: 20, deductions: [] },
-              { name: 'Complexity', score: 15, max_score: 20, deductions: [] },
-              { name: 'Documentation', score: 14, max_score: 20, deductions: [] },
-            ]).map((dim) => {
-              const pct = Math.round((dim.score / (dim.max_score || 20)) * 100);
-              const hasDeductions = dim.deductions && dim.deductions.length > 0;
-              const explanation = hasDeductions
-                ? (typeof dim.deductions[0] === 'string' ? dim.deductions[0] : (dim.deductions[0] as { reason?: string })?.reason || 'Criteria assessed')
-                : 'Meets standard maintainability criteria';
-
-              return (
-                <Panel key={dim.name} padding="14px">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span
-                      style={{
-                        fontSize: font.size.sm,
-                        fontWeight: font.weight.semibold,
-                        color: colors.text.primary,
-                      }}
-                    >
-                      {dim.name}
+            <ul className="divide-y divide-line-soft">
+              {(healthScore?.dimensions || []).map((dim) => {
+                const pct = Math.round((dim.score / (dim.max_score || 20)) * 100);
+                const tone = pct >= 80 ? colors.status.success : pct >= 60 ? colors.status.warning : colors.status.danger;
+                const first = dim.deductions && dim.deductions.length > 0 ? dim.deductions[0] : null;
+                const reason = first
+                  ? typeof first === 'string'
+                    ? first
+                    : (first as { reason?: string })?.reason || 'Some checks did not pass'
+                  : 'No problems found';
+                return (
+                  <li key={dim.name} className="grid grid-cols-[1fr_auto] items-center gap-x-6 gap-y-2 px-6 py-4 sm:grid-cols-[150px_1fr_auto]">
+                    <span className="text-[14px] font-semibold">{dim.name}</span>
+                    <span className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
+                      <span className="block h-1.5 overflow-hidden rounded-full bg-surface-2">
+                        <span className="block h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, backgroundColor: tone }} />
+                      </span>
+                      <span className="mt-1.5 block truncate text-[12.5px] text-fg-4" title={reason}>
+                        {reason}
+                      </span>
                     </span>
-                    <span
-                      style={{
-                        fontSize: font.size.xs,
-                        fontFamily: font.mono,
-                        color: pct >= 80 ? colors.status.success : pct >= 60 ? colors.status.warning : colors.status.danger,
-                      }}
-                    >
-                      {dim.score} / {dim.max_score || 20}
+                    <span className="text-right text-[15px] font-semibold tabular-nums" style={{ color: tone }}>
+                      {dim.score}
+                      <span className="text-[12.5px] font-normal text-fg-4"> / {dim.max_score || 20}</span>
                     </span>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '4px',
-                      borderRadius: '2px',
-                      backgroundColor: colors.bg.surfaceSecondary,
-                      overflow: 'hidden',
-                      marginTop: '8px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${Math.min(100, pct)}%`,
-                        height: '100%',
-                        backgroundColor: pct >= 80 ? colors.status.success : pct >= 60 ? colors.status.warning : colors.status.danger,
-                      }}
-                    />
-                  </div>
-
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      color: colors.text.muted,
-                      marginTop: '6px',
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                    title={explanation}
-                  >
-                    {explanation}
-                  </span>
-                </Panel>
-              );
-            })}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
       </section>
