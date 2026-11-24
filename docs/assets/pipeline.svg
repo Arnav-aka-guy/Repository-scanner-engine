@@ -1,77 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="230" viewBox="0 0 1200 230" role="img" aria-label="How it works: Scan, Parse, Graph, Index, Ask and Diagram">
-  <defs>
-    <style>
-      .t { font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-      .m { font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', monospace; }
-      .card { animation: lit 10s infinite; }
-      .s1 { animation-delay: 0s } .s2 { animation-delay: 2s } .s3 { animation-delay: 4s } .s4 { animation-delay: 6s } .s5 { animation-delay: 8s }
-      @keyframes lit {
-        0%, 22%, 100% { stroke: #2c333d; }
-        4%, 18% { stroke: #F2A93B; }
-      }
-      .glow { opacity: 0; animation: glow 10s infinite; }
-      @keyframes glow { 0%, 22%, 100% { opacity: 0 } 4%, 18% { opacity: 1 } }
-      .flow { stroke-dasharray: 6 10; animation: dash 1.2s linear infinite; }
-      @keyframes dash { to { stroke-dashoffset: -32; } }
-      .pkt { animation: move 10s linear infinite; }
-      @keyframes move { from { transform: translateX(0) } to { transform: translateX(960px) } }
-    </style>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#0d1015"/><stop offset="1" stop-color="#141922"/>
-    </linearGradient>
-  </defs>
-
-  <rect width="1200" height="230" rx="18" fill="url(#bg)"/>
-  <line x1="120" y1="104" x2="1080" y2="104" stroke="#2c333d" stroke-width="2"/>
-  <line x1="120" y1="104" x2="1080" y2="104" stroke="#F2A93B" stroke-opacity=".55" stroke-width="2" class="flow"/>
-  <circle cx="120" cy="104" r="5" fill="#F2A93B" class="pkt"/>
-
-  <g class="t">
-    <!-- 1 Scan -->
-    <g>
-      <rect x="40" y="44" width="160" height="120" rx="14" fill="#F2A93B" fill-opacity=".07" class="glow"/>
-      <rect x="40" y="44" width="160" height="120" rx="14" fill="#171b22" fill-opacity=".92" stroke="#2c333d" stroke-width="1.6" class="card s1"/>
-      <text x="62" y="72" class="m" font-size="11" fill="#F2A93B">01</text>
-      <text x="62" y="100" font-size="18" font-weight="700" fill="#E6EAF0">Scan</text>
-      <text x="62" y="124" font-size="12" fill="#8a928b">local folder or</text>
-      <text x="62" y="141" font-size="12" fill="#8a928b">public GitHub URL</text>
-    </g>
-    <!-- 2 Parse -->
-    <g>
-      <rect x="280" y="44" width="160" height="120" rx="14" fill="#F2A93B" fill-opacity=".07" class="glow s2"/>
-      <rect x="280" y="44" width="160" height="120" rx="14" fill="#171b22" fill-opacity=".92" stroke="#2c333d" stroke-width="1.6" class="card s2"/>
-      <text x="302" y="72" class="m" font-size="11" fill="#5B8DEF">02</text>
-      <text x="302" y="100" font-size="18" font-weight="700" fill="#E6EAF0">Parse</text>
-      <text x="302" y="124" font-size="12" fill="#8a928b">AST: imports, classes,</text>
-      <text x="302" y="141" font-size="12" fill="#8a928b">functions, docstrings</text>
-    </g>
-    <!-- 3 Graph -->
-    <g>
-      <rect x="520" y="44" width="160" height="120" rx="14" fill="#F2A93B" fill-opacity=".07" class="glow s3"/>
-      <rect x="520" y="44" width="160" height="120" rx="14" fill="#171b22" fill-opacity=".92" stroke="#2c333d" stroke-width="1.6" class="card s3"/>
-      <text x="542" y="72" class="m" font-size="11" fill="#4CAF79">03</text>
-      <text x="542" y="100" font-size="18" font-weight="700" fill="#E6EAF0">Graph</text>
-      <text x="542" y="124" font-size="12" fill="#8a928b">dependency, call and</text>
-      <text x="542" y="141" font-size="12" fill="#8a928b">symbol graphs</text>
-    </g>
-    <!-- 4 Index -->
-    <g>
-      <rect x="760" y="44" width="160" height="120" rx="14" fill="#F2A93B" fill-opacity=".07" class="glow s4"/>
-      <rect x="760" y="44" width="160" height="120" rx="14" fill="#171b22" fill-opacity=".92" stroke="#2c333d" stroke-width="1.6" class="card s4"/>
-      <text x="782" y="72" class="m" font-size="11" fill="#7CC4C9">04</text>
-      <text x="782" y="100" font-size="18" font-weight="700" fill="#E6EAF0">Index</text>
-      <text x="782" y="124" font-size="12" fill="#8a928b">FAISS vectors +</text>
-      <text x="782" y="141" font-size="12" fill="#8a928b">BM25 keywords</text>
-    </g>
-    <!-- 5 Understand -->
-    <g>
-      <rect x="1000" y="44" width="160" height="120" rx="14" fill="#F2A93B" fill-opacity=".07" class="glow s5"/>
-      <rect x="1000" y="44" width="160" height="120" rx="14" fill="#171b22" fill-opacity=".92" stroke="#2c333d" stroke-width="1.6" class="card s5"/>
-      <text x="1022" y="72" class="m" font-size="11" fill="#9580CA">05</text>
-      <text x="1022" y="100" font-size="18" font-weight="700" fill="#E6EAF0">Understand</text>
-      <text x="1022" y="124" font-size="12" fill="#8a928b">ask, search, score,</text>
-      <text x="1022" y="141" font-size="12" fill="#8a928b">draw system design</text>
-    </g>
-  </g>
-  <text x="600" y="204" text-anchor="middle" class="m" font-size="12" fill="#5b6470">rescans only re-parse files whose SHA-256 hash changed</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="250" viewBox="0 0 1200 250" role="img" aria-label="How a scan works: add, scan, parse, connect, index, use">
+  <defs><linearGradient id="spec" x1="0" x2="1"><stop offset="0" stop-color="#35D7FF"/><stop offset="0.45" stop-color="#9D8CFF"/><stop offset="0.75" stop-color="#FF5C7A"/><stop offset="1" stop-color="#FFB020"/></linearGradient></defs>
+  <rect width="1200" height="250" rx="18" fill="#000"/>
+  <text x="30" y="40" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="15" fill="#9A9AA3">One scan feeds every feature, so the map, search, health score and assistant always agree.</text>
+  <g>
+  <rect x="30.0" y="70" width="170" height="120" rx="14" fill="#0D0D10" stroke="#222228"/>
+  <rect x="30.0" y="70" width="170" height="120" rx="14" fill="none" stroke="#F4F4F5" stroke-width="1.5" opacity="0"><animate attributeName="opacity" values="0;0;0.9;0;0" keyTimes="0;0.000;0.071;0.262;1" dur="4.2s" repeatCount="indefinite"/></rect>
+  <circle cx="52.0" cy="96" r="5" fill="#F4F4F5"/>
+  <text x="66.0" y="101" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#F4F4F5">Add</text>
+  <text x="48.0" y="136" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">A folder on your computer</text>
+  <text x="48.0" y="156" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">or a public GitHub link</text>
+</g><line x1="204.0" y1="130" x2="220.0" y2="130" stroke="#33333B" stroke-width="2" stroke-dasharray="4 5"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="0.9s" repeatCount="indefinite"/></line><g>
+  <rect x="224.0" y="70" width="170" height="120" rx="14" fill="#0D0D10" stroke="#222228"/>
+  <rect x="224.0" y="70" width="170" height="120" rx="14" fill="none" stroke="#35D7FF" stroke-width="1.5" opacity="0"><animate attributeName="opacity" values="0;0;0.9;0;0" keyTimes="0;0.143;0.214;0.405;1" dur="4.2s" repeatCount="indefinite"/></rect>
+  <circle cx="246.0" cy="96" r="5" fill="#35D7FF"/>
+  <text x="260.0" y="101" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#F4F4F5">Scan</text>
+  <text x="242.0" y="136" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">Find source files, skip</text>
+  <text x="242.0" y="156" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">secrets, links and junk</text>
+</g><line x1="398.0" y1="130" x2="414.0" y2="130" stroke="#33333B" stroke-width="2" stroke-dasharray="4 5"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="0.9s" repeatCount="indefinite"/></line><g>
+  <rect x="418.0" y="70" width="170" height="120" rx="14" fill="#0D0D10" stroke="#222228"/>
+  <rect x="418.0" y="70" width="170" height="120" rx="14" fill="none" stroke="#9D8CFF" stroke-width="1.5" opacity="0"><animate attributeName="opacity" values="0;0;0.9;0;0" keyTimes="0;0.286;0.357;0.548;1" dur="4.2s" repeatCount="indefinite"/></rect>
+  <circle cx="440.0" cy="96" r="5" fill="#9D8CFF"/>
+  <text x="454.0" y="101" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#F4F4F5">Parse</text>
+  <text x="436.0" y="136" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">Functions, classes, imports</text>
+  <text x="436.0" y="156" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">and line ranges per file</text>
+</g><line x1="592.0" y1="130" x2="608.0" y2="130" stroke="#33333B" stroke-width="2" stroke-dasharray="4 5"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="0.9s" repeatCount="indefinite"/></line><g>
+  <rect x="612.0" y="70" width="170" height="120" rx="14" fill="#0D0D10" stroke="#222228"/>
+  <rect x="612.0" y="70" width="170" height="120" rx="14" fill="none" stroke="#FF5C7A" stroke-width="1.5" opacity="0"><animate attributeName="opacity" values="0;0;0.9;0;0" keyTimes="0;0.429;0.500;0.690;1" dur="4.2s" repeatCount="indefinite"/></rect>
+  <circle cx="634.0" cy="96" r="5" fill="#FF5C7A"/>
+  <text x="648.0" y="101" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#F4F4F5">Connect</text>
+  <text x="630.0" y="136" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">Import graph, call graph,</text>
+  <text x="630.0" y="156" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">layers and import loops</text>
+</g><line x1="786.0" y1="130" x2="802.0" y2="130" stroke="#33333B" stroke-width="2" stroke-dasharray="4 5"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="0.9s" repeatCount="indefinite"/></line><g>
+  <rect x="806.0" y="70" width="170" height="120" rx="14" fill="#0D0D10" stroke="#222228"/>
+  <rect x="806.0" y="70" width="170" height="120" rx="14" fill="none" stroke="#FFB020" stroke-width="1.5" opacity="0"><animate attributeName="opacity" values="0;0;0.9;0;0" keyTimes="0;0.571;0.643;0.833;1" dur="4.2s" repeatCount="indefinite"/></rect>
+  <circle cx="828.0" cy="96" r="5" fill="#FFB020"/>
+  <text x="842.0" y="101" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#F4F4F5">Index</text>
+  <text x="824.0" y="136" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">Embeddings + keywords</text>
+  <text x="824.0" y="156" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">for search by meaning</text>
+</g><line x1="980.0" y1="130" x2="996.0" y2="130" stroke="#33333B" stroke-width="2" stroke-dasharray="4 5"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="0.9s" repeatCount="indefinite"/></line><g>
+  <rect x="1000.0" y="70" width="170" height="120" rx="14" fill="#0D0D10" stroke="#222228"/>
+  <rect x="1000.0" y="70" width="170" height="120" rx="14" fill="none" stroke="#3DDC97" stroke-width="1.5" opacity="0"><animate attributeName="opacity" values="0;0;0.9;0;0" keyTimes="0;0.714;0.786;0.976;1" dur="4.2s" repeatCount="indefinite"/></rect>
+  <circle cx="1022.0" cy="96" r="5" fill="#3DDC97"/>
+  <text x="1036.0" y="101" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" fill="#F4F4F5">Use</text>
+  <text x="1018.0" y="136" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">Explore, ask, score,</text>
+  <text x="1018.0" y="156" font-family="'Segoe UI', -apple-system, Helvetica, Arial, sans-serif" font-size="12" fill="#9A9AA3">diagram, review, report</text>
+</g>
+  <circle r="5" fill="url(#spec)"><animateMotion path="M30,225 L1170,225" dur="4.2s" repeatCount="indefinite"/></circle>
+  <rect x="30" y="224" width="1140" height="2" rx="1" fill="url(#spec)" opacity="0.7"/>
 </svg>
