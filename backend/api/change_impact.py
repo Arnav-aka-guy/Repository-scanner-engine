@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -52,6 +53,39 @@ class ImpactResponse(BaseModel):
     graph_edges: list[dict[str, Any]]
 
 
+def validate_target_files_exist(repo_path_str: str, target_files: list[str], parsed_files: dict[str, Any]) -> None:
+    """Validate that target files exist in the repository on disk or in parsed files."""
+    repo_path = Path(repo_path_str).resolve()
+    for target in target_files:
+        target_str = target.strip()
+        if not target_str:
+            continue
+        target_p = Path(target_str)
+        if target_p.is_absolute():
+            resolved = target_p.resolve()
+            exists_on_disk = resolved.is_file() and (str(resolved).startswith(str(repo_path)))
+        else:
+            resolved = (repo_path / target_p).resolve()
+            exists_on_disk = resolved.is_file()
+
+        if exists_on_disk:
+            continue
+
+        norm_target = target_str.replace("\\", "/").rstrip("/").lower()
+        matched = False
+        for k in parsed_files.keys():
+            norm_k = k.replace("\\", "/").rstrip("/").lower()
+            if norm_k == norm_target or norm_k.endswith("/" + norm_target):
+                matched = True
+                break
+
+        if not matched:
+            raise HTTPException(
+                status_code=404,
+                detail=f"File not found in this repository: {target_str}",
+            )
+
+
 @router.post("/analyze", response_model=ImpactResponse)
 async def analyze_change_impact(
     body: ImpactAnalysisRequest,
@@ -70,6 +104,7 @@ async def analyze_change_impact(
 
     try:
         parsed_files = await parser.parse_repository(str(path))
+        validate_target_files_exist(str(path), body.target_files, parsed_files)
         graphs = await graph_svc.build_graphs(parsed_files)
         full_graph = graphs["full"]
 
@@ -100,6 +135,8 @@ async def analyze_change_impact(
             graph_nodes=report.graph_nodes,
             graph_edges=report.graph_edges,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Change impact analysis failed for %s: %s", path, exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Impact analysis failed: {exc!s}") from exc
@@ -124,6 +161,7 @@ async def export_impact_report(
 
     try:
         parsed_files = await parser.parse_repository(str(path))
+        validate_target_files_exist(str(path), body.target_files, parsed_files)
         graphs = await graph_svc.build_graphs(parsed_files)
         full_graph = graphs["full"]
 
@@ -149,6 +187,8 @@ async def export_impact_report(
             media_type="application/json",
             headers={"Content-Disposition": 'attachment; filename="change_impact_report.json"'},
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Failed to export impact report: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to export report.") from exc

@@ -111,6 +111,15 @@ def test_endpoints_accept_repository_id_only(client: TestClient, tmp_path: Path)
     assert resp_impact.status_code == 200, resp_impact.text
     assert "risk_score" in resp_impact.json()
 
+    # 3b. POST /api/impact/analyze with non-existent file returns 404
+    resp_impact_404 = client.post(
+        "/api/impact/analyze",
+        json={"repository_id": repo_id, "target_files": ["backend/nope.py"]},
+        headers=user["headers"],
+    )
+    assert resp_impact_404.status_code == 404, resp_impact_404.text
+    assert "File not found in this repository: backend/nope.py" in resp_impact_404.json()["detail"]
+
     # 4. POST /api/impact/export
     resp_export = client.post(
         "/api/impact/export?format=markdown",

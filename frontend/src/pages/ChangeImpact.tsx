@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { FileInfo } from '../types/repository';
 import { analyzeChangeImpact, exportChangeImpact, ImpactReport } from '../services/impact';
 import {
   GitBranch,
@@ -16,12 +17,28 @@ import {
 import { colors, radius, font } from '../design-system/tokens';
 import { Button, Badge, Panel as Card, FilePath } from '../design-system/primitives';
 
+function getRelativePath(fullPath: string, rootPath: string): string {
+  if (!fullPath) return '';
+  const normRoot = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
+  const normFile = fullPath.replace(/\\/g, '/');
+  if (normRoot && normFile.startsWith(normRoot)) {
+    return normFile.slice(normRoot.length).replace(/^\/+/, '');
+  }
+  return normFile;
+}
+
 export const ChangeImpact: React.FC = () => {
   const repoPath = useWorkspaceStore((s) => s.activeRepository);
   const repoId = useWorkspaceStore((s) => s.activeRepositoryId);
   const files = useWorkspaceStore((s) => s.files);
+  const selectedFilePath = useWorkspaceStore((s) => s.selectedFilePath);
 
-  const [selectedFile, setSelectedFile] = useState<string>(files[0]?.path || '');
+  const initialTarget = useMemo(() => {
+    const raw = selectedFilePath || files[0]?.path || '';
+    return getRelativePath(raw, repoPath || '');
+  }, [selectedFilePath, files, repoPath]);
+
+  const [selectedFile, setSelectedFile] = useState<string>(initialTarget);
   const [symbolInput, setSymbolInput] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -35,15 +52,21 @@ export const ChangeImpact: React.FC = () => {
   React.useEffect(() => {
     setReport(null);
     setError(null);
-    setSelectedFile(files[0]?.path || '');
+    setSelectedFile(initialTarget);
     return () => {
       abortRef.current?.abort();
     };
-  }, [repoPath, repoId]);
+  }, [repoPath, repoId, initialTarget]);
 
-  const filteredFiles = files.filter((f) =>
-    f.path.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredFiles = useMemo(() => {
+    const query = searchTerm.toLowerCase();
+    return files
+      .map((f: FileInfo) => ({
+        ...f,
+        relPath: getRelativePath(f.path, repoPath || ''),
+      }))
+      .filter((f) => f.relPath.toLowerCase().includes(query) || f.path.toLowerCase().includes(query));
+  }, [files, searchTerm, repoPath]);
 
   const handleRunAnalysis = async (fileToAnalyze?: string) => {
     const target = fileToAnalyze || selectedFile;
@@ -201,7 +224,7 @@ export const ChangeImpact: React.FC = () => {
         >
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 flex flex-col gap-1.5 w-full">
-              <label className="text-xs font-mono" style={{ color: colors.text.secondary }}>
+              <label className="text-[12px] font-sans font-medium text-fg-3">
                 Target Modified File
               </label>
               <div className="relative">
@@ -234,12 +257,12 @@ export const ChangeImpact: React.FC = () => {
                     <button
                       key={f.path}
                       onClick={() => {
-                        setSelectedFile(f.path);
+                        setSelectedFile(f.relPath);
                         setSearchTerm('');
                       }}
                       className="text-left text-xs font-mono px-3 py-1.5 hover:bg-slate-800/80 transition-colors flex items-center justify-between"
                     >
-                      <span className="truncate">{f.path}</span>
+                      <span className="truncate">{f.relPath}</span>
                       <span className="text-[11.5px] text-slate-500">{f.language}</span>
                     </button>
                   ))}
@@ -248,7 +271,7 @@ export const ChangeImpact: React.FC = () => {
             </div>
 
             <div className="w-full md:w-72 flex flex-col gap-1.5">
-              <label className="text-xs font-mono" style={{ color: colors.text.secondary }}>
+              <label className="text-[12px] font-sans font-medium text-fg-3">
                 Optional Changed Symbols
               </label>
               <input
