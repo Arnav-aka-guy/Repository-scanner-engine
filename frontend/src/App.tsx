@@ -4,7 +4,7 @@ import { MainLayout } from './layouts/MainLayout';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/ToastContainer';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { useAuthStore } from './stores/authStore';
+import { useAuthStore, onAuthReset } from './stores/authStore';
 import { useWorkspaceStore } from './stores/workspaceStore';
 
 // Lazy-loaded pages for optimal initial bundle size (< 300KB)
@@ -254,6 +254,16 @@ function App() {
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthReset(() => {
+      useWorkspaceStore.getState().clearWorkspace({ silent: true });
+      try {
+        (useWorkspaceStore as any).persist?.rehydrate();
+      } catch {}
+    });
+    return unsubscribe;
+  }, []);
 
   return (
     <BrowserRouter>

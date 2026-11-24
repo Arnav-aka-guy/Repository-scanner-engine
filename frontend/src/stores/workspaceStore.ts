@@ -4,6 +4,7 @@ import { RepositoryInfo, FileInfo, FileTreeNode, SavedRepository } from '../type
 import { ChatMessage } from '../types/chat';
 import { AnalysisResult } from '../types/graph';
 import { parseServerDate } from '../utils/date';
+import { onAuthReset } from './authStore';
 import {
   scanGitHubRepository,
   scanRepositoryAsync,
@@ -920,3 +921,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }
   )
 );
+
+onAuthReset(() => {
+  useWorkspaceStore.getState().clearWorkspace({ silent: true });
+  try {
+    (useWorkspaceStore as any).persist?.rehydrate();
+  } catch {}
+});
